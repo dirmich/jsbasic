@@ -1,0 +1,43 @@
+{
+  "name": "jsbasic",
+  "version": "0.1.0",
+  "description": "6502 CPU and BASIC interpreter emulator in TypeScript",
+  "main": "dist/index.js",
+  "module": "src/index.ts",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "bun run --watch src/index.ts",
+    "build": "bun build src/index.ts --outdir dist --minify",
+    "build:dev": "bun build src/index.ts --outdir dist --sourcemap",
+    "test": "bun test",
+    "test:watch": "bun test --watch",
+    "lint": "bun run tsc --noEmit",
+    "clean": "rm -rf dist",
+    "start": "bun run dist/index.js",
+    "serve": "bun run --hot src/index.ts"
+  },
+  "keywords": [
+    "6502",
+    "cpu",
+    "emulator",
+    "basic",
+    "interpreter",
+    "typescript",
+    "retro-computing"
+  ],
+  "author": "David, Shin",
+  "license": "MIT",
+  "dependencies": {},
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/node": "^24.3.1",
+    "typescript": "^5.0.0"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "engines": {
+    "bun": ">=1.0.0"
+  }
+}

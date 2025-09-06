@@ -1,0 +1,68 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug Tests",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/node_modules/.bin/jest",
+      "args": ["--runInBand", "--no-cache"],
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
+      "env": {
+        "NODE_ENV": "test"
+      }
+    },
+    {
+      "name": "Debug Specific Test",
+      "type": "node", 
+      "request": "launch",
+      "program": "${workspaceFolder}/node_modules/.bin/jest",
+      "args": ["--runInBand", "--no-cache", "${fileBasenameNoExtension}"],
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
+      "env": {
+        "NODE_ENV": "test"
+      }
+    },
+    {
+      "name": "Debug Dev Server",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/src/index.ts",
+      "outFiles": ["${workspaceFolder}/dist/**/*.js"],
+      "console": "integratedTerminal",
+      "env": {
+        "NODE_ENV": "development",
+        "DEBUG_MODE": "true"
+      },
+      "runtimeArgs": ["--loader", "ts-node/esm"]
+    },
+    {
+      "name": "Debug CPU Emulator",
+      "type": "node",
+      "request": "launch", 
+      "program": "${workspaceFolder}/src/cpu/cpu.ts",
+      "outFiles": ["${workspaceFolder}/dist/**/*.js"],
+      "console": "integratedTerminal",
+      "env": {
+        "NODE_ENV": "development",
+        "DEBUG_CPU": "true"
+      },
+      "runtimeArgs": ["--loader", "ts-node/esm"]
+    },
+    {
+      "name": "Debug BASIC Interpreter",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/src/basic/interpreter.ts", 
+      "outFiles": ["${workspaceFolder}/dist/**/*.js"],
+      "console": "integratedTerminal",
+      "env": {
+        "NODE_ENV": "development",
+        "DEBUG_BASIC": "true"
+      },
+      "runtimeArgs": ["--loader", "ts-node/esm"]
+    }
+  ]
+}
