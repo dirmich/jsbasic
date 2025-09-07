@@ -315,13 +315,16 @@ export class Tokenizer {
   }
 
   private skipComment(): void {
-    if (this.current === "'") {
-      // ' 주석
+    const startChar = this.current;
+    
+    if (startChar === "'") {
+      // ' 주석 - 다음 줄까지 건너뛰기
+      this.advance(); // ' 문자 건너뛰기
       while (this.position < this.source.length && 
              this.current !== '\n' && this.current !== '\r') {
         this.advance();
       }
-    } else if (this.current === 'R') {
+    } else if (startChar === 'R') {
       // REM 주석
       this.advance(); // R
       this.advance(); // E
