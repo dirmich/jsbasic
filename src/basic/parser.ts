@@ -4,13 +4,16 @@
  * 토큰 스트림을 AST로 변환하는 재귀 하향 파서입니다.
  */
 
+import type { 
+  Token 
+} from './tokenizer.js';
+
 import { 
-  Token, 
   TokenType, 
   Tokenizer 
 } from './tokenizer.js';
 
-import {
+import type {
   ASTNode,
   Program,
   Statement,

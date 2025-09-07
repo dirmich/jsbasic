@@ -234,12 +234,14 @@ export class VariableManager {
     
     // 인덱스 범위 검증
     for (let i = 0; i < indices.length; i++) {
-      if (indices[i] < 0 || indices[i] >= array.dimensions[i]) {
+      const index = indices[i];
+      const dimension = array.dimensions[i];
+      if (index === undefined || dimension === undefined || index < 0 || index >= dimension) {
         throw new BasicError(
-          `Array index ${indices[i]} out of range for dimension ${i} of variable ${name} (0-${array.dimensions[i] - 1})`,
+          `Array index ${index || 0} out of range for dimension ${i} of variable ${name} (0-${(dimension || 1) - 1})`,
           ERROR_CODES.SUBSCRIPT_OUT_OF_RANGE,
           undefined,
-          { variableName: name, index: indices[i], dimension: i, maxIndex: array.dimensions[i] - 1 }
+          { variableName: name, index: index || 0, dimension: i, maxIndex: (dimension || 1) - 1 }
         );
       }
     }
@@ -312,12 +314,14 @@ export class VariableManager {
     
     // 인덱스 범위 검증
     for (let i = 0; i < indices.length; i++) {
-      if (indices[i] < 0 || indices[i] >= array.dimensions[i]) {
+      const index = indices[i];
+      const dimension = array.dimensions[i];
+      if (index === undefined || dimension === undefined || index < 0 || index >= dimension) {
         throw new BasicError(
-          `Array index ${indices[i]} out of range for dimension ${i} of variable ${name} (0-${array.dimensions[i] - 1})`,
+          `Array index ${index || 0} out of range for dimension ${i} of variable ${name} (0-${(dimension || 1) - 1})`,
           ERROR_CODES.SUBSCRIPT_OUT_OF_RANGE,
           undefined,
-          { variableName: name, index: indices[i], dimension: i, maxIndex: array.dimensions[i] - 1 }
+          { variableName: name, index: index || 0, dimension: i, maxIndex: (dimension || 1) - 1 }
         );
       }
     }
