@@ -94,3 +94,12 @@ export interface MemoryConfig {
     data?: Uint8Array;
   }>;
 }
+
+// Memory interface for CPU
+export interface MemoryInterface {
+  read(address: number): number;
+  write(address: number, value: number): void;
+  readWord(address: number): number;
+  writeWord(address: number, value: number): void;
+  reset(): void;
+}

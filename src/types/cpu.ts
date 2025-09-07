@@ -85,3 +85,52 @@ export interface MemoryInterface {
   write(address: number, value: number): void;
   reset(): void;
 }
+
+// CPU Interface (alias for CPU6502)
+export type CPUInterface = CPU6502;
+
+// CPU State enum
+export enum CPUState {
+  RUNNING = 'RUNNING',
+  HALTED = 'HALTED',
+  WAITING = 'WAITING',
+  RESET = 'RESET'
+}
+
+// CPU Flags enum
+export enum CPUFlag {
+  CARRY = 'carry',
+  ZERO = 'zero',
+  INTERRUPT = 'interrupt',
+  DECIMAL = 'decimal',
+  BREAK = 'break',
+  UNUSED = 'unused',
+  OVERFLOW = 'overflow',
+  NEGATIVE = 'negative'
+}
+
+// Interrupt types
+export enum InterruptType {
+  IRQ = 'IRQ',
+  NMI = 'NMI',
+  RESET = 'RESET'
+}
+
+// CPU Options
+export interface CPUOptions {
+  clockSpeed?: number;
+  frequencyMHz?: number;
+  enableLogging?: boolean;
+  enableDebug?: boolean;
+  enableBreakpoints?: boolean;
+  cycleAccurate?: boolean;
+  strictMode?: boolean;
+}
+
+// CPU Events
+export interface CPUEvents extends Record<string, (...args: any[]) => void> {
+  step: (cycles: number) => void;
+  interrupt: (type: InterruptType) => void;
+  stateChange: (state: CPUState) => void;
+  error: (error: Error) => void;
+}
