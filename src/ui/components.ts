@@ -92,9 +92,9 @@ export abstract class BaseComponent extends EventEmitter<ComponentEvents> implem
  * 터미널 컴포넌트
  */
 export class TerminalComponent extends BaseComponent {
-  private outputElement: HTMLElement;
-  private inputElement: HTMLInputElement;
-  private promptElement: HTMLElement;
+  private outputElement!: HTMLElement;
+  private inputElement!: HTMLInputElement;
+  private promptElement!: HTMLElement;
   private history: string[] = [];
   private historyIndex: number = -1;
 
@@ -222,8 +222,8 @@ export class TerminalComponent extends BaseComponent {
  * 메모리 뷰어 컴포넌트
  */
 export class MemoryViewerComponent extends BaseComponent {
-  private tableElement: HTMLTableElement;
-  private addressInput: HTMLInputElement;
+  private tableElement!: HTMLTableElement;
+  private addressInput!: HTMLInputElement;
   private currentAddress: number = 0x0000;
 
   constructor(id: string = 'memory-viewer') {

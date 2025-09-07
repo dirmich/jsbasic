@@ -27,6 +27,7 @@ export interface CPURegisters {
 // Addressing modes for 6502 instructions
 export enum AddressingMode {
   IMPLIED = 'IMPLIED',
+  ACCUMULATOR = 'ACCUMULATOR',
   IMMEDIATE = 'IMMEDIATE',
   ZERO_PAGE = 'ZERO_PAGE',
   ZERO_PAGE_X = 'ZERO_PAGE_X',
@@ -37,7 +38,17 @@ export enum AddressingMode {
   INDIRECT = 'INDIRECT',
   INDIRECT_X = 'INDIRECT_X',
   INDIRECT_Y = 'INDIRECT_Y',
+  INDEXED_INDIRECT = 'INDEXED_INDIRECT',
+  INDIRECT_INDEXED = 'INDIRECT_INDEXED',
   RELATIVE = 'RELATIVE'
+}
+
+// Addressing mode information
+export interface AddressingModeInfo {
+  mode: AddressingMode;
+  bytes: number;
+  cycles: number;
+  description: string;
 }
 
 // Instruction definition

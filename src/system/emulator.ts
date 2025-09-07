@@ -39,15 +39,15 @@ export interface EmulatorStats {
  * 6502 BASIC 에뮬레이터 메인 클래스
  */
 export class BasicEmulator extends EventEmitter {
-  private cpu: CPU6502;
-  private basicInterpreter: BasicInterpreter;
-  private memoryManager: MemoryManager;
-  private terminal: Terminal;
-  private parser: Parser;
+  private cpu!: CPU6502;
+  private basicInterpreter!: BasicInterpreter;
+  private memoryManager!: MemoryManager;
+  private terminal!: Terminal;
+  private parser!: Parser;
   
   private state: EmulatorState = EmulatorState.STOPPED;
-  private config: EmulatorConfig;
-  private stats: EmulatorStats;
+  private config!: EmulatorConfig;
+  private stats!: EmulatorStats;
   private startTime: number = 0;
   private animationFrame: number | null = null;
 

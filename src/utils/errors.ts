@@ -55,6 +55,20 @@ export class BasicError extends EmulatorError {
 }
 
 /**
+ * CPU 관련 에러
+ */
+export class CPUError extends CustomError {
+  public address?: number;
+  public instruction?: string;
+
+  constructor(message: string, code: string = 'CPU_ERROR', address?: number, instruction?: string, context?: any) {
+    super(message, code, context);
+    this.address = address;
+    this.instruction = instruction;
+  }
+}
+
+/**
  * I/O 관련 에러
  */
 export class IOError extends EmulatorError {
