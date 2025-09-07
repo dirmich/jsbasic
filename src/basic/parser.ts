@@ -208,7 +208,7 @@ export class Parser {
       
       const indices: Expression[] = [];
       indices.push(this.parseExpression());
-      while (this.current.type === TokenType.COMMA) {
+      while (this.currentTokenIs(TokenType.COMMA)) {
         this.advance();
         indices.push(this.parseExpression());
       }
@@ -333,11 +333,11 @@ export class Parser {
       this.consumeNewlineOrEOF();
       
       while (!this.isAtEnd() && 
-             this.current.type !== TokenType.ELSE && 
-             this.current.type !== TokenType.ENDIF &&
+             !this.currentTokenIs(TokenType.ELSE) && 
+             !this.currentTokenIs(TokenType.ENDIF) &&
              this.current.type !== TokenType.EOF) {
         
-        if (this.current.type === TokenType.NEWLINE) {
+        if (this.currentTokenIs(TokenType.NEWLINE)) {
           this.advance();
           continue;
         }
@@ -353,16 +353,16 @@ export class Parser {
       }
       
       // ELSE 처리
-      if (this.current.type === TokenType.ELSE) {
+      if (this.currentTokenIs(TokenType.ELSE)) {
         this.advance();
         this.consumeNewlineOrEOF();
         
         elseStatement = [];
         while (!this.isAtEnd() && 
-               this.current.type !== TokenType.ENDIF &&
-               this.current.type !== TokenType.EOF) {
+               !this.currentTokenIs(TokenType.ENDIF) &&
+               !this.currentTokenIs(TokenType.EOF)) {
           
-          if (this.current.type === TokenType.NEWLINE) {
+          if (this.currentTokenIs(TokenType.NEWLINE)) {
             this.advance();
             continue;
           }
@@ -435,10 +435,10 @@ export class Parser {
       
       // 개행 처리
       if (!this.isAtEnd() && 
-          this.current.type !== TokenType.NEWLINE && 
-          this.current.type !== TokenType.EOF) {
+          !this.currentTokenIs(TokenType.NEWLINE) && 
+          !this.currentTokenIs(TokenType.EOF)) {
         this.consumeNewlineOrEOF();
-      } else if (this.current.type === TokenType.NEWLINE) {
+      } else if (this.currentTokenIs(TokenType.NEWLINE)) {
         this.advance();
       }
     }
@@ -448,10 +448,10 @@ export class Parser {
       this.advance(); // 라인 넘버 건너뛰기
     }
     
-    if (this.current.type === TokenType.NEXT) {
+    if (this.currentTokenIs(TokenType.NEXT)) {
       this.advance();
       // 선택적으로 변수명 확인
-      if (this.current.type === TokenType.IDENTIFIER) {
+      if (this.currentTokenIs(TokenType.IDENTIFIER)) {
         this.advance();
       }
     }
@@ -491,7 +491,7 @@ export class Parser {
         body.push(stmt);
       }
       
-      if (!this.isAtEnd() && this.current.type !== TokenType.NEWLINE) {
+      if (!this.isAtEnd() && !this.currentTokenIs(TokenType.NEWLINE)) {
         this.consumeNewlineOrEOF();
       }
     }
@@ -591,11 +591,11 @@ export class Parser {
       this.error('Expected number or string in DATA statement');
     }
     
-    while (this.current.type === TokenType.COMMA) {
+    while (this.currentTokenIs(TokenType.COMMA)) {
       this.advance();
-      if (this.current.type === TokenType.NUMBER) {
+      if (this.currentTokenIs(TokenType.NUMBER)) {
         values.push(this.parseNumberLiteral());
-      } else if (this.current.type === TokenType.STRING) {
+      } else if (this.currentTokenIs(TokenType.STRING)) {
         values.push(this.parseStringLiteral());
       } else {
         this.error('Expected number or string in DATA statement');
@@ -722,7 +722,7 @@ export class Parser {
     const lineNumbers: NumberLiteral[] = [];
     lineNumbers.push(this.parseNumberLiteral());
     
-    while (this.current.type === TokenType.COMMA) {
+    while (this.currentTokenIs(TokenType.COMMA)) {
       this.advance();
       lineNumbers.push(this.parseNumberLiteral());
     }
@@ -991,9 +991,9 @@ export class Parser {
       this.advance();
       
       const args: Expression[] = [];
-      if (this.current.type !== TokenType.RIGHT_PAREN) {
+      if (!this.currentTokenIs(TokenType.RIGHT_PAREN)) {
         args.push(this.parseExpression());
-        while (this.current.type === TokenType.COMMA) {
+        while (this.currentTokenIs(TokenType.COMMA)) {
           this.advance();
           args.push(this.parseExpression());
         }
@@ -1011,12 +1011,12 @@ export class Parser {
     }
     
     // 배열 액세스 확인
-    if (this.current.type === TokenType.LEFT_PAREN) {
+    if (this.currentTokenIs(TokenType.LEFT_PAREN)) {
       this.advance();
       
       const indices: Expression[] = [];
       indices.push(this.parseExpression());
-      while (this.current.type === TokenType.COMMA) {
+      while (this.currentTokenIs(TokenType.COMMA)) {
         this.advance();
         indices.push(this.parseExpression());
       }
@@ -1066,7 +1066,7 @@ export class Parser {
     const args: Expression[] = [];
     if (this.current.type !== TokenType.RIGHT_PAREN) {
       args.push(this.parseExpression());
-      while (this.current.type === TokenType.COMMA) {
+      while (this.currentTokenIs(TokenType.COMMA)) {
         this.advance();
         args.push(this.parseExpression());
       }
