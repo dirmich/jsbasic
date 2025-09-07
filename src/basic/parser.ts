@@ -47,9 +47,10 @@ import type {
   ParenthesizedExpression,
   BinaryOperator,
   UnaryOperator,
-  ArrayDeclaration,
-  ASTUtils
+  ArrayDeclaration
 } from './ast.js';
+
+import { ASTUtils } from './ast.js';
 
 import { BasicError, ERROR_CODES } from '../utils/errors.js';
 
@@ -648,7 +649,7 @@ export class Parser {
       targetLine: lineNumber,
       line: line,
       column: column
-    };
+    } as RestoreStatement;
   }
 
   private parseEndStatement(): EndStatement {
@@ -757,7 +758,7 @@ export class Parser {
         right: right,
         line: this.current.line,
         column: this.current.column
-      };
+      } as BinaryExpression;
     }
     
     return expr;
@@ -777,7 +778,7 @@ export class Parser {
         right: right,
         line: this.current.line,
         column: this.current.column
-      };
+      } as BinaryExpression;
     }
     
     return expr;
@@ -797,7 +798,7 @@ export class Parser {
         right: right,
         line: this.current.line,
         column: this.current.column
-      };
+      } as BinaryExpression;
     }
     
     return expr;
@@ -820,7 +821,7 @@ export class Parser {
         right: right,
         line: this.current.line,
         column: this.current.column
-      };
+      } as BinaryExpression;
     }
     
     return expr;
@@ -840,7 +841,7 @@ export class Parser {
         right: right,
         line: this.current.line,
         column: this.current.column
-      };
+      } as BinaryExpression;
     }
     
     return expr;
@@ -862,7 +863,7 @@ export class Parser {
         right: right,
         line: this.current.line,
         column: this.current.column
-      };
+      } as BinaryExpression;
     }
     
     return expr;
@@ -883,7 +884,7 @@ export class Parser {
         right: right,
         line: this.current.line,
         column: this.current.column
-      };
+      } as BinaryExpression;
     }
     
     return expr;
@@ -904,7 +905,7 @@ export class Parser {
         operand: operand,
         line: line,
         column: column
-      };
+      } as UnaryExpression;
     }
     
     return this.parsePrimary();
@@ -932,7 +933,7 @@ export class Parser {
           value: 0,
           line: this.current.line,
           column: this.current.column
-        };
+        } as NumberLiteral;
     }
   }
 
@@ -1005,9 +1006,9 @@ export class Parser {
         type: 'FunctionCall',
         name: identifier,
         arguments: args,
-        line: identifier.line,
-        column: identifier.column
-      };
+        line: identifier.line || 0,
+        column: identifier.column || 0
+      } as FunctionCall;
     }
     
     // 배열 액세스 확인
@@ -1029,7 +1030,7 @@ export class Parser {
         indices: indices,
         line: identifier.line,
         column: identifier.column
-      };
+      } as ArrayAccess;
     }
     
     return identifier;
@@ -1058,7 +1059,7 @@ export class Parser {
       dataType: 'numeric',
       line: this.current.line,
       column: this.current.column
-    };
+    } as Identifier;
     
     this.advance();
     this.consume(TokenType.LEFT_PAREN);
@@ -1078,9 +1079,9 @@ export class Parser {
       type: 'FunctionCall',
       name: name,
       arguments: args,
-      line: name.line,
-      column: name.column
-    };
+      line: name.line || 0,
+      column: name.column || 0
+    } as FunctionCall;
   }
 
   private parseArrayDeclaration(): ArrayDeclaration {
@@ -1131,7 +1132,8 @@ export class Parser {
     if (this.position + 1 >= this.tokens.length) {
       return null;
     }
-    return this.tokens[this.position + 1];
+    const token = this.tokens[this.position + 1];
+    return token || null;
   }
 
   private consume(expectedType: TokenType): void {
