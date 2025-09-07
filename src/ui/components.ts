@@ -22,7 +22,7 @@ export interface UIComponent {
 /**
  * 컴포넌트 이벤트 타입
  */
-export interface ComponentEvents {
+export interface ComponentEvents extends Record<string, (...args: any[]) => void> {
   show: () => void;
   hide: () => void;
   render: () => void;

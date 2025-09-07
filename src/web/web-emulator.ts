@@ -20,7 +20,7 @@ export interface WebEmulatorCallbacks {
   onCommand?: (command: string) => void;
 }
 
-interface WebEmulatorEvents {
+interface WebEmulatorEvents extends Record<string, (...args: any[]) => void> {
   initialized: () => void;
   error: (error: Error) => void;
   stateChange: (event: { oldState: EmulatorState; newState: EmulatorState }) => void;
