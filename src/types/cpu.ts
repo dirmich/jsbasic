@@ -145,3 +145,16 @@ export interface CPUEvents extends Record<string, (...args: any[]) => void> {
   stateChange: (state: CPUState) => void;
   error: (error: Error) => void;
 }
+
+// Instruction information
+export interface InstructionInfo {
+  opcode: number;
+  mnemonic: string;
+  addressing: AddressingMode;
+  cycles: number;
+  bytes: number;
+  description: string;
+}
+
+// Opcode to instruction mapping
+export type OpcodeMap = Map<number, InstructionInfo>;

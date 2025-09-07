@@ -103,3 +103,31 @@ export interface MemoryInterface {
   writeWord(address: number, value: number): void;
   reset(): void;
 }
+
+// Memory bank information
+export interface MemoryBankInfo {
+  name: string;
+  start: number;
+  end: number;
+  size: number;
+  readonly: boolean;
+  usage: number;
+}
+
+// Memory access log entry
+export interface MemoryAccessLog {
+  address: number;
+  value: number;
+  operation: 'READ' | 'WRITE';
+  timestamp: number;
+  context?: string;
+}
+
+// Memory map entry
+export interface MemoryMapEntry {
+  name: string;
+  start: number;
+  end: number;
+  type: 'RAM' | 'ROM' | 'IO' | 'STACK' | 'ZERO_PAGE';
+  description?: string;
+}
