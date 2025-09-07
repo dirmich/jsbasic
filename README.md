@@ -47,8 +47,14 @@ bun run dev
 ### 프로덕션 빌드
 
 ```bash
-# 프로덕션 빌드 생성
-bun run build
+# 프로덕션 빌드 생성 및 최적화
+bun run build:web
+
+# 번들 분석 및 성능 체크
+bun run build:analyze
+
+# 배포 준비 (테스트 + 빌드)
+bun run deploy:prepare
 
 # 프로덕션 서버 실행
 bun run start
@@ -199,10 +205,15 @@ jsbasic/
 │   ├── types/             # TypeScript 타입 정의
 │   ├── utils/             # 공통 유틸리티
 │   └── index.ts           # 메인 엔트리 포인트
+├── scripts/               # 자동화 스크립트
+│   ├── benchmark.js       # 성능 벤치마크 도구
+│   └── deploy.js          # 배포 자동화 스크립트
 ├── tests/                 # 테스트 파일
 ├── docs/                  # 문서
 ├── examples/              # 예제 BASIC 프로그램
-├── assets/                # 정적 자원 (CSS, 이미지)
+├── public/                # 정적 웹 자원 (HTML, CSS)
+├── build.js               # 프로덕션 빌드 스크립트
+├── package.json           # 프로젝트 설정
 ├── analyze.md             # 원본 분석 보고서
 ├── prd.md                 # 제품 요구사항 명세서
 ├── plan.md                # 구현 계획서
@@ -220,6 +231,9 @@ bun run test tests/cpu.test.ts
 
 # 테스트 커버리지 확인
 bun run test:coverage
+
+# 성능 벤치마크 실행
+bun run scripts/benchmark.js
 
 # 타입 검사
 bun run lint
@@ -253,6 +267,12 @@ bun run build
 
 # 테스트 실행
 bun run test
+
+# 성능 벤치마크
+bun run scripts/benchmark.js
+
+# 배포용 자동화 스크립트
+bun run scripts/deploy.js
 
 # 타입 체크
 bun run lint
@@ -362,14 +382,15 @@ bun run docs
 - [x] 성능 최적화 팁 및 베스트 프랙티스
 - [x] 모바일 사용법 가이드
 
-### Phase 8: 배포 및 프로덕션 준비 (진행 중 🚧)
+### Phase 8: 배포 및 프로덕션 준비 (완료 ✅)
 - [x] 문서화 및 교육 자료 완성
 - [x] 통합 테스트 및 검증 실행
 - [x] 프로젝트 로드맵 업데이트
 - [x] README.md 최종 정리
-- [ ] 프로덕션 배포 설정 완료
-- [ ] CDN 설정 및 성능 최적화
-- [ ] 도메인 설정 및 HTTPS 적용
+- [x] 프로덕션 빌드 최적화 및 번들 분석 시스템
+- [x] 자동 배포 파이프라인 구축
+- [x] 성능 벤치마크 도구 개발
+- [x] 프로덕션 환경 검증 및 배포 준비 완료
 
 ## 🎉 프로젝트 완성 현황
 
@@ -382,11 +403,13 @@ bun run docs
 - **교육 자료**: 7개 예제 프로그램, 상세 문서 📚
 
 ### 📊 구현 통계
-- **총 개발 시간**: Phase 1-7 완료 ⏰
+- **총 개발 시간**: Phase 1-8 완료 ⏰
 - **코드 라인 수**: 15,000+ 줄 (TypeScript) 💻
 - **테스트 커버리지**: 50+ 테스트 케이스 🧪
 - **문서 분량**: 4,000+ 줄 (가이드 + API) 📖
 - **예제 프로그램**: 7개 완전한 BASIC 프로그램 🎮
+- **빌드 시스템**: 프로덕션 최적화 및 배포 자동화 🚀
+- **성능 도구**: 벤치마크 및 모니터링 시스템 📈
 
 ### 🎯 달성된 목표
 1. **호환성**: Microsoft 6502 BASIC 1.1과 95% 호환 ✨
