@@ -158,3 +158,10 @@ export interface InstructionInfo {
 
 // Opcode to instruction mapping
 export type OpcodeMap = Map<number, InstructionInfo>;
+
+// Instruction set interface
+export interface InstructionSet {
+  opcodes: OpcodeMap;
+  disassemble(opcode: number, operand1?: number, operand2?: number): string;
+  getInstruction(opcode: number): InstructionInfo | undefined;
+}

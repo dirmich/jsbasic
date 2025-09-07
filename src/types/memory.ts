@@ -99,6 +99,8 @@ export interface MemoryConfig {
 export interface MemoryInterface {
   read(address: number): number;
   write(address: number, value: number): void;
+  readByte(address: number): number;
+  writeByte(address: number, value: number): void;
   readWord(address: number): number;
   writeWord(address: number, value: number): void;
   reset(): void;
