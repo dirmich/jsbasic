@@ -24,14 +24,6 @@ export class EmulatorError extends Error {
   }
 }
 
-/**
- * CPU 관련 에러
- */
-export class CPUError extends EmulatorError {
-  constructor(message: string, code: string = 'CPU_ERROR', context?: any) {
-    super(message, code, context);
-  }
-}
 
 /**
  * 메모리 관련 에러
@@ -50,21 +42,27 @@ export class BasicError extends EmulatorError {
 
   constructor(message: string, code: string = 'BASIC_ERROR', lineNumber?: number, context?: any) {
     super(message, code, context);
-    this.lineNumber = lineNumber;
+    if (lineNumber !== undefined) {
+      this.lineNumber = lineNumber;
+    }
   }
 }
 
 /**
  * CPU 관련 에러
  */
-export class CPUError extends CustomError {
+export class CPUError extends EmulatorError {
   public address?: number;
   public instruction?: string;
 
   constructor(message: string, code: string = 'CPU_ERROR', address?: number, instruction?: string, context?: any) {
     super(message, code, context);
-    this.address = address;
-    this.instruction = instruction;
+    if (address !== undefined) {
+      this.address = address;
+    }
+    if (instruction !== undefined) {
+      this.instruction = instruction;
+    }
   }
 }
 

@@ -328,7 +328,12 @@ export class VariableManager {
     
     // 1차원 인덱스 계산
     const flatIndex = this.calculateFlatIndex(indices, array.dimensions);
-    return array.data[flatIndex];
+    const value = array.data[flatIndex];
+    if (value === undefined) {
+      // 배열 요소가 초기화되지 않은 경우 기본값 반환
+      return this.getDefaultValue(array.type);
+    }
+    return value;
   }
 
   /**

@@ -128,7 +128,7 @@ export class BasicInterpreter extends EventEmitter {
         await this.executeStatement(stmt);
         
         // 중단 요청 확인
-        if (this.state === ExecutionState.PAUSED) {
+        if (this.state !== ExecutionState.RUNNING) {
           break;
         }
         
