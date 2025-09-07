@@ -3,6 +3,11 @@
  * 브라우저 API 모킹 및 전역 설정
  */
 
+// Jest 글로벌 타입 선언
+declare global {
+  const jest: any;
+}
+
 // DOM 및 브라우저 API 모킹
 global.window = {
   setTimeout: global.setTimeout,

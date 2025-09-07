@@ -21,11 +21,11 @@ export class System6502 {
   private state: SystemState
 
   // Core components
-  private cpu: CPU6502;
-  private memory: MemoryManager;
-  private basic: BasicInterpreter;
-  private terminal: Terminal;
-  private ui: TerminalComponent;
+  private cpu!: CPU6502;
+  private memory!: MemoryManager;
+  private basic!: BasicInterpreter;
+  private terminal!: Terminal;
+  private ui!: TerminalComponent;
 
   constructor(config?: Partial<SystemConfig>) {
     this.config = this.createDefaultConfig(config)
