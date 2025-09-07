@@ -7,7 +7,7 @@ import type {
   CPUOptions,
   CPUEvents
 } from '@/types/cpu';
-import type { MemoryManager } from '@/types/memory';
+import type { MemoryInterface } from '@/types/memory';
 import { EventEmitter } from '@/utils/events';
 import { CPUError } from '@/utils/errors';
 import { formatHex } from '@/utils/format';
@@ -37,7 +37,7 @@ import { AddressingModes } from './addressing';
  */
 export class CPU6502 extends EventEmitter<CPUEvents> implements CPUInterface {
   private readonly _registers: CPURegisters;
-  private readonly memory: MemoryManager;
+  private readonly memory: MemoryInterface;
   private readonly instructions: InstructionSet;
   private readonly addressing: AddressingModes;
   
@@ -54,7 +54,7 @@ export class CPU6502 extends EventEmitter<CPUEvents> implements CPUInterface {
   private readonly breakpoints: Set<number> = new Set();
   private traceEnabled: boolean = false;
   
-  constructor(memory: MemoryManager, options: CPUOptions = {}) {
+  constructor(memory: MemoryInterface, options: CPUOptions = {}) {
     super();
     
     this.memory = memory;
@@ -278,7 +278,7 @@ export class CPU6502 extends EventEmitter<CPUEvents> implements CPUInterface {
    * 바이트 페치 (PC 자동 증가)
    */
   public fetchByte(): number {
-    const value = this.memory.read(this._registers.PC);
+    const value = this.memory.readByte(this._registers.PC);
     this._registers.PC = (this._registers.PC + 1) & 0xFFFF;
     return value;
   }
@@ -296,14 +296,14 @@ export class CPU6502 extends EventEmitter<CPUEvents> implements CPUInterface {
    * 메모리 읽기
    */
   public readByte(address: number): number {
-    return this.memory.read(address & 0xFFFF);
+    return this.memory.readByte(address & 0xFFFF);
   }
   
   /**
    * 메모리 쓰기
    */
   public writeByte(address: number, value: number): void {
-    this.memory.write(address & 0xFFFF, value & 0xFF);
+    this.memory.writeByte(address & 0xFFFF, value & 0xFF);
   }
   
   /**
