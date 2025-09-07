@@ -20,10 +20,17 @@ export interface WebEmulatorCallbacks {
   onCommand?: (command: string) => void;
 }
 
+interface WebEmulatorEvents {
+  initialized: () => void;
+  error: (error: Error) => void;
+  stateChange: (event: { oldState: EmulatorState; newState: EmulatorState }) => void;
+  output: (event: { text: string; type: 'output' | 'error' | 'system' }) => void;
+}
+
 /**
  * 웹 환경용 에뮬레이터 클래스
  */
-export class WebEmulator extends EventEmitter {
+export class WebEmulator extends EventEmitter<WebEmulatorEvents> {
   private emulator: BasicEmulator;
   private container: HTMLElement;
   private config: WebEmulatorConfig;
@@ -80,7 +87,7 @@ export class WebEmulator extends EventEmitter {
       
     } catch (error) {
       console.error('❌ WebEmulator initialization failed:', error);
-      this.emit('error', error);
+      this.emit('error', error as Error);
       throw error;
     }
   }
@@ -111,9 +118,9 @@ export class WebEmulator extends EventEmitter {
    */
   private setupEventHandlers(): void {
     // 에뮬레이터 이벤트
-    this.emulator.on('stateChange', (event) => {
+    this.emulator.on('stateChange', (event: any) => {
       this.callbacks.onStateChange?.(event.to);
-      this.emit('stateChange', event);
+      this.emit('stateChange', { oldState: event.from, newState: event.to });
     });
     
     // 터미널 이벤트

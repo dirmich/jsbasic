@@ -294,37 +294,58 @@ export class ExpressionEvaluator {
       if (args.length !== 1) {
         throw new BasicError('VAL function requires exactly one argument', ERROR_CODES.RUNTIME_ERROR, node.line);
       }
-      return BuiltinFunctions.string.VAL(this.ensureString(args[0], node.line));
+      const arg = args[0];
+      if (arg === undefined) {
+        throw new BasicError('VAL function missing argument', ERROR_CODES.RUNTIME_ERROR, node.line);
+      }
+      return BuiltinFunctions.string.VAL(this.ensureString(arg, node.line));
     }
 
     if (functionName === 'STR' || functionName === 'STR$') {
       if (args.length !== 1) {
         throw new BasicError('STR$ function requires exactly one argument', ERROR_CODES.RUNTIME_ERROR, node.line);
       }
-      return BuiltinFunctions.string.STR(this.ensureNumber(args[0], node.line));
+      const arg = args[0];
+      if (arg === undefined) {
+        throw new BasicError('STR$ function missing argument', ERROR_CODES.RUNTIME_ERROR, node.line);
+      }
+      return BuiltinFunctions.string.STR(this.ensureNumber(arg, node.line));
     }
 
     if (functionName === 'CHR' || functionName === 'CHR$') {
       if (args.length !== 1) {
         throw new BasicError('CHR$ function requires exactly one argument', ERROR_CODES.RUNTIME_ERROR, node.line);
       }
-      return BuiltinFunctions.string.CHR(this.ensureNumber(args[0], node.line));
+      const arg = args[0];
+      if (arg === undefined) {
+        throw new BasicError('CHR$ function missing argument', ERROR_CODES.RUNTIME_ERROR, node.line);
+      }
+      return BuiltinFunctions.string.CHR(this.ensureNumber(arg, node.line));
     }
 
     if (functionName === 'ASC') {
       if (args.length !== 1) {
         throw new BasicError('ASC function requires exactly one argument', ERROR_CODES.RUNTIME_ERROR, node.line);
       }
-      return BuiltinFunctions.string.ASC(this.ensureString(args[0], node.line));
+      const arg = args[0];
+      if (arg === undefined) {
+        throw new BasicError('ASC function missing argument', ERROR_CODES.RUNTIME_ERROR, node.line);
+      }
+      return BuiltinFunctions.string.ASC(this.ensureString(arg, node.line));
     }
 
     if (functionName === 'LEFT' || functionName === 'LEFT$') {
       if (args.length !== 2) {
         throw new BasicError('LEFT$ function requires exactly two arguments', ERROR_CODES.RUNTIME_ERROR, node.line);
       }
+      const arg0 = args[0];
+      const arg1 = args[1];
+      if (arg0 === undefined || arg1 === undefined) {
+        throw new BasicError('LEFT$ function missing arguments', ERROR_CODES.RUNTIME_ERROR, node.line);
+      }
       return BuiltinFunctions.string.LEFT(
-        this.ensureString(args[0], node.line),
-        this.ensureNumber(args[1], node.line)
+        this.ensureString(arg0, node.line),
+        this.ensureNumber(arg1, node.line)
       );
     }
 
@@ -332,9 +353,14 @@ export class ExpressionEvaluator {
       if (args.length !== 2) {
         throw new BasicError('RIGHT$ function requires exactly two arguments', ERROR_CODES.RUNTIME_ERROR, node.line);
       }
+      const arg0 = args[0];
+      const arg1 = args[1];
+      if (arg0 === undefined || arg1 === undefined) {
+        throw new BasicError('RIGHT$ function missing arguments', ERROR_CODES.RUNTIME_ERROR, node.line);
+      }
       return BuiltinFunctions.string.RIGHT(
-        this.ensureString(args[0], node.line),
-        this.ensureNumber(args[1], node.line)
+        this.ensureString(arg0, node.line),
+        this.ensureNumber(arg1, node.line)
       );
     }
 
@@ -342,9 +368,14 @@ export class ExpressionEvaluator {
       if (args.length < 2 || args.length > 3) {
         throw new BasicError('MID$ function requires 2 or 3 arguments', ERROR_CODES.RUNTIME_ERROR, node.line);
       }
-      const str = this.ensureString(args[0], node.line);
-      const start = this.ensureNumber(args[1], node.line);
-      const length = args.length > 2 ? this.ensureNumber(args[2], node.line) : undefined;
+      const arg0 = args[0];
+      const arg1 = args[1];
+      if (arg0 === undefined || arg1 === undefined) {
+        throw new BasicError('MID$ function missing required arguments', ERROR_CODES.RUNTIME_ERROR, node.line);
+      }
+      const str = this.ensureString(arg0, node.line);
+      const start = this.ensureNumber(arg1, node.line);
+      const length = args.length > 2 && args[2] !== undefined ? this.ensureNumber(args[2], node.line) : undefined;
       
       return BuiltinFunctions.string.MID(str, start, length);
     }

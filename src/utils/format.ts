@@ -181,14 +181,21 @@ export function formatMemoryDumpLine(
   for (let i = 0; i < bytesPerLine; i++) {
     if (i < data.length) {
       const byte = data[i];
-      hexParts.push(formatHex(byte, 2));
-      
-      // ASCII 변환 (출력 가능한 문자만)
-      if (showAscii) {
-        if (byte >= 32 && byte <= 126) {
-          asciiParts.push(String.fromCharCode(byte));
-        } else {
-          asciiParts.push('.');
+      if (byte !== undefined) {
+        hexParts.push(formatHex(byte, 2));
+        
+        // ASCII 변환 (출력 가능한 문자만)
+        if (showAscii) {
+          if (byte >= 32 && byte <= 126) {
+            asciiParts.push(String.fromCharCode(byte));
+          } else {
+            asciiParts.push('.');
+          }
+        }
+      } else {
+        hexParts.push('??');
+        if (showAscii) {
+          asciiParts.push('?');
         }
       }
     } else {
@@ -372,7 +379,7 @@ export function formatTable(
   // 헤더 출력
   if (headers) {
     const headerLine = headers
-      .map((header, index) => header.padEnd(columnWidths[index]))
+      .map((header, index) => header.padEnd(columnWidths[index] || 0))
       .join(' | ');
     lines.push(headerLine);
     
@@ -386,7 +393,7 @@ export function formatTable(
   // 데이터 출력
   data.forEach(row => {
     const dataLine = row
-      .map((cell, index) => String(cell).padEnd(columnWidths[index]))
+      .map((cell, index) => String(cell).padEnd(columnWidths[index] || 0))
       .join(' | ');
     lines.push(dataLine);
   });
@@ -425,14 +432,14 @@ export const ConsoleColors = {
   
   // 헬퍼 함수들
   colorize: (text: string, color: string) => `${color}${text}\x1b[0m`,
-  red: (text: string) => `\x1b[31m${text}\x1b[0m`,
-  green: (text: string) => `\x1b[32m${text}\x1b[0m`,
-  yellow: (text: string) => `\x1b[33m${text}\x1b[0m`,
-  blue: (text: string) => `\x1b[34m${text}\x1b[0m`,
-  magenta: (text: string) => `\x1b[35m${text}\x1b[0m`,
-  cyan: (text: string) => `\x1b[36m${text}\x1b[0m`,
-  bright: (text: string) => `\x1b[1m${text}\x1b[0m`,
-  dim: (text: string) => `\x1b[2m${text}\x1b[0m`
+  redText: (text: string) => `\x1b[31m${text}\x1b[0m`,
+  greenText: (text: string) => `\x1b[32m${text}\x1b[0m`,
+  yellowText: (text: string) => `\x1b[33m${text}\x1b[0m`,
+  blueText: (text: string) => `\x1b[34m${text}\x1b[0m`,
+  magentaText: (text: string) => `\x1b[35m${text}\x1b[0m`,
+  cyanText: (text: string) => `\x1b[36m${text}\x1b[0m`,
+  brightText: (text: string) => `\x1b[1m${text}\x1b[0m`,
+  dimText: (text: string) => `\x1b[2m${text}\x1b[0m`
 };
 
 /**

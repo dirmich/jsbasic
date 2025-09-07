@@ -4,20 +4,32 @@
  */
 
 // 코어 모듈들
-export { BasicEmulator, EmulatorState } from '../system/emulator.js';
-export { Terminal, TerminalState } from '../io/terminal.js';
-export { CPU6502 } from '../cpu/cpu.js';
-export { MemoryManager } from '../memory/manager.js';
-export { BasicInterpreter } from '../basic/interpreter.js';
-export { Parser } from '../basic/parser.js';
-export { VariableManager } from '../basic/variables.js';
+import { BasicEmulator, EmulatorState } from '../system/emulator.js';
+import { Terminal, TerminalState } from '../io/terminal.js';
+import { CPU6502 } from '../cpu/cpu.js';
+import { MemoryManager } from '../memory/manager.js';
+import { BasicInterpreter } from '../basic/interpreter.js';
+import { Parser } from '../basic/parser.js';
+import { VariableManager } from '../basic/variables.js';
 
 // 유틸리티
-export { EventEmitter } from '../utils/events.js';
-export { BasicError } from '../utils/errors.js';
+import { EventEmitter } from '../utils/events.js';
+import { BasicError } from '../utils/errors.js';
 
 // 웹 특화 컴포넌트
-export { WebEmulator } from './web-emulator.js';
+import { WebEmulator } from './web-emulator.js';
+
+// Export 선언
+export { BasicEmulator, EmulatorState };
+export { Terminal, TerminalState };
+export { CPU6502 };
+export { MemoryManager };
+export { BasicInterpreter };
+export { Parser };
+export { VariableManager };
+export { EventEmitter };
+export { BasicError };
+export { WebEmulator };
 
 /**
  * 전역 객체에 에뮬레이터 바인딩

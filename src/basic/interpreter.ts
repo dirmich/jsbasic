@@ -4,7 +4,7 @@
  * AST를 순회하며 BASIC 프로그램을 실행합니다.
  */
 
-import {
+import type {
   Program,
   Statement,
   LetStatement,

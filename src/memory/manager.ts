@@ -6,7 +6,7 @@ import type {
   MemoryProtection
 } from '@/types/memory';
 import { MemoryError } from '@/utils/errors';
-import { EventEmitter } from 'events';
+import { EventEmitter } from '../utils/events.js';
 
 /**
  * 메모리 관리자 이벤트 타입

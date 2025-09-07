@@ -9,7 +9,6 @@ export { BasicInterpreter } from './interpreter.js';
 export { Parser } from './parser.js';
 export { Tokenizer } from './tokenizer.js';
 export { VariableManager } from './variables.js';
-export { FunctionLibrary } from './functions.js';
 
 export const BASIC_MODULE_VERSION = '0.1.0';
 

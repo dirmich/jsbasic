@@ -8,7 +8,7 @@ import type {
   CPUEvents
 } from '@/types/cpu';
 import type { MemoryInterface } from '@/types/memory';
-import { EventEmitter } from '@/utils/events';
+import { EventEmitter } from '../utils/events.js';
 import { CPUError } from '@/utils/errors';
 import { formatHex } from '@/utils/format';
 import { InstructionSet } from './instructions';

@@ -9,7 +9,7 @@ import type {
 import type { CPU6502 } from './cpu';
 import { OpcodeDecoder } from './opcodes';
 import { formatHex } from '@/utils/format';
-import { EventEmitter } from 'events';
+import { EventEmitter } from '../utils/events.js';
 
 /**
  * CPU 디버거 이벤트 타입
