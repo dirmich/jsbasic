@@ -392,7 +392,7 @@ bun run docs
 - [x] 성능 벤치마크 도구 개발
 - [x] 프로덕션 환경 검증 및 배포 준비 완료
 
-### Phase 9: 타입 안정성 및 품질 개선 (95% 완료 🎯)
+### Phase 9: 타입 안정성 및 품질 개선 (98% 완료 🎯)
 - [x] AST 인터페이스 타입 충돌 해결 (lineNumber → targetLine)
 - [x] TypeScript verbatimModuleSyntax 호환성 개선
 - [x] 누락된 핵심 메서드 구현 (read, getUsage, getCycleCount 등)
@@ -402,7 +402,10 @@ bun run docs
 - [x] import 문 type-only 변환 (verbatimModuleSyntax 호환)
 - [x] 코드 품질 개선 (중복 속성, 누락 export 정리)
 - [x] **TypeScript 오류 120+ → 30개 미만으로 대폭 감소** 🚀
-- [ ] 남은 타입 오류 최종 수정 (interpreter.ts, parser.ts 등)
+- [x] interpreter.ts 모든 undefined 안전성 오류 수정 완료
+- [x] parser.ts import 타입 시스템 정리 및 일부 수정
+- [x] variables.ts 배열 접근 안전성 강화 완료
+- [ ] 남은 세부 타입 오류 최종 수정 (exactOptionalPropertyTypes 등)
 - [ ] 전체 테스트 스위트 실행 및 통과
 - [ ] 웹 애플리케이션 빌드 성공 및 동작 검증
 
