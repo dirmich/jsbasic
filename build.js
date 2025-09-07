@@ -26,20 +26,41 @@ try {
   // TypeScript 에뮬레이터 번들링
   console.log("📦 에뮬레이터 모듈 번들링 중...");
   
+  const isProduction = process.env.NODE_ENV === "production";
+  
   const buildResult = await Bun.build({
     entrypoints: ["./src/web/main.ts"], // 웹용 엔트리포인트
     outdir: BUILD_DIR,
     format: "esm",
     target: "browser",
-    minify: process.env.NODE_ENV === "production",
-    sourcemap: "external",
+    minify: isProduction,
+    sourcemap: isProduction ? false : "external",
+    splitting: true, // 코드 분할 활성화
     external: [], // 모든 의존성 포함
+    
+    // 최적화 옵션
+    define: {
+      "process.env.NODE_ENV": isProduction ? '"production"' : '"development"',
+      "DEBUG": isProduction ? "false" : "true"
+    },
   });
 
   if (!buildResult.success) {
     console.error("❌ 빌드 실패:", buildResult.logs);
     process.exit(1);
   }
+  
+  // 번들 크기 분석
+  const bundleFiles = buildResult.outputs;
+  let totalSize = 0;
+  
+  console.log("\n📊 번들 분석:");
+  for (const output of bundleFiles) {
+    const sizeKB = (await Bun.file(output.path).size()) / 1024;
+    totalSize += sizeKB;
+    console.log(`  ${output.path.split('/').pop()}: ${sizeKB.toFixed(1)}KB`);
+  }
+  console.log(`  총 크기: ${totalSize.toFixed(1)}KB`);
 
   console.log("✅ 빌드 완료!");
   console.log(`📂 빌드 결과: ${BUILD_DIR}/`);
