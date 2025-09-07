@@ -121,7 +121,11 @@ export class BasicInterpreter extends EventEmitter {
       while (this.state === ExecutionState.RUNNING && 
              this.context.programCounter < this.context.statements.length) {
         
-        await this.executeStatement(this.context.statements[this.context.programCounter]);
+        const stmt = this.context.statements[this.context.programCounter];
+        if (!stmt) {
+          throw new BasicError('Statement not found', ERROR_CODES.RUNTIME_ERROR);
+        }
+        await this.executeStatement(stmt);
         
         // 중단 요청 확인
         if (this.state === ExecutionState.PAUSED) {
@@ -167,7 +171,7 @@ export class BasicInterpreter extends EventEmitter {
     // 라인 넘버 맵 생성
     for (let i = 0; i < this.context.statements.length; i++) {
       const stmt = this.context.statements[i];
-      if (stmt.lineNumber !== undefined) {
+      if (stmt && stmt.lineNumber !== undefined) {
         this.context.lineNumberMap.set(stmt.lineNumber, i);
       }
     }
@@ -307,7 +311,11 @@ export class BasicInterpreter extends EventEmitter {
       output = '\n';
     } else {
       for (let i = 0; i < stmt.expressions.length; i++) {
-        const value = this.evaluator.evaluate(stmt.expressions[i]);
+        const expr = stmt.expressions[i];
+        if (!expr) {
+          throw new BasicError('Expression not found in PRINT statement', ERROR_CODES.RUNTIME_ERROR, stmt.line);
+        }
+        const value = this.evaluator.evaluate(expr);
         output += String(value);
         
         // 구분자 처리
@@ -345,6 +353,14 @@ export class BasicInterpreter extends EventEmitter {
     for (let i = 0; i < stmt.variables.length && i < inputs.length; i++) {
       const variable = stmt.variables[i];
       const input = inputs[i];
+      
+      if (!variable) {
+        throw new BasicError('Variable not found in INPUT statement', ERROR_CODES.RUNTIME_ERROR, stmt.line);
+      }
+      
+      if (input === undefined) {
+        throw new BasicError('Input value is undefined', ERROR_CODES.RUNTIME_ERROR, stmt.line);
+      }
       
       if (variable.dataType === 'string') {
         this.variables.setVariable(variable.name, input);
@@ -437,7 +453,10 @@ export class BasicInterpreter extends EventEmitter {
   }
 
   private async executeGoto(stmt: GotoStatement): Promise<void> {
-    const lineNumber = stmt.lineNumber.value;
+    if (!stmt.targetLine) {
+      throw new BasicError('GOTO target line is undefined', ERROR_CODES.RUNTIME_ERROR, stmt.line);
+    }
+    const lineNumber = stmt.targetLine.value;
     const targetIndex = this.context.lineNumberMap.get(lineNumber);
     
     if (targetIndex === undefined) {
@@ -452,7 +471,10 @@ export class BasicInterpreter extends EventEmitter {
   }
 
   private async executeGosub(stmt: GosubStatement): Promise<void> {
-    const lineNumber = stmt.lineNumber.value;
+    if (!stmt.targetLine) {
+      throw new BasicError('GOSUB target line is undefined', ERROR_CODES.RUNTIME_ERROR, stmt.line);
+    }
+    const lineNumber = stmt.targetLine.value;
     const targetIndex = this.context.lineNumberMap.get(lineNumber);
     
     if (targetIndex === undefined) {
@@ -511,6 +533,9 @@ export class BasicInterpreter extends EventEmitter {
       }
       
       const value = this.context.dataValues[this.context.dataPointer++];
+      if (value === undefined) {
+        throw new BasicError('No more data available for READ statement', ERROR_CODES.RUNTIME_ERROR, stmt.line);
+      }
       this.variables.setVariable(variable.name, value);
     }
   }
@@ -550,7 +575,11 @@ export class BasicInterpreter extends EventEmitter {
       return;
     }
     
-    const targetLineNumber = stmt.lineNumbers[Math.floor(index) - 1].value; // 1-based indexing
+    const targetLine = stmt.lineNumbers[Math.floor(index) - 1]; // 1-based indexing
+    if (!targetLine) {
+      throw new BasicError('ON target line is undefined', ERROR_CODES.RUNTIME_ERROR, stmt.line);
+    }
+    const targetLineNumber = targetLine.value;
     const targetIndex = this.context.lineNumberMap.get(targetLineNumber);
     
     if (targetIndex === undefined) {
@@ -666,7 +695,8 @@ export class BasicInterpreter extends EventEmitter {
    */
   public getCurrentLine(): number | undefined {
     if (this.context.programCounter < this.context.statements.length) {
-      return this.context.statements[this.context.programCounter].lineNumber;
+      const stmt = this.context.statements[this.context.programCounter];
+      return stmt ? stmt.lineNumber : undefined;
     }
     return undefined;
   }
@@ -675,7 +705,10 @@ export class BasicInterpreter extends EventEmitter {
    * 현재 프로그램 반환
    */
   public getCurrentProgram(): Program | null {
-    return this.program;
+    return {
+      type: 'Program',
+      statements: this.context.statements
+    };
   }
 
   /**
