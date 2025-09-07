@@ -1,17 +1,14 @@
 /**
  * Math Package Module
  * 
- * This module will contain mathematical functions and utilities for BASIC.
+ * 6502 BASIC 수학 패키지 모듈입니다.
+ * 부동소수점, 삼각함수, 유틸리티 함수를 제공합니다.
  */
 
-import type { MathPackage, MathFunction, MathConstants } from '../types/math.js';
+export { BasicFloat, FloatUtils } from './float.js';
+export { TrigonometricFunctions } from './trig.js';
+export { MathUtils, NumberConversion, type NumberTypeInfo } from './utils.js';
 
-// TODO: Implement MathPackage class
-// export class MathPackageImpl implements MathPackage {
-//   // Implementation will go here
-// }
-
-// Placeholder export for now
 export const MATH_MODULE_VERSION = '0.1.0';
 
-console.log('Math module loaded');
+console.log('Math module loaded - 6502 BASIC math package ready');

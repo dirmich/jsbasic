@@ -1,17 +1,12 @@
 /**
  * Memory Management Module
  * 
- * This module will contain the implementation of memory management for the 6502 system.
+ * 6502 메모리 관리 시스템 모듈입니다.
+ * 64KB 주소 공간, 메모리 뱅킹, 보호 기능을 제공합니다.
  */
 
-import type { Memory, MemoryBank, MemoryMap } from '../types/memory.js';
+export { MemoryManager } from './manager.js';
 
-// TODO: Implement Memory class
-// export class MemoryImpl implements Memory {
-//   // Implementation will go here
-// }
-
-// Placeholder export for now
 export const MEMORY_MODULE_VERSION = '0.1.0';
 
-console.log('Memory module loaded');
+console.log('Memory module loaded - 6502 memory manager ready');

@@ -1,17 +1,14 @@
 /**
  * Input/Output System Module
  * 
- * This module will contain the implementation of I/O devices and system.
+ * 6502 입출력 시스템 모듈입니다.
+ * 터미널, 키보드, 파일 스토리지 시스템을 제공합니다.
  */
 
-import type { IOSystem, IODevice, DeviceType } from '../types/io.js';
+export { Terminal } from './terminal.js';
+export { Keyboard } from './keyboard.js';
+export { Storage } from './storage.js';
 
-// TODO: Implement IOSystem class
-// export class IOSystemImpl implements IOSystem {
-//   // Implementation will go here
-// }
-
-// Placeholder export for now
 export const IO_MODULE_VERSION = '0.1.0';
 
-console.log('I/O module loaded');
+console.log('I/O module loaded - 6502 I/O system ready');

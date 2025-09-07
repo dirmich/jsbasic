@@ -1,17 +1,19 @@
 /**
  * User Interface Module
  * 
- * This module will contain the implementation of UI components and management.
+ * 6502 BASIC 에뮬레이터 사용자 인터페이스 모듈입니다.
+ * 터미널, 메모리 뷰어, CPU 상태 등의 컴포넌트를 제공합니다.
  */
 
-import type { UIManager, UIComponent, ApplicationState } from '../types/ui.js';
+export { 
+  BaseComponent, 
+  TerminalComponent, 
+  MemoryViewerComponent, 
+  CPUStatusComponent,
+  type UIComponent,
+  type ComponentEvents 
+} from './components.js';
 
-// TODO: Implement UIManager class
-// export class UIManagerImpl implements UIManager {
-//   // Implementation will go here
-// }
-
-// Placeholder export for now
 export const UI_MODULE_VERSION = '0.1.0';
 
-console.log('UI module loaded');
+console.log('UI module loaded - 6502 BASIC UI components ready');

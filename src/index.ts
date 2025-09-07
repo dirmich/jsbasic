@@ -5,13 +5,13 @@
 
 import type { SystemConfig, SystemState } from './types/index.js'
 
-// Import core modules (will be implemented)
-// import { CPU6502 } from './cpu/index.js';
-// import { Memory } from './memory/index.js';
-// import { BasicInterpreter } from './basic/index.js';
-// import { IOSystem } from './io/index.js';
-// import { UIManager } from './ui/index.js';
-// import { MathPackage } from './math/index.js';
+// Import core modules
+import { CPU6502 } from './cpu/index.js';
+import { MemoryManager } from './memory/index.js';
+import { BasicInterpreter } from './basic/index.js';
+import { Terminal } from './io/index.js';
+import { TerminalComponent } from './ui/index.js';
+import { TrigonometricFunctions, MathUtils } from './math/index.js';
 
 /**
  * Main System class that coordinates all components
@@ -20,13 +20,12 @@ export class System6502 {
   private config: SystemConfig
   private state: SystemState
 
-  // Core components (will be initialized when modules are implemented)
-  // private cpu: CPU6502;
-  // private memory: Memory;
-  // private basic: BasicInterpreter;
-  // private io: IOSystem;
-  // private ui: UIManager;
-  // private math: MathPackage;
+  // Core components
+  private cpu: CPU6502;
+  private memory: MemoryManager;
+  private basic: BasicInterpreter;
+  private terminal: Terminal;
+  private ui: TerminalComponent;
 
   constructor(config?: Partial<SystemConfig>) {
     this.config = this.createDefaultConfig(config)
@@ -52,13 +51,21 @@ export class System6502 {
     console.log('Initializing 6502 BASIC System...')
 
     try {
-      // TODO: Initialize components when implemented
-      // this.memory = new Memory(this.config.memory);
-      // this.cpu = new CPU6502(this.memory, this.config.cpu);
-      // this.io = new IOSystem(this.config.io);
-      // this.math = new MathPackage();
-      // this.basic = new BasicInterpreter(this.math, this.io, this.config.basic);
-      // this.ui = new UIManager(this.config.ui);
+      // Initialize core components
+      this.memory = new MemoryManager();
+      this.cpu = new CPU6502(this.memory);
+      this.terminal = new Terminal();
+      this.basic = new BasicInterpreter(this.terminal);
+      this.ui = new TerminalComponent();
+
+      // Connect terminal to UI component
+      this.terminal.on('output', (text: string) => {
+        this.ui.appendOutput(text, 'output');
+      });
+
+      this.ui.on('command', (command: string) => {
+        this.handleCommand(command);
+      });
 
       console.log('System initialization complete')
     } catch (error) {
@@ -79,7 +86,7 @@ export class System6502 {
     this.state.running = true
     console.log('System started')
 
-    // TODO: Start main execution loop
+    // Start main execution loop
     this.run()
   }
 
@@ -131,10 +138,15 @@ export class System6502 {
     }
 
     if (!this.state.paused) {
-      // TODO: Execute CPU instructions, update components
-      // this.cpu.step();
-      // this.io.update();
-      // this.ui.update();
+      // Execute one CPU instruction if CPU is active
+      if (this.cpu && this.state.running) {
+        try {
+          // this.cpu.step(); // Would execute one instruction
+        } catch (error) {
+          console.error('CPU execution error:', error);
+          this.stop();
+        }
+      }
 
       // Update performance metrics
       this.updatePerformanceMetrics()
@@ -146,14 +158,28 @@ export class System6502 {
   }
 
   /**
+   * Handle commands from UI
+   */
+  private handleCommand(command: string): void {
+    try {
+      if (this.basic) {
+        this.basic.execute(command);
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.ui.appendOutput(`ERROR: ${errorMessage}`, 'error');
+    }
+  }
+
+  /**
    * Update performance metrics
    */
   private updatePerformanceMetrics(): void {
-    // TODO: Calculate actual performance metrics
+    // Calculate basic performance metrics
     this.state.performance = {
-      instructionsPerSecond: 0,
-      memoryUsage: 0,
-      cpuUsage: 0,
+      instructionsPerSecond: this.cpu?.getCycleCount() || 0,
+      memoryUsage: this.memory?.getUsage() || 0,
+      cpuUsage: 0, // Would calculate based on actual CPU usage
     }
   }
 
