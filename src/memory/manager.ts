@@ -79,6 +79,16 @@ export class MemoryManager extends EventEmitter<MemoryEvents> implements MemoryI
   // =================================================================
 
   /**
+   * 바이트 읽기 (별칭)
+   * 
+   * @param address 읽을 주소 (0x0000-0xFFFF)
+   * @returns 읽은 바이트 값
+   */
+  public read(address: number): number {
+    return this.readByte(address);
+  }
+
+  /**
    * 바이트 읽기
    * 
    * @param address 읽을 주소 (0x0000-0xFFFF)
@@ -761,6 +771,23 @@ export class MemoryManager extends EventEmitter<MemoryEvents> implements MemoryI
       accessLogSize: this.accessLog.length,
       currentBank: this.currentBank
     };
+  }
+
+  /**
+   * 메모리 사용률 반환
+   */
+  public getUsage(): number {
+    const totalSize = this.memory.length;
+    let usedBytes = 0;
+    
+    // 0이 아닌 바이트 개수를 센다
+    for (let i = 0; i < totalSize; i++) {
+      if (this.memory[i] !== 0) {
+        usedBytes++;
+      }
+    }
+    
+    return (usedBytes / totalSize) * 100; // 퍼센트로 반환
   }
 
   /**

@@ -672,6 +672,13 @@ export class BasicInterpreter extends EventEmitter {
   }
 
   /**
+   * 현재 프로그램 반환
+   */
+  public getCurrentProgram(): Program | null {
+    return this.program;
+  }
+
+  /**
    * 디버깅 정보
    */
   public getDebugInfo(): any {

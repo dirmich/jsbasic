@@ -111,7 +111,7 @@ export interface WhileStatement extends Statement {
  */
 export interface GotoStatement extends Statement {
   type: 'GotoStatement';
-  lineNumber: NumberLiteral;
+  targetLine: NumberLiteral;
 }
 
 /**
@@ -119,7 +119,7 @@ export interface GotoStatement extends Statement {
  */
 export interface GosubStatement extends Statement {
   type: 'GosubStatement';
-  lineNumber: NumberLiteral;
+  targetLine: NumberLiteral;
 }
 
 /**
@@ -158,7 +158,7 @@ export interface ReadStatement extends Statement {
  */
 export interface RestoreStatement extends Statement {
   type: 'RestoreStatement';
-  lineNumber?: NumberLiteral;
+  targetLine?: NumberLiteral;
 }
 
 /**

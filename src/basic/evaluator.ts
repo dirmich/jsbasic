@@ -4,7 +4,7 @@
  * AST 노드를 순회하며 표현식을 계산하고 값을 반환합니다.
  */
 
-import {
+import type {
   Expression,
   BinaryExpression,
   UnaryExpression,
@@ -18,7 +18,7 @@ import {
   UnaryOperator
 } from './ast.js';
 
-import { VariableManager, VariableValue } from './variables.js';
+import { VariableManager, type VariableValue } from './variables.js';
 import { BasicError, ERROR_CODES } from '../utils/errors.js';
 
 /**
@@ -261,9 +261,14 @@ export class ExpressionEvaluator {
     if (functionName in BuiltinFunctions.math) {
       const func = BuiltinFunctions.math[functionName as keyof typeof BuiltinFunctions.math];
       if (args.length === 0 && functionName === 'RND') {
-        return func();
+        return func(1);
       } else if (args.length === 1) {
-        return func(this.ensureNumber(args[0], node.line));
+        const arg = args[0];
+        if (arg !== undefined) {
+          return func(this.ensureNumber(arg, node.line));
+        } else {
+          throw new BasicError(`Function ${functionName} missing argument`, ERROR_CODES.RUNTIME_ERROR, node.line);
+        }
       } else {
         throw new BasicError(
           `Function ${functionName} requires exactly one argument`,
@@ -278,7 +283,11 @@ export class ExpressionEvaluator {
       if (args.length !== 1) {
         throw new BasicError('LEN function requires exactly one argument', ERROR_CODES.RUNTIME_ERROR, node.line);
       }
-      return BuiltinFunctions.string.LEN(this.ensureString(args[0], node.line));
+      const arg = args[0];
+      if (arg === undefined) {
+        throw new BasicError('LEN function missing argument', ERROR_CODES.RUNTIME_ERROR, node.line);
+      }
+      return BuiltinFunctions.string.LEN(this.ensureString(arg, node.line));
     }
 
     if (functionName === 'VAL') {

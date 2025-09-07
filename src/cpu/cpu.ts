@@ -545,6 +545,31 @@ export class CPU6502 extends EventEmitter<CPUEvents> implements CPUInterface {
   }
   
   /**
+   * 사이클 카운트 반환
+   */
+  public getCycleCount(): number {
+    return this.cycleCount;
+  }
+
+  /**
+   * 디버그 정보 반환
+   */
+  public getDebugInfo() {
+    return {
+      registers: { ...this._registers },
+      flags: this.getFlags(),
+      cycleCount: this.cycleCount,
+      instructionCount: this.instructionCount,
+      isHalted: this.isHalted,
+      pendingInterrupts: {
+        nmi: this.nmiPending,
+        irq: this.irqPending
+      },
+      lastInstruction: this.instructions.disassemble(this._registers.PC, this.memory.readByte(this._registers.PC))
+    };
+  }
+
+  /**
    * 성능 통계
    */
   public getPerformanceStats() {
