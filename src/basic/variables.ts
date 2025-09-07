@@ -391,8 +391,13 @@ export class VariableManager {
     
     // 행 우선(row-major) 순서로 계산
     for (let i = dimensions.length - 1; i >= 0; i--) {
-      flatIndex += indices[i] * multiplier;
-      multiplier *= dimensions[i];
+      const index = indices[i];
+      const dimension = dimensions[i];
+      if (index === undefined || dimension === undefined) {
+        throw new Error(`Invalid array access: index or dimension is undefined at position ${i}`);
+      }
+      flatIndex += index * multiplier;
+      multiplier *= dimension;
     }
     
     return flatIndex;

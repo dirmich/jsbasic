@@ -110,14 +110,14 @@ export enum CPUState {
 
 // CPU Flags enum
 export enum CPUFlag {
-  CARRY = 'carry',
-  ZERO = 'zero',
-  INTERRUPT = 'interrupt',
-  DECIMAL = 'decimal',
-  BREAK = 'break',
-  UNUSED = 'unused',
-  OVERFLOW = 'overflow',
-  NEGATIVE = 'negative'
+  CARRY = 'C',
+  ZERO = 'Z',
+  INTERRUPT = 'I',
+  DECIMAL = 'D',
+  BREAK = 'B',
+  UNUSED = 'U',
+  OVERFLOW = 'V',
+  NEGATIVE = 'N'
 }
 
 // Interrupt types

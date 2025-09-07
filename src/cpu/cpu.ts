@@ -39,7 +39,7 @@ export class CPU6502 extends EventEmitter<CPUEvents> implements CPUInterface {
   private readonly _registers: CPURegisters;
   private readonly memory: MemoryInterface;
   private readonly instructions: InstructionSet;
-  private readonly addressing: AddressingModes;
+  public readonly addressing: AddressingModes;
   
   private cycleCount: number = 0;
   private instructionCount: number = 0;
