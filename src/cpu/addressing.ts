@@ -197,6 +197,18 @@ export class AddressingModes {
         operandBytes: 2,
         example: 'JMP ($1234)'
       },
+      'INDIRECT_X': {
+        name: '(Indirect,X)',
+        description: '인덱스된 간접 주소 (예: LDA ($12,X))',
+        operandBytes: 1,
+        example: 'LDA ($12,X)'
+      },
+      'INDIRECT_Y': {
+        name: '(Indirect),Y',
+        description: '간접 인덱스된 주소 (예: LDA ($12),Y)',
+        operandBytes: 1,
+        example: 'LDA ($12),Y'
+      },
       'INDEXED_INDIRECT': {
         name: '(Indirect,X)',
         description: '인덱스된 간접 주소 (예: LDA ($12,X))',

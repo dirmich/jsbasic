@@ -45,10 +45,13 @@ export enum AddressingMode {
 
 // Addressing mode information
 export interface AddressingModeInfo {
-  mode: AddressingMode;
-  bytes: number;
-  cycles: number;
+  mode?: AddressingMode;
+  name?: string;
+  bytes?: number;
+  operandBytes?: number;
+  cycles?: number;
   description: string;
+  example?: string;
 }
 
 // Instruction definition
@@ -106,6 +109,14 @@ export enum CPUState {
   HALTED = 'HALTED',
   WAITING = 'WAITING',
   RESET = 'RESET'
+}
+
+// CPU State interface for debugging
+export interface CPUStateInfo {
+  state: CPUState;
+  registers: CPURegisters;
+  cycles: number;
+  instructionCount: number;
 }
 
 // CPU Flags enum
