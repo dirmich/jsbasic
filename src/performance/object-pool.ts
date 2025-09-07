@@ -87,9 +87,10 @@ export class MemoryOptimizer {
     const pool = this.pools.get(poolName);
     if (!pool) return null;
 
+    const poolSizeBefore = pool.size();
     const obj = pool.acquire();
     
-    if (pool.size() > 0) {
+    if (poolSizeBefore > 0) {
       this.memoryStats.poolHits++;
     } else {
       this.memoryStats.poolMisses++;
@@ -223,7 +224,7 @@ export class PerformanceUtils {
     
     return ((...args: Parameters<T>) => {
       clearTimeout(timeoutId);
-      timeoutId = window.setTimeout(() => func(...args), wait);
+      timeoutId = (globalThis.window?.setTimeout || globalThis.setTimeout)(() => func(...args), wait) as number;
     }) as T;
   }
 
@@ -240,7 +241,7 @@ export class PerformanceUtils {
       if (!inThrottle) {
         func(...args);
         inThrottle = true;
-        setTimeout(() => (inThrottle = false), limit);
+        (globalThis.window?.setTimeout || globalThis.setTimeout)(() => (inThrottle = false), limit);
       }
     }) as T;
   }
@@ -249,15 +250,18 @@ export class PerformanceUtils {
    * requestAnimationFrame을 사용한 배치 업데이트
    */
   static batchUpdate(callback: () => void): void {
-    requestAnimationFrame(callback);
+    const raf = globalThis.window?.requestAnimationFrame || globalThis.requestAnimationFrame || 
+                ((cb: FrameRequestCallback) => (globalThis.window?.setTimeout || globalThis.setTimeout)(cb, 16));
+    raf(callback);
   }
 
   /**
    * 메모리 사용량 측정
    */
   static measureMemory(): number {
-    if ('memory' in performance) {
-      return (performance as any).memory.usedJSHeapSize / (1024 * 1024);
+    const perf = globalThis.performance || (globalThis.window as any)?.performance;
+    if (perf && 'memory' in perf) {
+      return (perf as any).memory.usedJSHeapSize / (1024 * 1024);
     }
     return 0;
   }
@@ -266,9 +270,12 @@ export class PerformanceUtils {
    * 실행 시간 측정
    */
   static measureTime<T>(label: string, fn: () => T): T {
-    const start = performance.now();
+    const perf = globalThis.performance || (globalThis.window as any)?.performance;
+    const now = perf?.now ? () => perf.now() : () => Date.now();
+    
+    const start = now();
     const result = fn();
-    const end = performance.now();
+    const end = now();
     
     console.log(`⏱️ ${label}: ${(end - start).toFixed(2)}ms`);
     return result;
@@ -278,9 +285,12 @@ export class PerformanceUtils {
    * 비동기 함수 실행 시간 측정
    */
   static async measureTimeAsync<T>(label: string, fn: () => Promise<T>): Promise<T> {
-    const start = performance.now();
+    const perf = globalThis.performance || (globalThis.window as any)?.performance;
+    const now = perf?.now ? () => perf.now() : () => Date.now();
+    
+    const start = now();
     const result = await fn();
-    const end = performance.now();
+    const end = now();
     
     console.log(`⏱️ ${label}: ${(end - start).toFixed(2)}ms`);
     return result;

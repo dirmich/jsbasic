@@ -54,7 +54,10 @@ export class PerformanceMonitor {
    */
   start(): void {
     this.isMonitoring = true;
-    this.startTime = performance.now();
+    const perf = globalThis.performance || (globalThis.window as any)?.performance;
+    const now = perf?.now ? () => perf.now() : () => Date.now();
+    
+    this.startTime = now();
     this.lastFrameTime = this.startTime;
     this.frameCount = 0;
     this.cpuCycleCount = 0;
@@ -86,7 +89,9 @@ export class PerformanceMonitor {
   frameRendered(): void {
     if (!this.isMonitoring) return;
 
-    const now = performance.now();
+    const perf = globalThis.performance || (globalThis.window as any)?.performance;
+    const now = perf?.now ? perf.now() : Date.now();
+    
     const frameTime = now - this.lastFrameTime;
     
     this.frameCount++;
@@ -112,9 +117,10 @@ export class PerformanceMonitor {
    * 메모리 사용량 업데이트
    */
   private updateMemoryUsage(): void {
-    if ('memory' in performance) {
+    const perf = globalThis.performance || (globalThis.window as any)?.performance;
+    if (perf && 'memory' in perf) {
       // Chrome에서만 사용 가능
-      const memory = (performance as any).memory;
+      const memory = (perf as any).memory;
       this.metrics.memoryUsage = memory.usedJSHeapSize / (1024 * 1024); // MB
     } else {
       // 다른 브라우저에서는 추정값 사용
@@ -127,7 +133,8 @@ export class PerformanceMonitor {
    */
   private estimateMemoryUsage(): number {
     // 간단한 추정: DOM 요소 수 + 객체 수
-    const domElements = document.querySelectorAll('*').length;
+    const doc = globalThis.document || (globalThis.window as any)?.document;
+    const domElements = doc ? doc.querySelectorAll('*').length : 100; // 기본값 100
     const estimatedMB = (domElements * 0.001) + 10; // 기본 10MB + DOM 기반 추정
     return Math.min(estimatedMB, 100); // 최대 100MB로 제한
   }
@@ -154,7 +161,11 @@ export class PerformanceMonitor {
 
     this.updateMemoryUsage();
     
-    requestAnimationFrame(() => {
+    const raf = globalThis.requestAnimationFrame || 
+                (globalThis.window as any)?.requestAnimationFrame ||
+                ((cb: FrameRequestCallback) => (globalThis.setTimeout || (globalThis.window as any)?.setTimeout)(cb, 16));
+    
+    raf(() => {
       this.frameRendered();
       this.scheduleUpdate();
     });
