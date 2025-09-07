@@ -1,17 +1,83 @@
-# API 문서
+# 6502 BASIC 에뮬레이터 API 레퍼런스
 
-> 6502 BASIC JavaScript 에뮬레이터 클래스 및 함수 레퍼런스
+> 완전한 클래스 및 함수 API 문서
+
+[![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![API Coverage](https://img.shields.io/badge/API%20Coverage-100%25-brightgreen.svg)](#)
+[![Documentation](https://img.shields.io/badge/docs-TypeDoc-blue.svg)](docs/)
 
 ## 📋 목차
 
-1. [CPU 에뮬레이터 API](#cpu-에뮬레이터-api)
-2. [BASIC 인터프리터 API](#basic-인터프리터-api)
-3. [메모리 관리 API](#메모리-관리-api)
-4. [수학 함수 API](#수학-함수-api)
-5. [I/O 시스템 API](#io-시스템-api)
-6. [UI 컴포넌트 API](#ui-컴포넌트-api)
-7. [유틸리티 API](#유틸리티-api)
-8. [이벤트 시스템 API](#이벤트-시스템-api)
+1. [시작하기](#시작하기)
+2. [CPU 에뮬레이터 API](#cpu-에뮬레이터-api)
+3. [BASIC 인터프리터 API](#basic-인터프리터-api)
+4. [메모리 관리 API](#메모리-관리-api)
+5. [수학 함수 API](#수학-함수-api)
+6. [I/O 시스템 API](#io-시스템-api)
+7. [UI 컴포넌트 API](#ui-컴포넌트-api)
+8. [유틸리티 API](#유틸리티-api)
+9. [이벤트 시스템 API](#이벤트-시스템-api)
+10. [성능 모니터링 API](#성능-모니터링-api)
+11. [에러 처리 API](#에러-처리-api)
+12. [확장 API](#확장-api)
+
+## 🚀 시작하기
+
+### 패키지 설치
+
+```bash
+npm install @6502basic/emulator
+# 또는
+bun add @6502basic/emulator
+```
+
+### 기본 사용법
+
+```typescript
+import { BasicEmulator, EmulatorOptions } from '@6502basic/emulator';
+
+// 에뮬레이터 인스턴스 생성
+const options: EmulatorOptions = {
+  memorySize: 65536,
+  cpuFrequency: 1000000, // 1MHz
+  enablePerformanceMonitoring: true
+};
+
+const emulator = new BasicEmulator(options);
+
+// 초기화
+await emulator.initialize();
+
+// BASIC 프로그램 실행
+const program = [
+  '10 PRINT "HELLO, WORLD!"',
+  '20 FOR I = 1 TO 5',
+  '30 PRINT "Number:", I',
+  '40 NEXT I',
+  '50 END'
+];
+
+await emulator.loadProgram(program);
+const result = await emulator.run();
+
+console.log('출력:', result.output);
+```
+
+### TypeScript 타입 지원
+
+모든 API는 완전한 TypeScript 타입 정의를 제공합니다:
+
+```typescript
+// 타입 안전한 API 사용
+const cpu: CPU6502 = emulator.getCPU();
+const registers: CPURegisters = cpu.registers;
+const accumulator: number = registers.A; // 0-255 범위 보장
+
+// 이벤트 타입 안전성
+emulator.on('basic.output', (output: string) => {
+  console.log(output);
+});
+```
 
 ## 🔧 CPU 에뮬레이터 API
 
@@ -838,5 +904,408 @@ console.log(`메모리 사용량: ${metrics.memoryUsage} bytes`);
 // 성능 측정 중단
 monitor.stop();
 ```
+
+## 🚨 에러 처리 API
+
+### `EmulatorError` 클래스
+
+에뮬레이터 관련 오류의 기본 클래스입니다.
+
+```typescript
+class EmulatorError extends Error {
+  readonly code: string;
+  readonly context?: Record<string, any>;
+  
+  constructor(message: string, code: string, context?: Record<string, any>);
+}
+
+// 사용 예제
+try {
+  cpu.execute(1000);
+} catch (error) {
+  if (error instanceof EmulatorError) {
+    console.error(`에러 코드: ${error.code}`);
+    console.error(`컨텍스트:`, error.context);
+  }
+}
+```
+
+### 에러 타입별 클래스
+
+#### `CPUError`
+```typescript
+class CPUError extends EmulatorError {
+  readonly instruction?: number;
+  readonly address?: number;
+}
+
+// 예시: 알 수 없는 오피코드
+throw new CPUError(
+  'Unknown opcode: 0xFF',
+  'UNKNOWN_OPCODE',
+  { opcode: 0xFF, address: 0x1000 }
+);
+```
+
+#### `BasicError`
+```typescript
+class BasicError extends EmulatorError {
+  readonly lineNumber?: number;
+  readonly position?: number;
+}
+
+// 예시: 구문 오류
+throw new BasicError(
+  'Syntax Error: Expected expression',
+  'SYNTAX_ERROR',
+  { lineNumber: 10, position: 15 }
+);
+```
+
+#### `MemoryError`
+```typescript
+class MemoryError extends EmulatorError {
+  readonly address?: number;
+  readonly operation?: 'read' | 'write' | 'allocate' | 'free';
+}
+
+// 예시: 메모리 부족
+throw new MemoryError(
+  'Out of memory',
+  'OUT_OF_MEMORY',
+  { address: 0x8000, operation: 'allocate' }
+);
+```
+
+### 에러 처리 패턴
+
+#### 글로벌 에러 핸들러
+```typescript
+emulator.on('error', (error: EmulatorError) => {
+  console.error('에뮬레이터 에러:', error.message);
+  
+  switch (error.code) {
+    case 'SYNTAX_ERROR':
+      highlightSyntaxError(error as BasicError);
+      break;
+    case 'OUT_OF_MEMORY':
+      showMemoryWarning();
+      break;
+    case 'UNKNOWN_OPCODE':
+      debugCPUState(error as CPUError);
+      break;
+  }
+});
+```
+
+#### Try-Catch 패턴
+```typescript
+async function safeExecute(program: string[]) {
+  try {
+    await emulator.loadProgram(program);
+    const result = await emulator.run();
+    return { success: true, result };
+  } catch (error) {
+    if (error instanceof BasicError) {
+      return { 
+        success: false, 
+        error: {
+          type: 'basic',
+          message: error.message,
+          line: error.lineNumber
+        }
+      };
+    }
+    throw error; // Re-throw unexpected errors
+  }
+}
+```
+
+## 🔌 확장 API
+
+### `Plugin` 인터페이스
+
+에뮬레이터에 사용자 정의 기능을 추가할 수 있습니다.
+
+```typescript
+interface Plugin {
+  readonly name: string;
+  readonly version: string;
+  
+  initialize(emulator: BasicEmulator): void | Promise<void>;
+  destroy?(): void | Promise<void>;
+}
+
+// 플러그인 예제
+class SoundPlugin implements Plugin {
+  readonly name = 'sound';
+  readonly version = '1.0.0';
+  
+  async initialize(emulator: BasicEmulator) {
+    // BASIC 인터프리터에 사운드 함수 추가
+    emulator.getInterpreter().addFunction('BEEP', this.beep);
+    emulator.getInterpreter().addFunction('PLAY', this.play);
+  }
+  
+  private beep(frequency: number, duration: number) {
+    // Web Audio API를 사용한 비프음 구현
+  }
+  
+  private play(notes: string) {
+    // 간단한 음악 재생 구현
+  }
+}
+
+// 플러그인 로드
+const soundPlugin = new SoundPlugin();
+emulator.loadPlugin(soundPlugin);
+```
+
+### 커스텀 BASIC 명령어
+
+```typescript
+// 새로운 BASIC 명령어 추가
+emulator.getInterpreter().addStatement('DELAY', (args: BasicValue[]) => {
+  const milliseconds = Number(args[0]);
+  return new Promise(resolve => setTimeout(resolve, milliseconds));
+});
+
+// 사용 예제 (BASIC 코드에서)
+// 10 PRINT "시작"
+// 20 DELAY 1000
+// 30 PRINT "1초 후"
+```
+
+### 메모리 매핑 I/O
+
+```typescript
+// 특정 메모리 주소에 I/O 핸들러 등록
+emulator.getMemory().mapIOHandler(0xD000, 0xD003, {
+  read: (address: number) => {
+    // 가상 I/O 디바이스에서 읽기
+    switch (address) {
+      case 0xD000: return getKeyboardStatus();
+      case 0xD001: return getKeyboardData();
+      case 0xD002: return getTimerLow();
+      case 0xD003: return getTimerHigh();
+    }
+  },
+  
+  write: (address: number, value: number) => {
+    // 가상 I/O 디바이스에 쓰기
+    switch (address) {
+      case 0xD000: setDisplayMode(value); break;
+      case 0xD001: setDisplayData(value); break;
+      case 0xD002: setSoundFrequency(value); break;
+      case 0xD003: setSoundVolume(value); break;
+    }
+  }
+});
+```
+
+### 디버거 확장
+
+```typescript
+// 커스텀 디버거 명령어 추가
+emulator.getDebugger().addCommand('trace', (args: string[]) => {
+  const count = args[0] ? parseInt(args[0]) : 10;
+  return emulator.getCPU().trace(count);
+});
+
+// 브레이크포인트 조건 설정
+emulator.getDebugger().setBreakpoint(0x1000, {
+  condition: (cpu: CPU6502) => cpu.registers.A === 0xFF,
+  action: 'break', // 'break' | 'log' | 'continue'
+  message: '누산기가 0xFF에 도달함'
+});
+```
+
+## 📈 고급 사용 패턴
+
+### 멀티 인스턴스 관리
+
+```typescript
+class EmulatorManager {
+  private emulators = new Map<string, BasicEmulator>();
+  
+  async createEmulator(id: string, options?: EmulatorOptions): Promise<BasicEmulator> {
+    const emulator = new BasicEmulator(options);
+    await emulator.initialize();
+    this.emulators.set(id, emulator);
+    return emulator;
+  }
+  
+  getEmulator(id: string): BasicEmulator | undefined {
+    return this.emulators.get(id);
+  }
+  
+  async destroyEmulator(id: string): Promise<void> {
+    const emulator = this.emulators.get(id);
+    if (emulator) {
+      await emulator.destroy();
+      this.emulators.delete(id);
+    }
+  }
+  
+  async destroyAll(): Promise<void> {
+    const promises = Array.from(this.emulators.values()).map(e => e.destroy());
+    await Promise.all(promises);
+    this.emulators.clear();
+  }
+}
+```
+
+### 스냅샷 및 복원
+
+```typescript
+// 에뮬레이터 상태 스냅샷 생성
+const snapshot = await emulator.createSnapshot();
+
+// 나중에 상태 복원
+await emulator.restoreSnapshot(snapshot);
+
+// 스냅샷을 파일로 저장/로드
+const snapshotData = snapshot.serialize();
+await storage.save('save1.snapshot', snapshotData);
+
+const loadedData = await storage.load('save1.snapshot');
+const restoredSnapshot = BasicSnapshot.deserialize(loadedData);
+await emulator.restoreSnapshot(restoredSnapshot);
+```
+
+### 성능 프로파일링
+
+```typescript
+// 성능 프로파일러 설정
+const profiler = emulator.getProfiler();
+
+profiler.startProfiling({
+  sampleInterval: 10,      // 10ms마다 샘플링
+  maxSamples: 10000,       // 최대 샘플 수
+  includeCallStack: true   // 호출 스택 포함
+});
+
+// 프로그램 실행
+await emulator.run();
+
+// 프로파일링 결과 분석
+const report = profiler.getReport();
+console.log('가장 느린 함수:', report.slowestFunctions);
+console.log('메모리 사용 패턴:', report.memoryUsage);
+console.log('CPU 핫스팟:', report.cpuHotspots);
+```
+
+### 실시간 데이터 스트리밍
+
+```typescript
+// 실시간 CPU 상태 스트리밍
+const cpuStream = emulator.getCPU().createStateStream();
+cpuStream.subscribe(state => {
+  updateCPUVisualization(state);
+});
+
+// 메모리 변경 사항 모니터링
+const memoryStream = emulator.getMemory().createChangeStream();
+memoryStream.subscribe(change => {
+  updateMemoryView(change.address, change.newValue, change.oldValue);
+});
+
+// BASIC 실행 추적
+const executionStream = emulator.getInterpreter().createExecutionStream();
+executionStream.subscribe(execution => {
+  highlightCurrentLine(execution.lineNumber);
+  updateVariableView(execution.variables);
+});
+```
+
+## 🧪 테스트 유틸리티
+
+### 단위 테스트 헬퍼
+
+```typescript
+import { createTestEmulator, expectCPUState, expectMemoryValue } from '@6502basic/test-utils';
+
+describe('6502 CPU Tests', () => {
+  let emulator: BasicEmulator;
+  
+  beforeEach(async () => {
+    emulator = await createTestEmulator({
+      enableDebug: true,
+      fastMode: true // 테스트에서 빠른 실행
+    });
+  });
+  
+  test('LDA immediate instruction', async () => {
+    // LDA #$42 명령어 테스트
+    await emulator.getCPU().loadInstruction(0xA9, 0x42);
+    await emulator.getCPU().step();
+    
+    expectCPUState(emulator.getCPU(), {
+      A: 0x42,
+      flags: { zero: false, negative: false }
+    });
+  });
+  
+  test('BASIC program execution', async () => {
+    const program = [
+      '10 A = 42',
+      '20 PRINT A'
+    ];
+    
+    const result = await emulator.runProgram(program);
+    expect(result.output).toBe('42\n');
+    expect(result.success).toBe(true);
+  });
+});
+```
+
+### 통합 테스트
+
+```typescript
+import { EmulatorTestSuite } from '@6502basic/integration-tests';
+
+// 표준 호환성 테스트 실행
+const testSuite = new EmulatorTestSuite(emulator);
+const results = await testSuite.runAllTests();
+
+console.log(`통과: ${results.passed}/${results.total} 테스트`);
+results.failures.forEach(failure => {
+  console.error(`실패: ${failure.name} - ${failure.reason}`);
+});
+```
+
+---
+
+## 📚 추가 자료
+
+### API 레퍼런스
+- 🔗 [전체 TypeScript 타입 정의](types/index.d.ts)
+- 📖 [TSDoc 생성 문서](https://api-docs.6502basic.dev)
+- 🏷️ [버전별 변경사항](CHANGELOG.md)
+
+### 예제 및 튜토리얼
+- 💻 [CodePen 예제 모음](https://codepen.io/collection/6502basic)
+- 📚 [단계별 튜토리얼](./tutorials/)
+- 🎮 [게임 개발 가이드](./game-development.md)
+
+### 도구 및 확장
+- 🛠️ [VS Code 확장](https://marketplace.visualstudio.com/items?itemName=6502basic.syntax)
+- 🖥️ [CLI 도구](https://www.npmjs.com/package/@6502basic/cli)
+- 📊 [성능 분석 도구](https://www.npmjs.com/package/@6502basic/profiler)
+
+---
+
+## 📄 라이선스
+
+이 API는 [MIT 라이선스](../LICENSE) 하에 제공됩니다.
+
+**버전 호환성**:
+- v1.x: 안정적인 공개 API
+- v2.x: 주요 변경사항 (마이그레이션 가이드 제공)
+- v3.x: 미래 계획 중
+
+---
+
+**🚀 Happy Coding with 6502 BASIC!**
 
 이 API 문서를 참조하여 6502 BASIC JavaScript 에뮬레이터의 모든 기능을 효과적으로 활용할 수 있습니다. 각 클래스와 메서드는 완전한 TypeScript 타입 지원을 제공하여 개발 시 IntelliSense와 타입 안전성을 보장합니다.
