@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>6502 BASIC JavaScript 에뮬레이터</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+</head>
+<body>
+    <div class="container">
+        <!-- 헤더 -->
+        <header class="header">
+            <div class="header-content">
+                <h1>6502 BASIC 에뮬레이터</h1>
+                <div class="system-info">
+                    <span class="cpu-status">CPU: 정지</span>
+                    <span class="memory-status">메모리: 0KB</span>
+                    <span class="uptime">가동시간: 0s</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- 메인 컨텐츠 -->
+        <main class="main-content">
+            <!-- 터미널 영역 -->
+            <div class="terminal-container">
+                <div class="terminal-header">
+                    <div class="terminal-title">터미널</div>
+                    <div class="terminal-controls">
+                        <button class="control-btn" id="clear-btn" title="화면 지우기">🗑️</button>
+                        <button class="control-btn" id="restart-btn" title="재시작">🔄</button>
+                        <button class="control-btn toggle-btn" id="power-btn" title="전원 켜기/끄기">⚡</button>
+                    </div>
+                </div>
+                <div class="terminal" id="terminal">
+                    <div class="terminal-output" id="terminal-output">
+                        <!-- 터미널 출력이 여기에 표시됩니다 -->
+                    </div>
+                    <div class="terminal-input-line">
+                        <span class="terminal-prompt" id="terminal-prompt">READY. </span>
+                        <input type="text" class="terminal-input" id="terminal-input" 
+                               autocomplete="off" spellcheck="false" autofocus>
+                        <span class="cursor" id="cursor">█</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 사이드바 -->
+            <aside class="sidebar">
+                <!-- 메모리 뷰어 -->
+                <div class="panel memory-panel">
+                    <h3>메모리 뷰어</h3>
+                    <div class="memory-controls">
+                        <input type="text" placeholder="주소 (hex)" class="hex-input" id="memory-address">
+                        <button class="btn-small" id="memory-view-btn">보기</button>
+                    </div>
+                    <div class="memory-display" id="memory-display">
+                        <!-- 메모리 내용이 여기에 표시됩니다 -->
+                    </div>
+                </div>
+
+                <!-- CPU 상태 -->
+                <div class="panel cpu-panel">
+                    <h3>CPU 상태</h3>
+                    <div class="cpu-registers">
+                        <div class="register">A: <span id="reg-a">$00</span></div>
+                        <div class="register">X: <span id="reg-x">$00</span></div>
+                        <div class="register">Y: <span id="reg-y">$00</span></div>
+                        <div class="register">PC: <span id="reg-pc">$0000</span></div>
+                        <div class="register">SP: <span id="reg-sp">$FF</span></div>
+                        <div class="register">P: <span id="reg-p">$00</span></div>
+                    </div>
+                    <div class="cpu-flags">
+                        <span class="flag" id="flag-n">N</span>
+                        <span class="flag" id="flag-v">V</span>
+                        <span class="flag" id="flag-b">B</span>
+                        <span class="flag" id="flag-d">D</span>
+                        <span class="flag" id="flag-i">I</span>
+                        <span class="flag" id="flag-z">Z</span>
+                        <span class="flag" id="flag-c">C</span>
+                    </div>
+                </div>
+
+                <!-- 프로그램 리스트 -->
+                <div class="panel program-panel">
+                    <h3>프로그램</h3>
+                    <div class="program-controls">
+                        <button class="btn-small" id="list-btn">LIST</button>
+                        <button class="btn-small" id="new-btn">NEW</button>
+                        <button class="btn-small" id="run-btn">RUN</button>
+                    </div>
+                    <div class="program-display" id="program-display">
+                        <!-- 프로그램 리스트가 여기에 표시됩니다 -->
+                    </div>
+                </div>
+            </aside>
+        </main>
+
+        <!-- 푸터 -->
+        <footer class="footer">
+            <div class="footer-content">
+                <div class="footer-left">
+                    <span>Microsoft 6502 BASIC Interpreter v1.1</span>
+                    <span class="separator">|</span>
+                    <span>JavaScript/TypeScript 포팅</span>
+                </div>
+                <div class="footer-right">
+                    <a href="#" class="footer-link">도움말</a>
+                    <a href="#" class="footer-link">GitHub</a>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <!-- 모달 대화상자 -->
+    <div class="modal" id="help-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>도움말</h2>
+                <button class="modal-close" id="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <h3>기본 명령어</h3>
+                <ul>
+                    <li><code>NEW</code> - 새 프로그램 시작</li>
+                    <li><code>LIST</code> - 프로그램 목록 보기</li>
+                    <li><code>RUN</code> - 프로그램 실행</li>
+                    <li><code>SAVE "파일명"</code> - 프로그램 저장</li>
+                    <li><code>LOAD "파일명"</code> - 프로그램 로드</li>
+                    <li><code>STOP</code> - 프로그램 중지</li>
+                </ul>
+                
+                <h3>프로그래밍 예제</h3>
+                <pre><code>10 PRINT "안녕하세요!"
+20 FOR I = 1 TO 10
+30 PRINT "숫자: "; I
+40 NEXT I
+50 END</code></pre>
+                
+                <h3>키보드 단축키</h3>
+                <ul>
+                    <li><kbd>Ctrl+C</kbd> - 프로그램 중단</li>
+                    <li><kbd>Ctrl+L</kbd> - 화면 지우기</li>
+                    <li><kbd>↑/↓</kbd> - 명령어 히스토리</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="app.js"></script>
+</body>
+</html>
