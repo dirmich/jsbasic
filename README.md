@@ -401,13 +401,16 @@ bun run docs
 - [x] EventEmitter 제네릭 타입 복잡성 해결 (단순화된 구현)
 - [x] import 문 type-only 변환 (verbatimModuleSyntax 호환)
 - [x] 코드 품질 개선 (중복 속성, 누락 export 정리)
-- [x] **TypeScript 오류 272 → 388개 처리 중** 🚀
+- [x] **TypeScript 타입 안전성 체계적 강화 진행 중** 🚀
 - [x] interpreter.ts 모든 undefined 안전성 오류 수정 완료
 - [x] parser.ts Token undefined 및 타입 비교 오버랩 오류 완전 해결
 - [x] EventMap 제약 조건 호환성 개선 (UI/WebEmulator)
 - [x] CPU/Memory 타입 정의 완성 (CPUInterface, MemoryInterface 등)
 - [x] Jest 타입 선언 및 Property initialization 오류 수정
-- [ ] 남은 대량 타입 오류 패턴 기반 일괄 처리
+- [x] CPU AddressingMode 확장 (ACCUMULATOR, INDEXED_INDIRECT 등)
+- [x] InstructionInfo, OpcodeMap, MemoryBankInfo 등 핵심 타입 추가
+- [x] CPUError 클래스로 CPU 오류 처리 타입 안전성 확보
+- [ ] CPU/Memory 모듈 간 호환성 최종 정리
 - [x] parser.ts import 타입 시스템 정리 및 일부 수정
 - [x] variables.ts 배열 접근 안전성 강화 완료
 - [ ] 남은 세부 타입 오류 최종 수정 (exactOptionalPropertyTypes 등)
