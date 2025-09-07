@@ -64,7 +64,11 @@ export class Parser {
   constructor(source: string) {
     const tokenizer = new Tokenizer(source);
     this.tokens = tokenizer.tokenize();
-    this.current = this.tokens[0];
+    const firstToken = this.tokens[0];
+    if (!firstToken) {
+      throw new Error('No tokens found in source');
+    }
+    this.current = firstToken;
   }
 
   /**
@@ -86,7 +90,7 @@ export class Parser {
       }
       
       // 문장 끝에서 개행 또는 EOF 예상
-      if (!this.isAtEnd() && this.current.type !== TokenType.NEWLINE && this.current.type !== TokenType.EOF) {
+      if (!this.isAtEnd() && !this.currentTokenIs(TokenType.NEWLINE) && !this.currentTokenIs(TokenType.EOF)) {
         this.consumeNewlineOrEOF();
       }
     }
@@ -270,7 +274,7 @@ export class Parser {
       trailingSeparator: trailingSeparator,
       line: line,
       column: column
-    };
+    } as PrintStatement;
   }
 
   private parseInputStatement(): InputStatement {
@@ -283,9 +287,9 @@ export class Parser {
     const variables: Identifier[] = [];
     
     // 프롬프트 문자열 확인
-    if (this.current.type === TokenType.STRING) {
+    if (this.currentTokenIs(TokenType.STRING)) {
       prompt = this.parseStringLiteral();
-      if (this.current.type === TokenType.SEMICOLON) {
+      if (this.currentTokenIs(TokenType.SEMICOLON)) {
         this.advance();
       }
     }
@@ -304,7 +308,7 @@ export class Parser {
       variables: variables,
       line: line,
       column: column
-    };
+    } as InputStatement;
   }
 
   private parseIfStatement(): IfStatement {
@@ -343,7 +347,7 @@ export class Parser {
           thenStatement.push(stmt);
         }
         
-        if (!this.isAtEnd() && this.current.type !== TokenType.NEWLINE) {
+        if (!this.isAtEnd() && !this.currentTokenIs(TokenType.NEWLINE)) {
           this.consumeNewlineOrEOF();
         }
       }
@@ -368,7 +372,7 @@ export class Parser {
             elseStatement.push(stmt);
           }
           
-          if (!this.isAtEnd() && this.current.type !== TokenType.NEWLINE) {
+          if (!this.isAtEnd() && !this.currentTokenIs(TokenType.NEWLINE)) {
             this.consumeNewlineOrEOF();
           }
         }
@@ -384,10 +388,10 @@ export class Parser {
       type: 'IfStatement',
       condition: condition,
       thenStatement: thenStatement,
-      elseStatement: elseStatement,
+      elseStatement: elseStatement || undefined,
       line: line,
       column: column
-    };
+    } as IfStatement;
   }
 
   private parseForStatement(): ForStatement {
@@ -457,11 +461,11 @@ export class Parser {
       variable: variable,
       start: start,
       end: end,
-      step: step,
+      step: step || undefined,
       body: body,
       line: line,
       column: column
-    };
+    } as ForStatement;
   }
 
   private parseWhileStatement(): WhileStatement {
@@ -515,7 +519,7 @@ export class Parser {
     
     return {
       type: 'GotoStatement',
-      lineNumber: lineNumber,
+      targetLine: lineNumber,
       line: line,
       column: column
     };
@@ -530,7 +534,7 @@ export class Parser {
     
     return {
       type: 'GosubStatement',
-      lineNumber: lineNumber,
+      targetLine: lineNumber,
       line: line,
       column: column
     };
@@ -641,7 +645,7 @@ export class Parser {
     
     return {
       type: 'RestoreStatement',
-      lineNumber: lineNumber,
+      targetLine: lineNumber,
       line: line,
       column: column
     };
@@ -1099,11 +1103,23 @@ export class Parser {
   }
 
   // === 유틸리티 메서드들 ===
+  
+  private currentTokenIs(type: TokenType): boolean {
+    return (this.current.type as any) === type;
+  }
 
   private advance(): void {
     if (!this.isAtEnd()) {
       this.position++;
-      this.current = this.tokens[this.position] || this.tokens[this.tokens.length - 1];
+      const nextToken = this.tokens[this.position];
+      if (nextToken) {
+        this.current = nextToken;
+      } else {
+        const lastToken = this.tokens[this.tokens.length - 1];
+        if (lastToken) {
+          this.current = lastToken;
+        }
+      }
     }
   }
 
