@@ -16,6 +16,7 @@ import {
   Statement,
   Expression,
   LetStatement,
+  ArrayAssignmentStatement,
   PrintStatement,
   InputStatement,
   IfStatement,
@@ -188,21 +189,48 @@ export class Parser {
     };
   }
 
-  private parseImplicitLetStatement(): LetStatement {
+  private parseImplicitLetStatement(): LetStatement | ArrayAssignmentStatement {
     const line = this.current.line;
     const column = this.current.column;
     
     const variable = this.parseIdentifier();
-    this.consume(TokenType.EQUALS);
-    const expression = this.parseExpression();
     
-    return {
-      type: 'LetStatement',
-      variable: variable,
-      expression: expression,
-      line: line,
-      column: column
-    };
+    // 배열 요소 할당인지 확인
+    if (this.current.type === TokenType.LEFT_PAREN) {
+      this.advance();
+      
+      const indices: Expression[] = [];
+      indices.push(this.parseExpression());
+      while (this.current.type === TokenType.COMMA) {
+        this.advance();
+        indices.push(this.parseExpression());
+      }
+      
+      this.consume(TokenType.RIGHT_PAREN);
+      this.consume(TokenType.EQUALS);
+      const expression = this.parseExpression();
+      
+      return {
+        type: 'ArrayAssignmentStatement',
+        arrayName: variable,
+        indices: indices,
+        expression: expression,
+        line: line,
+        column: column
+      };
+    } else {
+      // 일반 변수 할당
+      this.consume(TokenType.EQUALS);
+      const expression = this.parseExpression();
+      
+      return {
+        type: 'LetStatement',
+        variable: variable,
+        expression: expression,
+        line: line,
+        column: column
+      };
+    }
   }
 
   private parsePrintStatement(): PrintStatement {
@@ -213,6 +241,7 @@ export class Parser {
     
     const expressions: Expression[] = [];
     let separator: 'comma' | 'semicolon' | undefined;
+    let trailingSeparator = false;
     
     if (!this.checkNewlineOrEOF()) {
       expressions.push(this.parseExpression());
@@ -223,7 +252,9 @@ export class Parser {
         
         if (!this.checkNewlineOrEOF()) {
           expressions.push(this.parseExpression());
+          trailingSeparator = false; // 구분자 뒤에 표현식이 있으면 끝나지 않음
         } else {
+          trailingSeparator = true; // 구분자로 끝남
           break;
         }
       }
@@ -233,6 +264,7 @@ export class Parser {
       type: 'PrintStatement',
       expressions: expressions,
       separator: separator,
+      trailingSeparator: trailingSeparator,
       line: line,
       column: column
     };

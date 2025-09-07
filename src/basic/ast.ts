@@ -47,12 +47,23 @@ export interface LetStatement extends Statement {
 }
 
 /**
+ * 배열 요소 할당문
+ */
+export interface ArrayAssignmentStatement extends Statement {
+  type: 'ArrayAssignmentStatement';
+  arrayName: Identifier;
+  indices: Expression[];
+  expression: Expression;
+}
+
+/**
  * PRINT 출력문
  */
 export interface PrintStatement extends Statement {
   type: 'PrintStatement';
   expressions: Expression[];
   separator?: 'comma' | 'semicolon';
+  trailingSeparator?: boolean; // PRINT 문이 구분자로 끝나는지 여부
 }
 
 /**
@@ -293,6 +304,7 @@ export interface ArrayDeclaration {
 export type ASTNodeTypes = 
   | Program
   | LetStatement
+  | ArrayAssignmentStatement
   | PrintStatement
   | InputStatement
   | IfStatement
@@ -325,6 +337,7 @@ export type ASTNodeTypes =
 export interface ASTVisitor<T> {
   visitProgram(node: Program): T;
   visitLetStatement(node: LetStatement): T;
+  visitArrayAssignmentStatement(node: ArrayAssignmentStatement): T;
   visitPrintStatement(node: PrintStatement): T;
   visitInputStatement(node: InputStatement): T;
   visitIfStatement(node: IfStatement): T;
