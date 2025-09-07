@@ -50,35 +50,35 @@ export class BrowserSupport {
     if (ua.includes('Chrome') && !ua.includes('Edge')) {
       name = 'Chrome';
       const match = ua.match(/Chrome\/(\d+\.\d+)/);
-      version = match ? match[1] : 'Unknown';
+      version = match && match[1] ? match[1] : 'Unknown';
       engine = 'Blink';
     }
     // Firefox
     else if (ua.includes('Firefox')) {
       name = 'Firefox';
       const match = ua.match(/Firefox\/(\d+\.\d+)/);
-      version = match ? match[1] : 'Unknown';
+      version = match && match[1] ? match[1] : 'Unknown';
       engine = 'Gecko';
     }
     // Safari
     else if (ua.includes('Safari') && !ua.includes('Chrome')) {
       name = 'Safari';
       const match = ua.match(/Version\/(\d+\.\d+)/);
-      version = match ? match[1] : 'Unknown';
+      version = match && match[1] ? match[1] : 'Unknown';
       engine = 'WebKit';
     }
     // Edge
     else if (ua.includes('Edge')) {
       name = 'Edge';
       const match = ua.match(/Edge\/(\d+\.\d+)/);
-      version = match ? match[1] : 'Unknown';
+      version = match && match[1] ? match[1] : 'Unknown';
       engine = 'EdgeHTML';
     }
     // IE
     else if (ua.includes('Trident') || ua.includes('MSIE')) {
       name = 'Internet Explorer';
       const match = ua.match(/(?:MSIE |rv:)(\d+\.\d+)/);
-      version = match ? match[1] : 'Unknown';
+      version = match && match[1] ? match[1] : 'Unknown';
       engine = 'Trident';
     }
 
@@ -238,7 +238,7 @@ export class BrowserSupport {
         
         for (let i = 0; i < length; i++) {
           const value = arrayLike[i];
-          if (mapFn) {
+          if (mapFn && value !== undefined) {
             result[i] = mapFn.call(thisArg, value, i);
           } else {
             result[i] = value as unknown as U;
