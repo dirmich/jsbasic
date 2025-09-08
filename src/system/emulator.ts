@@ -74,14 +74,14 @@ export class BasicEmulator extends EventEmitter {
    */
   private initializeComponents(): void {
     // 메모리 매니저 초기화
-    this.memoryManager = new MemoryManager({
-      totalSize: this.config.memorySize,
-      enableProtection: true,
-      enableBanking: true
+    this.memoryManager = new MemoryManager(this.config.memorySize, {
+      enforceProtection: true,
+      enableBanking: true,
+      trackAccess: true
     });
     
     // CPU 초기화
-    this.cpu = new CPU6502();
+    this.cpu = new CPU6502(this.memoryManager);
     
     // BASIC 인터프리터 초기화
     this.basicInterpreter = new BasicInterpreter();
@@ -129,8 +129,8 @@ export class BasicEmulator extends EventEmitter {
     });
     
     // 메모리 매니저 이벤트 처리
-    this.memoryManager.on('error', (error) => {
-      this.handleError(`Memory Error: ${error.message}`);
+    this.memoryManager.on('protection', (address, operation, protection) => {
+      console.warn(`메모리 보호 위반: 주소 0x${address.toString(16).padStart(4, '0')} ${operation}`);
     });
   }
 
@@ -180,7 +180,7 @@ export class BasicEmulator extends EventEmitter {
     try {
       // 시스템 명령 처리
       if (upperCommand === 'NEW') {
-        this.basicInterpreter.reset();
+        this.basicInterpreter.clear();
         this.terminal.writeLine('NEW PROGRAM');
         this.terminal.showPrompt();
         return;
@@ -276,7 +276,7 @@ export class BasicEmulator extends EventEmitter {
       
       // 라인 번호가 있는 경우 프로그램에 추가
       if (program.statements.length > 0 && program.statements[0].lineNumber !== undefined) {
-        this.basicInterpreter.addProgramLine(program.statements[0]);
+        this.basicInterpreter.addProgram(program);
         this.terminal.showPrompt();
       } else {
         // 즉시 실행
@@ -323,7 +323,7 @@ export class BasicEmulator extends EventEmitter {
         const programData = localStorage.getItem(`basic_program_${filename}`);
         if (programData) {
           const program = JSON.parse(programData);
-          this.basicInterpreter.loadProgram(program);
+          this.basicInterpreter.addProgram(program);
           this.terminal.writeLine(`LOADED "${filename}"`);
         } else {
           this.terminal.writeLine(`FILE NOT FOUND: "${filename}"`);
@@ -398,7 +398,7 @@ export class BasicEmulator extends EventEmitter {
    */
   private updateStats(): void {
     this.stats.uptime = this.startTime > 0 ? Date.now() - this.startTime : 0;
-    this.stats.memoryUsed = this.memoryManager.getUsedMemory();
+    this.stats.memoryUsed = this.memoryManager.getUsage();
     // CPU와 BASIC 인터프리터 통계는 나중에 구현
   }
 
@@ -443,7 +443,7 @@ export class BasicEmulator extends EventEmitter {
       components: {
         cpu: this.cpu.getDebugInfo(),
         basic: this.basicInterpreter.getDebugInfo(),
-        memory: this.memoryManager.getDebugInfo(),
+        memory: this.memoryManager.getMemoryStats(),
         terminal: this.terminal.getDebugInfo()
       }
     };
