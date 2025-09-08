@@ -9,7 +9,7 @@ import { EventEmitter } from '../utils/events.js';
 // DOM 유틸리티 함수들
 function safeCreateElement(tagName: string): HTMLElement {
   if (typeof document !== 'undefined') {
-    return safeCreateElement(tagName);
+    return document.createElement(tagName);
   }
   
   // Node.js 환경에서는 더미 객체 반환
@@ -17,6 +17,21 @@ function safeCreateElement(tagName: string): HTMLElement {
     id: '',
     className: '',
     style: {},
+    classList: {
+      add: () => {},
+      remove: () => {},
+      contains: () => false,
+      toggle: () => false,
+      replace: () => {},
+      length: 0,
+      value: '',
+      toString: () => '',
+      item: () => null,
+      forEach: () => {},
+      entries: () => [][Symbol.iterator](),
+      keys: () => [][Symbol.iterator](),
+      values: () => [][Symbol.iterator]()
+    },
     addEventListener: () => {},
     removeEventListener: () => {},
     appendChild: () => {},
