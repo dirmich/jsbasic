@@ -171,7 +171,7 @@ export class TerminalComponent extends BaseComponent {
       this.historyIndex--;
     }
     
-    this.inputElement.value = this.history[this.historyIndex];
+    this.inputElement.value = this.history[this.historyIndex] ?? '';
   }
 
   private handleHistoryDown(): void {
@@ -179,7 +179,7 @@ export class TerminalComponent extends BaseComponent {
     
     if (this.historyIndex < this.history.length - 1) {
       this.historyIndex++;
-      this.inputElement.value = this.history[this.historyIndex];
+      this.inputElement.value = this.history[this.historyIndex] ?? '';
     } else {
       this.historyIndex = -1;
       this.inputElement.value = '';
@@ -448,11 +448,11 @@ export class CPUStatusComponent extends BaseComponent {
   }
 
   updateRegisters(registers: { A: number; X: number; Y: number; SP: number; PC: number }): void {
-    this.registerElements.A.textContent = '$' + registers.A.toString(16).toUpperCase().padStart(2, '0');
-    this.registerElements.X.textContent = '$' + registers.X.toString(16).toUpperCase().padStart(2, '0');
-    this.registerElements.Y.textContent = '$' + registers.Y.toString(16).toUpperCase().padStart(2, '0');
-    this.registerElements.SP.textContent = '$' + registers.SP.toString(16).toUpperCase().padStart(2, '0');
-    this.registerElements.PC.textContent = '$' + registers.PC.toString(16).toUpperCase().padStart(4, '0');
+    if (this.registerElements.A) this.registerElements.A.textContent = '$' + registers.A.toString(16).toUpperCase().padStart(2, '0');
+    if (this.registerElements.X) this.registerElements.X.textContent = '$' + registers.X.toString(16).toUpperCase().padStart(2, '0');
+    if (this.registerElements.Y) this.registerElements.Y.textContent = '$' + registers.Y.toString(16).toUpperCase().padStart(2, '0');
+    if (this.registerElements.SP) this.registerElements.SP.textContent = '$' + registers.SP.toString(16).toUpperCase().padStart(2, '0');
+    if (this.registerElements.PC) this.registerElements.PC.textContent = '$' + registers.PC.toString(16).toUpperCase().padStart(4, '0');
   }
 
   updateFlags(flags: { N: boolean; V: boolean; B: boolean; D: boolean; I: boolean; Z: boolean; C: boolean }): void {
