@@ -626,4 +626,37 @@ export class CPU6502 extends EventEmitter<CPUEvents> implements CPUInterface {
       frequencyMHz: this.options.frequencyMHz
     };
   }
+
+  // === 레지스터 설정 메서드들 ===
+
+  /**
+   * PC 레지스터 설정
+   */
+  public setRegisterPC(value: number): void {
+    this._registers.PC = value & 0xFFFF;
+  }
+
+  /**
+   * SP 레지스터 설정  
+   */
+  public setRegisterSP(value: number): void {
+    this._registers.SP = value & 0xFF;
+  }
+
+  /**
+   * P 레지스터 설정
+   */
+  public setRegisterP(value: number): void {
+    this._registers.P = {
+      carry: (value & 0x01) !== 0,
+      zero: (value & 0x02) !== 0,
+      interrupt: (value & 0x04) !== 0,
+      decimal: (value & 0x08) !== 0,
+      break: (value & 0x10) !== 0,
+      unused: true,
+      overflow: (value & 0x40) !== 0,
+      negative: (value & 0x80) !== 0
+    };
+  }
+
 }

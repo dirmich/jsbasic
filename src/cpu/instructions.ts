@@ -247,7 +247,7 @@ export class InstructionSet {
   private adc(mode: AddressingMode): void {
     const operand = this.cpu.addressing.getOperandValue(mode);
     const accumulator = this.cpu.registers.A;
-    const carry = this.cpu.getFlag('C') ? 1 : 0;
+    const carry = this.cpu.getFlag(CPUFlag.CARRY) ? 1 : 0;
     
     const result = accumulator + operand + carry;
     
@@ -269,7 +269,7 @@ export class InstructionSet {
   private sbc(mode: AddressingMode): void {
     const operand = this.cpu.addressing.getOperandValue(mode);
     const accumulator = this.cpu.registers.A;
-    const carry = this.cpu.getFlag('C') ? 0 : 1; // SBC에서는 캐리가 반대로 동작
+    const carry = this.cpu.getFlag(CPUFlag.CARRY) ? 0 : 1; // SBC에서는 캐리가 반대로 동작
     
     const result = accumulator - operand - carry;
     
@@ -507,7 +507,7 @@ export class InstructionSet {
   private rol(mode: AddressingMode): void {
     if (mode === 'ACCUMULATOR') {
       const value = this.cpu.registers.A;
-      const carry = this.cpu.getFlag('C') ? 1 : 0;
+      const carry = this.cpu.getFlag(CPUFlag.CARRY) ? 1 : 0;
       const result = ((value << 1) | carry) & 0xFF;
       
       this.cpu.setRegisterA(result);
@@ -517,7 +517,7 @@ export class InstructionSet {
     } else {
       const address = this.cpu.addressing.getOperandAddress(mode);
       const value = this.cpu.readByte(address);
-      const carry = this.cpu.getFlag('C') ? 1 : 0;
+      const carry = this.cpu.getFlag(CPUFlag.CARRY) ? 1 : 0;
       const result = ((value << 1) | carry) & 0xFF;
       
       this.cpu.writeByte(address, result);
@@ -534,7 +534,7 @@ export class InstructionSet {
   private ror(mode: AddressingMode): void {
     if (mode === 'ACCUMULATOR') {
       const value = this.cpu.registers.A;
-      const carry = this.cpu.getFlag('C') ? 0x80 : 0;
+      const carry = this.cpu.getFlag(CPUFlag.CARRY) ? 0x80 : 0;
       const result = (value >> 1) | carry;
       
       this.cpu.setRegisterA(result);
@@ -544,7 +544,7 @@ export class InstructionSet {
     } else {
       const address = this.cpu.addressing.getOperandAddress(mode);
       const value = this.cpu.readByte(address);
-      const carry = this.cpu.getFlag('C') ? 0x80 : 0;
+      const carry = this.cpu.getFlag(CPUFlag.CARRY) ? 0x80 : 0;
       const result = (value >> 1) | carry;
       
       this.cpu.writeByte(address, result);
@@ -563,7 +563,7 @@ export class InstructionSet {
    */
   private branch(condition: boolean): void {
     if (condition) {
-      const address = this.cpu.addressing.getOperandAddress('RELATIVE');
+      const address = this.cpu.addressing.getOperandAddress(AddressingMode.RELATIVE);
       this.cpu.setRegisterPC(address);
       
       // 분기가 발생하면 추가 사이클이 필요할 수 있음
@@ -571,14 +571,14 @@ export class InstructionSet {
     }
   }
 
-  private bcc(): void { this.branch(!this.cpu.getFlag('C')); } // Branch if Carry Clear
-  private bcs(): void { this.branch(this.cpu.getFlag('C')); }  // Branch if Carry Set
-  private beq(): void { this.branch(this.cpu.getFlag('Z')); }  // Branch if Equal
-  private bmi(): void { this.branch(this.cpu.getFlag('N')); }  // Branch if Minus
-  private bne(): void { this.branch(!this.cpu.getFlag('Z')); } // Branch if Not Equal
-  private bpl(): void { this.branch(!this.cpu.getFlag('N')); } // Branch if Plus
-  private bvc(): void { this.branch(!this.cpu.getFlag('V')); } // Branch if Overflow Clear
-  private bvs(): void { this.branch(this.cpu.getFlag('V')); }  // Branch if Overflow Set
+  private bcc(): void { this.branch(!this.cpu.getFlag(CPUFlag.CARRY)); } // Branch if Carry Clear
+  private bcs(): void { this.branch(this.cpu.getFlag(CPUFlag.CARRY)); }  // Branch if Carry Set
+  private beq(): void { this.branch(this.cpu.getFlag(CPUFlag.ZERO)); }  // Branch if Equal
+  private bmi(): void { this.branch(this.cpu.getFlag(CPUFlag.NEGATIVE)); }  // Branch if Minus
+  private bne(): void { this.branch(!this.cpu.getFlag(CPUFlag.ZERO)); } // Branch if Not Equal
+  private bpl(): void { this.branch(!this.cpu.getFlag(CPUFlag.NEGATIVE)); } // Branch if Plus
+  private bvc(): void { this.branch(!this.cpu.getFlag(CPUFlag.OVERFLOW)); } // Branch if Overflow Clear
+  private bvs(): void { this.branch(this.cpu.getFlag(CPUFlag.OVERFLOW)); }  // Branch if Overflow Set
 
   // =================================================================
   // 점프/호출 명령어 구현
@@ -603,7 +603,7 @@ export class InstructionSet {
     this.cpu.pushWord(returnAddress);
     
     // 새 주소로 점프
-    const address = this.cpu.addressing.getOperandAddress('ABSOLUTE');
+    const address = this.cpu.addressing.getOperandAddress(AddressingMode.ABSOLUTE);
     this.cpu.setRegisterPC(address);
   }
 
