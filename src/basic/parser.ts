@@ -66,7 +66,7 @@ export class Parser {
     const tokenizer = new Tokenizer(source);
     this.tokens = tokenizer.tokenize();
     const firstToken = this.tokens[0];
-    if (!firstToken) {
+    if (!firstToken && source.trim() !== '') {
       throw new Error('No tokens found in source');
     }
     this.current = firstToken;
@@ -78,7 +78,7 @@ export class Parser {
   public parseProgram(): Program {
     const statements: Statement[] = [];
     
-    while (!this.isAtEnd() && this.current.type !== TokenType.EOF) {
+    while (!this.isAtEnd() && this.current && this.current.type !== TokenType.EOF) {
       // 빈 줄 건너뛰기
       if (this.current.type === TokenType.NEWLINE) {
         this.advance();
@@ -1125,7 +1125,7 @@ export class Parser {
   }
 
   private isAtEnd(): boolean {
-    return this.position >= this.tokens.length || this.current.type === TokenType.EOF;
+    return this.position >= this.tokens.length || !this.current || this.current.type === TokenType.EOF;
   }
 
   private peek(): Token | null {

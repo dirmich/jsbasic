@@ -96,6 +96,7 @@ export class MobileOptimizer extends EventEmitter {
       const width = Math.min(screen.width, screen.height);
       const height = Math.max(screen.width, screen.height);
       
+      
       if (width < 480) {
         screenSize = 'small'; // 소형 스마트폰
       } else if (width < 768) {
@@ -284,8 +285,13 @@ export class MobileOptimizer extends EventEmitter {
 
     // 화면 밝기 감소 및 애니메이션 비활성화
     const doc = globalThis.document;
-    if (doc?.body?.classList) {
-      doc.body.classList.add('battery-optimized');
+    if (doc?.body) {
+      // Work around Happy-DOM classList issue by using className directly
+      const currentClasses = doc.body.className ? doc.body.className.split(' ') : [];
+      if (!currentClasses.includes('battery-optimized')) {
+        currentClasses.push('battery-optimized');
+        doc.body.className = currentClasses.join(' ');
+      }
     }
     
     console.log('🔋 Battery optimizations enabled');
@@ -308,10 +314,17 @@ export class MobileOptimizer extends EventEmitter {
     `;
 
     const doc = globalThis.document;
-    if (doc?.body?.classList) {
-      doc.body.classList.add('reduced-motion');
+    if (doc?.body) {
+      // Work around Happy-DOM classList issue by using className directly
+      const currentClasses = doc.body.className ? doc.body.className.split(' ') : [];
+      if (!currentClasses.includes('reduced-motion')) {
+        currentClasses.push('reduced-motion');
+        doc.body.className = currentClasses.join(' ');
+      }
+      console.log('🎬 Animations reduced for mobile');
+    } else {
+      console.log('🎬 Animation reduction NOT applied - no body');
     }
-    console.log('🎬 Animations reduced for mobile');
   }
 
   /**
@@ -344,10 +357,17 @@ export class MobileOptimizer extends EventEmitter {
     `;
 
     const doc = globalThis.document;
-    if (doc?.body?.classList) {
-      doc.body.classList.add('compact-layout');
+    if (doc?.body) {
+      // Work around Happy-DOM classList issue by using className directly
+      const currentClasses = doc.body.className ? doc.body.className.split(' ') : [];
+      if (!currentClasses.includes('compact-layout')) {
+        currentClasses.push('compact-layout');
+        doc.body.className = currentClasses.join(' ');
+      }
+      console.log('📱 Compact layout enabled');
+    } else {
+      console.log('📱 Compact layout NOT enabled - no body');
     }
-    console.log('📱 Compact layout enabled');
   }
 
   /**
@@ -375,10 +395,17 @@ export class MobileOptimizer extends EventEmitter {
     `;
 
     const doc = globalThis.document;
-    if (doc?.body?.classList) {
-      doc.body.classList.add('adaptive-fonts');
+    if (doc?.body) {
+      // Work around Happy-DOM classList issue by using className directly
+      const currentClasses = doc.body.className ? doc.body.className.split(' ') : [];
+      if (!currentClasses.includes('adaptive-fonts')) {
+        currentClasses.push('adaptive-fonts');
+        doc.body.className = currentClasses.join(' ');
+      }
+      console.log(`📝 Adaptive font size set to ${baseSize}px`);
+    } else {
+      console.log(`📝 Adaptive font NOT applied - no body`);
     }
-    console.log(`📝 Adaptive font size set to ${baseSize}px`);
   }
 
   /**
@@ -416,7 +443,20 @@ export class MobileOptimizer extends EventEmitter {
     if (!style) {
       style = doc.createElement('style');
       style.id = id;
-      doc.head.appendChild(style);
+      
+      // Try to append to head, fall back to body if head doesn't exist
+      if (doc.head) {
+        doc.head.appendChild(style);
+      } else if (doc.body) {
+        doc.body.appendChild(style);
+      } else {
+        // In test environments, document might not have head/body ready
+        // Create a temporary container
+        const container = doc.querySelector('html') || doc;
+        if (container && container.appendChild) {
+          container.appendChild(style);
+        }
+      }
     }
     return style;
   }
@@ -548,15 +588,18 @@ export class MobileOptimizer extends EventEmitter {
     const doc = globalThis.document;
     if (!doc) return;
 
-    // 클래스 제거
-    if (doc.body?.classList) {
-      doc.body.classList.remove(
+    // 클래스 제거 (Happy-DOM classList workaround)
+    if (doc.body) {
+      const classesToRemove = [
         'mobile-optimized',
         'battery-optimized',
         'reduced-motion',
         'compact-layout',
         'adaptive-fonts'
-      );
+      ];
+      const currentClasses = doc.body.className ? doc.body.className.split(' ') : [];
+      const filteredClasses = currentClasses.filter(cls => !classesToRemove.includes(cls));
+      doc.body.className = filteredClasses.join(' ');
     }
 
     // 스타일 요소 제거

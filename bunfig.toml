@@ -1,0 +1,10 @@
+[test]
+# DOM 환경을 위한 happy-dom 설정
+preload = ["./tests/setup.ts"]
+
+# 테스트 타임아웃 설정
+timeout = 30000
+
+# 모듈 해상도 설정
+[test.env]
+NODE_ENV = "test"
