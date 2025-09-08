@@ -196,32 +196,32 @@ export class PerformanceMonitor {
         metric: 'Frame Rate',
         current: this.metrics.frameRate,
         target: this.targets.targetFPS,
-        status: this.metrics.frameRate >= this.targets.targetFPS * 0.9 ? 'pass' : 
-                this.metrics.frameRate >= this.targets.targetFPS * 0.7 ? 'warn' : 'fail',
+        status: (this.metrics.frameRate >= this.targets.targetFPS * 0.9 ? 'pass' : 
+                this.metrics.frameRate >= this.targets.targetFPS * 0.7 ? 'warn' : 'fail') as 'pass' | 'warn' | 'fail',
         unit: 'FPS'
       },
       {
         metric: 'Memory Usage',
         current: this.metrics.memoryUsage,
         target: this.targets.maxMemoryMB,
-        status: this.metrics.memoryUsage <= this.targets.maxMemoryMB ? 'pass' :
-                this.metrics.memoryUsage <= this.targets.maxMemoryMB * 1.2 ? 'warn' : 'fail',
+        status: (this.metrics.memoryUsage <= this.targets.maxMemoryMB ? 'pass' :
+                this.metrics.memoryUsage <= this.targets.maxMemoryMB * 1.2 ? 'warn' : 'fail') as 'pass' | 'warn' | 'fail',
         unit: 'MB'
       },
       {
         metric: 'Bundle Size',
         current: this.metrics.bundleSize,
         target: this.targets.maxBundleKB,
-        status: this.metrics.bundleSize <= this.targets.maxBundleKB ? 'pass' :
-                this.metrics.bundleSize <= this.targets.maxBundleKB * 1.2 ? 'warn' : 'fail',
+        status: (this.metrics.bundleSize <= this.targets.maxBundleKB ? 'pass' :
+                this.metrics.bundleSize <= this.targets.maxBundleKB * 1.2 ? 'warn' : 'fail') as 'pass' | 'warn' | 'fail',
         unit: 'KB'
       },
       {
         metric: 'Load Time',
         current: this.metrics.loadTime,
         target: this.targets.maxLoadTimeMs,
-        status: this.metrics.loadTime <= this.targets.maxLoadTimeMs ? 'pass' :
-                this.metrics.loadTime <= this.targets.maxLoadTimeMs * 1.5 ? 'warn' : 'fail',
+        status: (this.metrics.loadTime <= this.targets.maxLoadTimeMs ? 'pass' :
+                this.metrics.loadTime <= this.targets.maxLoadTimeMs * 1.5 ? 'warn' : 'fail') as 'pass' | 'warn' | 'fail',
         unit: 'ms'
       }
     ];

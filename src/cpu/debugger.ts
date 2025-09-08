@@ -120,48 +120,6 @@ export class CPUDebugger extends EventEmitter<DebuggerEvents> {
     console.log('🔄 모든 브레이크포인트 해제');
   }
 
-  /**
-   * 워치포인트 설정
-   */
-  setWatchpoint(address: number, type: 'read' | 'write' | 'both' = 'both', condition?: string, name?: string): void {
-    const watchpoint: WatchpointInfo = {
-      address,
-      type,
-      enabled: true,
-      hitCount: 0,
-    };
-    
-    if (condition !== undefined) {
-      watchpoint.condition = condition;
-    }
-    if (name !== undefined) {
-      watchpoint.name = name;
-    } else {
-      watchpoint.name = `WP_${formatHex(address, 4)}`;
-    }
-    
-    this.watchpoints.set(address, watchpoint);
-    console.log(`👀 워치포인트 설정: ${watchpoint.name} at $${formatHex(address, 4)} (${type})`);
-  }
-
-  /**
-   * 워치포인트 해제
-   */
-  removeWatchpoint(address: number): boolean {
-    const removed = this.watchpoints.delete(address);
-    if (removed) {
-      console.log(`⚪ 워치포인트 해제: $${formatHex(address, 4)}`);
-    }
-    return removed;
-  }
-
-  /**
-   * 모든 워치포인트 해제
-   */
-  clearWatchpoints(): void {
-    this.watchpoints.clear();
-    console.log('🔄 모든 워치포인트 해제');
-  }
 
   /**
    * 브레이크포인트 목록 반환

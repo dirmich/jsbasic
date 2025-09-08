@@ -2,7 +2,8 @@ import type {
   InstructionInfo, 
   OpcodeMap, 
   DisassemblyInfo,
-  CPUState 
+  CPUState,
+  CPUStateInfo 
 } from '@/types/cpu';
 import { AddressingMode } from '@/types/cpu';
 import { formatHex } from '@/utils/format';
@@ -43,7 +44,7 @@ export class OpcodeDecoder {
    */
   public static getInstructionLength(opcode: number): number {
     const info = this.getInstructionInfo(opcode);
-    return info ? info.operandBytes + 1 : 1;
+    return info ? info.bytes + 1 : 1;
   }
 
   /**
@@ -54,7 +55,7 @@ export class OpcodeDecoder {
    * @returns 디스어셈블리 정보
    */
   public static disassemble(memory: Uint8Array, address: number): DisassemblyInfo {
-    const opcode = memory[address];
+    const opcode = memory[address] || 0;
     const info = this.getInstructionInfo(opcode);
     
     if (!info) {
@@ -62,11 +63,12 @@ export class OpcodeDecoder {
         address,
         opcode,
         operands: [],
-        mnemonic: '???',
-        operandText: '',
+        instruction: '???',
         fullInstruction: `??? $${formatHex(opcode)}`,
-        bytes: [opcode],
-        isValid: false
+        bytes: 1,
+        cycles: 0,
+        isValid: false,
+        addressingMode: AddressingMode.IMPLIED
       };
     }
 
@@ -74,14 +76,14 @@ export class OpcodeDecoder {
     const operands: number[] = [];
     const bytes = [opcode];
     
-    for (let i = 1; i <= info.operandBytes; i++) {
+    for (let i = 1; i <= info.bytes; i++) {
       const operandByte = memory[address + i] || 0;
       operands.push(operandByte);
       bytes.push(operandByte);
     }
 
     // 피연산자 텍스트 생성
-    const operandText = this.formatOperand(info.addressingMode, operands, address + info.operandBytes + 1);
+    const operandText = this.formatOperand(info.addressingMode || AddressingMode.IMPLIED, operands, address + info.bytes + 1);
     
     // 전체 명령어 텍스트
     const fullInstruction = operandText 
@@ -92,14 +94,12 @@ export class OpcodeDecoder {
       address,
       opcode,
       operands,
-      mnemonic: info.mnemonic,
-      operandText,
+      instruction: info.mnemonic,
       fullInstruction,
-      bytes,
-      isValid: true,
+      bytes: info.bytes,
       cycles: info.cycles,
-      extraCycles: info.extraCycles,
-      addressingMode: info.addressingMode
+      isValid: true,
+      addressingMode: info.addressingMode || AddressingMode.IMPLIED
     };
   }
 
@@ -122,7 +122,7 @@ export class OpcodeDecoder {
     for (let i = 0; i < count && address < memory.length; i++) {
       const info = this.disassemble(memory, address);
       result.push(info);
-      address += info.bytes.length;
+      address += info.bytes;
     }
 
     return result;
@@ -149,49 +149,50 @@ export class OpcodeDecoder {
         return 'A';
         
       case 'IMMEDIATE':
-        return `#$${formatHex(operands[0])}`;
+        return `#$${formatHex(operands[0] || 0)}`;
         
       case 'ZERO_PAGE':
-        return `$${formatHex(operands[0])}`;
+        return `$${formatHex(operands[0] || 0)}`;
         
       case 'ZERO_PAGE_X':
-        return `$${formatHex(operands[0])},X`;
+        return `$${formatHex(operands[0] || 0)},X`;
         
       case 'ZERO_PAGE_Y':
-        return `$${formatHex(operands[0])},Y`;
+        return `$${formatHex(operands[0] || 0)},Y`;
         
       case 'ABSOLUTE': {
-        const addr = operands[0] | (operands[1] << 8);
+        const addr = (operands[0] || 0) | ((operands[1] || 0) << 8);
         return `$${formatHex(addr, 4)}`;
       }
       
       case 'ABSOLUTE_X': {
-        const addr = operands[0] | (operands[1] << 8);
+        const addr = (operands[0] || 0) | ((operands[1] || 0) << 8);
         return `$${formatHex(addr, 4)},X`;
       }
       
       case 'ABSOLUTE_Y': {
-        const addr = operands[0] | (operands[1] << 8);
+        const addr = (operands[0] || 0) | ((operands[1] || 0) << 8);
         return `$${formatHex(addr, 4)},Y`;
       }
       
       case 'RELATIVE': {
         // 상대 주소를 절대 주소로 변환
-        const offset = operands[0] > 127 ? operands[0] - 256 : operands[0];
+        const operand0 = operands[0] || 0;
+        const offset = operand0 > 127 ? operand0 - 256 : operand0;
         const target = (nextAddress + offset) & 0xFFFF;
         return `$${formatHex(target, 4)}`;
       }
       
       case 'INDIRECT': {
-        const addr = operands[0] | (operands[1] << 8);
+        const addr = (operands[0] || 0) | ((operands[1] || 0) << 8);
         return `($${formatHex(addr, 4)})`;
       }
       
       case 'INDEXED_INDIRECT':
-        return `($${formatHex(operands[0])},X)`;
+        return `($${formatHex(operands[0] || 0)},X)`;
         
       case 'INDIRECT_INDEXED':
-        return `($${formatHex(operands[0])}),Y`;
+        return `($${formatHex(operands[0] || 0)}),Y`;
         
       default:
         return '???';
@@ -265,7 +266,7 @@ export class OpcodeDecoder {
   public static disassembleWithContext(
     memory: Uint8Array, 
     address: number, 
-    cpuState: CPUState,
+    cpuState: CPUStateInfo,
     symbols?: Map<number, string>
   ): DisassemblyInfo & { 
     effectiveAddress?: number; 
@@ -277,20 +278,27 @@ export class OpcodeDecoder {
 
     // 심볼 이름 추가
     if (symbols && symbols.has(address)) {
-      result.symbolName = symbols.get(address);
+      const symbolName = symbols.get(address);
+      if (symbolName) {
+        result.symbolName = symbolName;
+      }
     }
 
     // 유효 주소 계산 (가능한 경우)
-    if (basic.isValid) {
-      result.effectiveAddress = this.calculateEffectiveAddress(
-        basic.addressingMode!, 
-        basic.operands, 
+    result.isValid = true;
+    if (result.isValid) {
+      const effectiveAddr = this.calculateEffectiveAddress(
+        result.addressingMode || AddressingMode.IMPLIED, 
+        result.operands, 
         cpuState,
         address
       );
+      if (effectiveAddr !== undefined) {
+        result.effectiveAddress = effectiveAddr;
+      }
 
       // 주석 생성
-      result.comment = this.generateComment(basic, cpuState, result.effectiveAddress);
+      result.comment = this.generateComment(result, cpuState, result.effectiveAddress);
     }
 
     return result;
@@ -302,35 +310,36 @@ export class OpcodeDecoder {
   private static calculateEffectiveAddress(
     mode: AddressingMode,
     operands: number[],
-    cpuState: CPUState,
+    cpuState: CPUStateInfo,
     instructionAddress: number
   ): number | undefined {
     switch (mode) {
       case 'ZERO_PAGE':
-        return operands[0];
+        return operands[0] || 0;
         
       case 'ZERO_PAGE_X':
-        return (operands[0] + cpuState.registers.X) & 0xFF;
+        return ((operands[0] || 0) + cpuState.registers.X) & 0xFF;
         
       case 'ZERO_PAGE_Y':
-        return (operands[0] + cpuState.registers.Y) & 0xFF;
+        return ((operands[0] || 0) + cpuState.registers.Y) & 0xFF;
         
       case 'ABSOLUTE':
-        return operands[0] | (operands[1] << 8);
+        return (operands[0] || 0) | ((operands[1] || 0) << 8);
         
       case 'ABSOLUTE_X':
-        return ((operands[0] | (operands[1] << 8)) + cpuState.registers.X) & 0xFFFF;
+        return (((operands[0] || 0) | ((operands[1] || 0) << 8)) + cpuState.registers.X) & 0xFFFF;
         
       case 'ABSOLUTE_Y':
-        return ((operands[0] | (operands[1] << 8)) + cpuState.registers.Y) & 0xFFFF;
+        return (((operands[0] || 0) | ((operands[1] || 0) << 8)) + cpuState.registers.Y) & 0xFFFF;
         
       case 'RELATIVE': {
-        const offset = operands[0] > 127 ? operands[0] - 256 : operands[0];
+        const operand0 = operands[0] || 0;
+        const offset = operand0 > 127 ? operand0 - 256 : operand0;
         return (instructionAddress + operands.length + 1 + offset) & 0xFFFF;
       }
       
       case 'INDIRECT': {
-        const indirectAddr = operands[0] | (operands[1] << 8);
+        const indirectAddr = (operands[0] || 0) | ((operands[1] || 0) << 8);
         // 실제 간접 주소 값을 알려면 메모리 내용이 필요
         return indirectAddr;
       }
@@ -345,10 +354,10 @@ export class OpcodeDecoder {
    */
   private static generateComment(
     info: DisassemblyInfo,
-    cpuState: CPUState,
+    cpuState: CPUStateInfo,
     effectiveAddress?: number
   ): string {
-    const { mnemonic, addressingMode } = info;
+    const { instruction: mnemonic, addressingMode } = info;
     
     const comments: string[] = [];
 
@@ -366,9 +375,9 @@ export class OpcodeDecoder {
     // 플래그 상태
     if (['CMP', 'CPX', 'CPY'].includes(mnemonic)) {
       const flags = [];
-      if (cpuState.registers.P & 0x01) flags.push('C');
-      if (cpuState.registers.P & 0x02) flags.push('Z');
-      if (cpuState.registers.P & 0x80) flags.push('N');
+      if (cpuState.registers.P.carry) flags.push('C');
+      if (cpuState.registers.P.zero) flags.push('Z');
+      if (cpuState.registers.P.negative) flags.push('N');
       if (flags.length > 0) {
         comments.push(`Flags: ${flags.join('')}`);
       }
@@ -389,189 +398,189 @@ export class OpcodeDecoder {
  * 각 바이트코드(0x00-0xFF)에 대응하는 명령어 정보를 정의합니다.
  * InstructionSet 클래스와 동일한 테이블을 사용하여 일관성을 보장합니다.
  */
-const INSTRUCTION_TABLE: OpcodeMap = {
+const INSTRUCTION_TABLE: Record<number, InstructionInfo> = {
   // 0x0_
-  0x00: { mnemonic: 'BRK', addressingMode: AddressingMode.IMPLIED, operandBytes: 1, cycles: 7, extraCycles: 0 },
-  0x01: { mnemonic: 'ORA', addressingMode: AddressingMode.INDEXED_INDIRECT, operandBytes: 1, cycles: 6, extraCycles: 0 },
-  0x05: { mnemonic: 'ORA', addressingMode: AddressingMode.ZERO_PAGE, operandBytes: 1, cycles: 3, extraCycles: 0 },
-  0x06: { mnemonic: 'ASL', addressingMode: AddressingMode.ZERO_PAGE, operandBytes: 1, cycles: 5, extraCycles: 0 },
-  0x08: { mnemonic: 'PHP', addressingMode: AddressingMode.IMPLIED, operandBytes: 0, cycles: 3, extraCycles: 0 },
-  0x09: { mnemonic: 'ORA', addressingMode: AddressingMode.IMMEDIATE, operandBytes: 1, cycles: 2, extraCycles: 0 },
-  0x0A: { mnemonic: 'ASL', addressingMode: 'ACCUMULATOR', operandBytes: 0, cycles: 2, extraCycles: 0 },
-  0x0D: { mnemonic: 'ORA', addressingMode: AddressingMode.ABSOLUTE, operandBytes: 2, cycles: 4, extraCycles: 0 },
-  0x0E: { mnemonic: 'ASL', addressingMode: AddressingMode.ABSOLUTE, operandBytes: 2, cycles: 6, extraCycles: 0 },
+  0x00: { opcode: 0x00, mnemonic: 'BRK', addressingMode: AddressingMode.IMPLIED, bytes: 1, cycles: 7, extraCycles: 0, description: 'Break' },
+  0x01: { opcode: 0x01, mnemonic: 'ORA', addressingMode: AddressingMode.INDEXED_INDIRECT, bytes: 1, cycles: 6, extraCycles: 0, description: 'Logical OR with Accumulator' },
+  0x05: { opcode: 0x05, mnemonic: 'ORA', addressingMode: AddressingMode.ZERO_PAGE, bytes: 1, cycles: 3, extraCycles: 0, description: 'Logical OR with Accumulator' },
+  0x06: { opcode: 0x06, mnemonic: 'ASL', addressingMode: AddressingMode.ZERO_PAGE, bytes: 1, cycles: 5, extraCycles: 0, description: 'Arithmetic Shift Left' },
+  0x08: { opcode: 0x08, mnemonic: 'PHP', addressingMode: AddressingMode.IMPLIED, bytes: 0, cycles: 3, extraCycles: 0, description: 'Push Processor Status' },
+  0x09: { opcode: 0x09, mnemonic: 'ORA', addressingMode: AddressingMode.IMMEDIATE, bytes: 1, cycles: 2, extraCycles: 0, description: 'Logical OR with Accumulator' },
+  0x0A: { opcode: 0x0A, mnemonic: 'ASL', addressingMode: AddressingMode.ACCUMULATOR, bytes: 0, cycles: 2, extraCycles: 0, description: 'Arithmetic Shift Left' },
+  0x0D: { opcode: 0x0D, mnemonic: 'ORA', addressingMode: AddressingMode.ABSOLUTE, bytes: 2, cycles: 4, extraCycles: 0, description: 'Logical OR with Accumulator' },
+  0x0E: { opcode: 0x0E, mnemonic: 'ASL', addressingMode: AddressingMode.ABSOLUTE, bytes: 2, cycles: 6, extraCycles: 0, description: 'Arithmetic Shift Left' },
 
   // 0x1_
-  0x10: { mnemonic: 'BPL', addressingMode: AddressingMode.RELATIVE, operandBytes: 1, cycles: 2, extraCycles: 1 },
-  0x11: { mnemonic: 'ORA', addressingMode: AddressingMode.INDIRECT_INDEXED, operandBytes: 1, cycles: 5, extraCycles: 1 },
-  0x15: { mnemonic: 'ORA', addressingMode: AddressingMode.ZERO_PAGE_X, operandBytes: 1, cycles: 4, extraCycles: 0 },
-  0x16: { mnemonic: 'ASL', addressingMode: AddressingMode.ZERO_PAGE_X, operandBytes: 1, cycles: 6, extraCycles: 0 },
-  0x18: { mnemonic: 'CLC', addressingMode: AddressingMode.IMPLIED, operandBytes: 0, cycles: 2, extraCycles: 0 },
-  0x19: { mnemonic: 'ORA', addressingMode: AddressingMode.ABSOLUTE_Y, operandBytes: 2, cycles: 4, extraCycles: 1 },
-  0x1D: { mnemonic: 'ORA', addressingMode: AddressingMode.ABSOLUTE_X, operandBytes: 2, cycles: 4, extraCycles: 1 },
-  0x1E: { mnemonic: 'ASL', addressingMode: AddressingMode.ABSOLUTE_X, operandBytes: 2, cycles: 7, extraCycles: 0 },
+  0x10: { opcode: 0x10, mnemonic: 'BPL', addressingMode: AddressingMode.RELATIVE, bytes: 1, cycles: 2, extraCycles: 1, description: 'Branch if Plus' },
+  0x11: { opcode: 0x11, mnemonic: 'ORA', addressingMode: AddressingMode.INDIRECT_INDEXED, bytes: 1, cycles: 5, extraCycles: 1, description: 'Logical OR with Accumulator' },
+  0x15: { opcode: 0x15, mnemonic: 'ORA', addressingMode: AddressingMode.ZERO_PAGE_X, bytes: 1, cycles: 4, extraCycles: 0, description: 'Logical OR with Accumulator' },
+  0x16: { opcode: 0x16, mnemonic: 'ASL', addressingMode: AddressingMode.ZERO_PAGE_X, bytes: 1, cycles: 6, extraCycles: 0, description: 'Arithmetic Shift Left' },
+  0x18: { opcode: 0x18, mnemonic: 'CLC', addressingMode: AddressingMode.IMPLIED, bytes: 0, cycles: 2, extraCycles: 0, description: 'Clear Carry Flag' },
+  0x19: { opcode: 0x19, mnemonic: 'ORA', addressingMode: AddressingMode.ABSOLUTE_Y, bytes: 2, cycles: 4, extraCycles: 1, description: 'Logical OR with Accumulator' },
+  0x1D: { opcode: 0x1D, mnemonic: 'ORA', addressingMode: AddressingMode.ABSOLUTE_X, bytes: 2, cycles: 4, extraCycles: 1, description: 'Logical OR with Accumulator' },
+  0x1E: { opcode: 0x1E, mnemonic: 'ASL', addressingMode: AddressingMode.ABSOLUTE_X, bytes: 2, cycles: 7, extraCycles: 0, description: 'Arithmetic Shift Left' },
 
   // 0x2_
-  0x20: { mnemonic: 'JSR', addressingMode: AddressingMode.ABSOLUTE, operandBytes: 2, cycles: 6, extraCycles: 0 },
-  0x21: { mnemonic: 'AND', addressingMode: AddressingMode.INDEXED_INDIRECT, operandBytes: 1, cycles: 6, extraCycles: 0 },
-  0x24: { mnemonic: 'BIT', addressingMode: AddressingMode.ZERO_PAGE, operandBytes: 1, cycles: 3, extraCycles: 0 },
-  0x25: { mnemonic: 'AND', addressingMode: AddressingMode.ZERO_PAGE, operandBytes: 1, cycles: 3, extraCycles: 0 },
-  0x26: { mnemonic: 'ROL', addressingMode: AddressingMode.ZERO_PAGE, operandBytes: 1, cycles: 5, extraCycles: 0 },
-  0x28: { mnemonic: 'PLP', addressingMode: AddressingMode.IMPLIED, operandBytes: 0, cycles: 4, extraCycles: 0 },
-  0x29: { mnemonic: 'AND', addressingMode: AddressingMode.IMMEDIATE, operandBytes: 1, cycles: 2, extraCycles: 0 },
-  0x2A: { mnemonic: 'ROL', addressingMode: 'ACCUMULATOR', operandBytes: 0, cycles: 2, extraCycles: 0 },
-  0x2C: { mnemonic: 'BIT', addressingMode: AddressingMode.ABSOLUTE, operandBytes: 2, cycles: 4, extraCycles: 0 },
-  0x2D: { mnemonic: 'AND', addressingMode: AddressingMode.ABSOLUTE, operandBytes: 2, cycles: 4, extraCycles: 0 },
-  0x2E: { mnemonic: 'ROL', addressingMode: AddressingMode.ABSOLUTE, operandBytes: 2, cycles: 6, extraCycles: 0 },
+  0x20: { opcode: 0x20, mnemonic: 'JSR', addressingMode: AddressingMode.ABSOLUTE, bytes: 2, cycles: 6, extraCycles: 0, description: 'Jump to Subroutine' },
+  0x21: { opcode: 0x21, mnemonic: 'AND', addressingMode: AddressingMode.INDEXED_INDIRECT, bytes: 1, cycles: 6, extraCycles: 0, description: 'Logical AND with Accumulator' },
+  0x24: { opcode: 0x24, mnemonic: 'BIT', addressingMode: AddressingMode.ZERO_PAGE, bytes: 1, cycles: 3, extraCycles: 0, description: 'Bit Test' },
+  0x25: { opcode: 0x25, mnemonic: 'AND', addressingMode: AddressingMode.ZERO_PAGE, bytes: 1, cycles: 3, extraCycles: 0, description: 'Logical AND with Accumulator' },
+  0x26: { opcode: 0x26, mnemonic: 'ROL', addressingMode: AddressingMode.ZERO_PAGE, bytes: 1, cycles: 5, extraCycles: 0, description: 'Rotate Left' },
+  0x28: { opcode: 0x28, mnemonic: 'PLP', addressingMode: AddressingMode.IMPLIED, bytes: 0, cycles: 4, extraCycles: 0, description: 'Pull Processor Status' },
+  0x29: { opcode: 0x29, mnemonic: 'AND', addressingMode: AddressingMode.IMMEDIATE, bytes: 1, cycles: 2, extraCycles: 0, description: 'Logical AND with Accumulator' },
+  0x2A: { opcode: 0x2A, mnemonic: 'ROL', addressingMode: AddressingMode.ACCUMULATOR, bytes: 0, cycles: 2, extraCycles: 0, description: 'Rotate Left' },
+  0x2C: { opcode: 0x2C, mnemonic: 'BIT', addressingMode: AddressingMode.ABSOLUTE, bytes: 2, cycles: 4, extraCycles: 0, description: 'Bit Test' },
+  0x2D: { opcode: 0x2D, mnemonic: 'AND', addressingMode: AddressingMode.ABSOLUTE, bytes: 2, cycles: 4, extraCycles: 0, description: 'Logical AND with Accumulator' },
+  0x2E: { opcode: 0x2E, mnemonic: 'ROL', addressingMode: AddressingMode.ABSOLUTE, bytes: 2, cycles: 6, extraCycles: 0, description: 'Rotate Left' },
 
   // 0x3_
-  0x30: { mnemonic: 'BMI', addressingMode: AddressingMode.RELATIVE, operandBytes: 1, cycles: 2, extraCycles: 1 },
-  0x31: { mnemonic: 'AND', addressingMode: AddressingMode.INDIRECT_INDEXED, operandBytes: 1, cycles: 5, extraCycles: 1 },
-  0x35: { mnemonic: 'AND', addressingMode: AddressingMode.ZERO_PAGE_X, operandBytes: 1, cycles: 4, extraCycles: 0 },
-  0x36: { mnemonic: 'ROL', addressingMode: AddressingMode.ZERO_PAGE_X, operandBytes: 1, cycles: 6, extraCycles: 0 },
-  0x38: { mnemonic: 'SEC', addressingMode: AddressingMode.IMPLIED, operandBytes: 0, cycles: 2, extraCycles: 0 },
-  0x39: { mnemonic: 'AND', addressingMode: AddressingMode.ABSOLUTE_Y, operandBytes: 2, cycles: 4, extraCycles: 1 },
-  0x3D: { mnemonic: 'AND', addressingMode: AddressingMode.ABSOLUTE_X, operandBytes: 2, cycles: 4, extraCycles: 1 },
-  0x3E: { mnemonic: 'ROL', addressingMode: AddressingMode.ABSOLUTE_X, operandBytes: 2, cycles: 7, extraCycles: 0 },
+  0x30: { opcode: 0x30, mnemonic: 'BMI', addressingMode: AddressingMode.RELATIVE, bytes: 1, cycles: 2, extraCycles: 1, description: 'Branch if Minus' },
+  0x31: { opcode: 0x31, mnemonic: 'AND', addressingMode: AddressingMode.INDIRECT_INDEXED, bytes: 1, cycles: 5, extraCycles: 1, description: 'Logical AND with Accumulator' },
+  0x35: { opcode: 0x35, mnemonic: 'AND', addressingMode: AddressingMode.ZERO_PAGE_X, bytes: 1, cycles: 4, extraCycles: 0, description: 'Logical AND with Accumulator' },
+  0x36: { opcode: 0x36, mnemonic: 'ROL', addressingMode: AddressingMode.ZERO_PAGE_X, bytes: 1, cycles: 6, extraCycles: 0, description: 'Rotate Left' },
+  0x38: { opcode: 0x38, mnemonic: 'SEC', addressingMode: AddressingMode.IMPLIED, bytes: 0, cycles: 2, extraCycles: 0, description: 'Set Carry Flag' },
+  0x39: { opcode: 0x39, mnemonic: 'AND', addressingMode: AddressingMode.ABSOLUTE_Y, bytes: 2, cycles: 4, extraCycles: 1, description: 'Logical AND with Accumulator' },
+  0x3D: { opcode: 0x3D, mnemonic: 'AND', addressingMode: AddressingMode.ABSOLUTE_X, bytes: 2, cycles: 4, extraCycles: 1, description: 'Logical AND with Accumulator' },
+  0x3E: { opcode: 0x3E, mnemonic: 'ROL', addressingMode: AddressingMode.ABSOLUTE_X, bytes: 2, cycles: 7, extraCycles: 0, description: 'Rotate Left' },
 
   // 0x4_
-  0x40: { mnemonic: 'RTI', addressingMode: AddressingMode.IMPLIED, operandBytes: 0, cycles: 6, extraCycles: 0 },
-  0x41: { mnemonic: 'EOR', addressingMode: AddressingMode.INDEXED_INDIRECT, operandBytes: 1, cycles: 6, extraCycles: 0 },
-  0x45: { mnemonic: 'EOR', addressingMode: AddressingMode.ZERO_PAGE, operandBytes: 1, cycles: 3, extraCycles: 0 },
-  0x46: { mnemonic: 'LSR', addressingMode: AddressingMode.ZERO_PAGE, operandBytes: 1, cycles: 5, extraCycles: 0 },
-  0x48: { mnemonic: 'PHA', addressingMode: AddressingMode.IMPLIED, operandBytes: 0, cycles: 3, extraCycles: 0 },
-  0x49: { mnemonic: 'EOR', addressingMode: AddressingMode.IMMEDIATE, operandBytes: 1, cycles: 2, extraCycles: 0 },
-  0x4A: { mnemonic: 'LSR', addressingMode: 'ACCUMULATOR', operandBytes: 0, cycles: 2, extraCycles: 0 },
-  0x4C: { mnemonic: 'JMP', addressingMode: AddressingMode.ABSOLUTE, operandBytes: 2, cycles: 3, extraCycles: 0 },
-  0x4D: { mnemonic: 'EOR', addressingMode: AddressingMode.ABSOLUTE, operandBytes: 2, cycles: 4, extraCycles: 0 },
-  0x4E: { mnemonic: 'LSR', addressingMode: AddressingMode.ABSOLUTE, operandBytes: 2, cycles: 6, extraCycles: 0 },
+  0x40: { opcode: 0x40, mnemonic: 'RTI', addressingMode: AddressingMode.IMPLIED, bytes: 0, cycles: 6, extraCycles: 0, description: 'Return from Interrupt' },
+  0x41: { opcode: 0x41, mnemonic: 'EOR', addressingMode: AddressingMode.INDEXED_INDIRECT, bytes: 1, cycles: 6, extraCycles: 0, description: 'Exclusive OR with Accumulator' },
+  0x45: { opcode: 0x45, mnemonic: 'EOR', addressingMode: AddressingMode.ZERO_PAGE, bytes: 1, cycles: 3, extraCycles: 0, description: 'Exclusive OR with Accumulator' },
+  0x46: { opcode: 0x46, mnemonic: 'LSR', addressingMode: AddressingMode.ZERO_PAGE, bytes: 1, cycles: 5, extraCycles: 0, description: 'Logical Shift Right' },
+  0x48: { opcode: 0x48, mnemonic: 'PHA', addressingMode: AddressingMode.IMPLIED, bytes: 0, cycles: 3, extraCycles: 0, description: 'Push Accumulator' },
+  0x49: { opcode: 0x49, mnemonic: 'EOR', addressingMode: AddressingMode.IMMEDIATE, bytes: 1, cycles: 2, extraCycles: 0, description: 'Exclusive OR with Accumulator' },
+  0x4A: { opcode: 0x4A, mnemonic: 'LSR', addressingMode: AddressingMode.ACCUMULATOR, bytes: 0, cycles: 2, extraCycles: 0, description: 'Logical Shift Right' },
+  0x4C: { opcode: 0x4C, mnemonic: 'JMP', addressingMode: AddressingMode.ABSOLUTE, bytes: 2, cycles: 3, extraCycles: 0, description: 'Jump' },
+  0x4D: { opcode: 0x4D, mnemonic: 'EOR', addressingMode: AddressingMode.ABSOLUTE, bytes: 2, cycles: 4, extraCycles: 0, description: 'Exclusive OR with Accumulator' },
+  0x4E: { opcode: 0x4E, mnemonic: 'LSR', addressingMode: AddressingMode.ABSOLUTE, bytes: 2, cycles: 6, extraCycles: 0, description: 'Logical Shift Right' },
 
   // 0x5_
-  0x50: { mnemonic: 'BVC', addressingMode: AddressingMode.RELATIVE, operandBytes: 1, cycles: 2, extraCycles: 1 },
-  0x51: { mnemonic: 'EOR', addressingMode: AddressingMode.INDIRECT_INDEXED, operandBytes: 1, cycles: 5, extraCycles: 1 },
-  0x55: { mnemonic: 'EOR', addressingMode: AddressingMode.ZERO_PAGE_X, operandBytes: 1, cycles: 4, extraCycles: 0 },
-  0x56: { mnemonic: 'LSR', addressingMode: AddressingMode.ZERO_PAGE_X, operandBytes: 1, cycles: 6, extraCycles: 0 },
-  0x58: { mnemonic: 'CLI', addressingMode: AddressingMode.IMPLIED, operandBytes: 0, cycles: 2, extraCycles: 0 },
-  0x59: { mnemonic: 'EOR', addressingMode: AddressingMode.ABSOLUTE_Y, operandBytes: 2, cycles: 4, extraCycles: 1 },
-  0x5D: { mnemonic: 'EOR', addressingMode: AddressingMode.ABSOLUTE_X, operandBytes: 2, cycles: 4, extraCycles: 1 },
-  0x5E: { mnemonic: 'LSR', addressingMode: AddressingMode.ABSOLUTE_X, operandBytes: 2, cycles: 7, extraCycles: 0 },
+  0x50: { opcode: 0x50, mnemonic: 'BVC', addressingMode: AddressingMode.RELATIVE, bytes: 1, cycles: 2, extraCycles: 1, description: 'Branch if Overflow Clear' },
+  0x51: { opcode: 0x51, mnemonic: 'EOR', addressingMode: AddressingMode.INDIRECT_INDEXED, bytes: 1, cycles: 5, extraCycles: 1, description: 'Exclusive OR with Accumulator' },
+  0x55: { opcode: 0x55, mnemonic: 'EOR', addressingMode: AddressingMode.ZERO_PAGE_X, bytes: 1, cycles: 4, extraCycles: 0, description: 'Exclusive OR with Accumulator' },
+  0x56: { opcode: 0x56, mnemonic: 'LSR', addressingMode: AddressingMode.ZERO_PAGE_X, bytes: 1, cycles: 6, extraCycles: 0, description: 'Logical Shift Right' },
+  0x58: { opcode: 0x58, mnemonic: 'CLI', addressingMode: AddressingMode.IMPLIED, bytes: 0, cycles: 2, extraCycles: 0, description: 'Clear Interrupt Flag' },
+  0x59: { opcode: 0x59, mnemonic: 'EOR', addressingMode: AddressingMode.ABSOLUTE_Y, bytes: 2, cycles: 4, extraCycles: 1, description: 'Exclusive OR with Accumulator' },
+  0x5D: { opcode: 0x5D, mnemonic: 'EOR', addressingMode: AddressingMode.ABSOLUTE_X, bytes: 2, cycles: 4, extraCycles: 1, description: 'Exclusive OR with Accumulator' },
+  0x5E: { opcode: 0x5E, mnemonic: 'LSR', addressingMode: AddressingMode.ABSOLUTE_X, bytes: 2, cycles: 7, extraCycles: 0, description: 'Logical Shift Right' },
 
   // 0x6_
-  0x60: { mnemonic: 'RTS', addressingMode: AddressingMode.IMPLIED, operandBytes: 0, cycles: 6, extraCycles: 0 },
-  0x61: { mnemonic: 'ADC', addressingMode: AddressingMode.INDEXED_INDIRECT, operandBytes: 1, cycles: 6, extraCycles: 0 },
-  0x65: { mnemonic: 'ADC', addressingMode: AddressingMode.ZERO_PAGE, operandBytes: 1, cycles: 3, extraCycles: 0 },
-  0x66: { mnemonic: 'ROR', addressingMode: AddressingMode.ZERO_PAGE, operandBytes: 1, cycles: 5, extraCycles: 0 },
-  0x68: { mnemonic: 'PLA', addressingMode: AddressingMode.IMPLIED, operandBytes: 0, cycles: 4, extraCycles: 0 },
-  0x69: { mnemonic: 'ADC', addressingMode: AddressingMode.IMMEDIATE, operandBytes: 1, cycles: 2, extraCycles: 0 },
-  0x6A: { mnemonic: 'ROR', addressingMode: 'ACCUMULATOR', operandBytes: 0, cycles: 2, extraCycles: 0 },
-  0x6C: { mnemonic: 'JMP', addressingMode: AddressingMode.INDIRECT, operandBytes: 2, cycles: 5, extraCycles: 0 },
-  0x6D: { mnemonic: 'ADC', addressingMode: AddressingMode.ABSOLUTE, operandBytes: 2, cycles: 4, extraCycles: 0 },
-  0x6E: { mnemonic: 'ROR', addressingMode: AddressingMode.ABSOLUTE, operandBytes: 2, cycles: 6, extraCycles: 0 },
+  0x60: { opcode: 0x60, mnemonic: 'RTS', addressingMode: AddressingMode.IMPLIED, bytes: 0, cycles: 6, extraCycles: 0, description: 'Return from Subroutine' },
+  0x61: { opcode: 0x61, mnemonic: 'ADC', addressingMode: AddressingMode.INDEXED_INDIRECT, bytes: 1, cycles: 6, extraCycles: 0, description: 'Add with Carry' },
+  0x65: { opcode: 0x65, mnemonic: 'ADC', addressingMode: AddressingMode.ZERO_PAGE, bytes: 1, cycles: 3, extraCycles: 0, description: 'Add with Carry' },
+  0x66: { opcode: 0x66, mnemonic: 'ROR', addressingMode: AddressingMode.ZERO_PAGE, bytes: 1, cycles: 5, extraCycles: 0, description: 'Rotate Right' },
+  0x68: { opcode: 0x68, mnemonic: 'PLA', addressingMode: AddressingMode.IMPLIED, bytes: 0, cycles: 4, extraCycles: 0, description: 'Pull Accumulator' },
+  0x69: { opcode: 0x69, mnemonic: 'ADC', addressingMode: AddressingMode.IMMEDIATE, bytes: 1, cycles: 2, extraCycles: 0, description: 'Add with Carry' },
+  0x6A: { opcode: 0x6A, mnemonic: 'ROR', addressingMode: AddressingMode.ACCUMULATOR, bytes: 0, cycles: 2, extraCycles: 0, description: 'Rotate Right' },
+  0x6C: { opcode: 0x6C, mnemonic: 'JMP', addressingMode: AddressingMode.INDIRECT, bytes: 2, cycles: 5, extraCycles: 0, description: 'Jump' },
+  0x6D: { opcode: 0x6D, mnemonic: 'ADC', addressingMode: AddressingMode.ABSOLUTE, bytes: 2, cycles: 4, extraCycles: 0, description: 'Add with Carry' },
+  0x6E: { opcode: 0x6E, mnemonic: 'ROR', addressingMode: AddressingMode.ABSOLUTE, bytes: 2, cycles: 6, extraCycles: 0, description: 'Rotate Right' },
 
   // 0x7_
-  0x70: { mnemonic: 'BVS', addressingMode: AddressingMode.RELATIVE, operandBytes: 1, cycles: 2, extraCycles: 1 },
-  0x71: { mnemonic: 'ADC', addressingMode: AddressingMode.INDIRECT_INDEXED, operandBytes: 1, cycles: 5, extraCycles: 1 },
-  0x75: { mnemonic: 'ADC', addressingMode: AddressingMode.ZERO_PAGE_X, operandBytes: 1, cycles: 4, extraCycles: 0 },
-  0x76: { mnemonic: 'ROR', addressingMode: AddressingMode.ZERO_PAGE_X, operandBytes: 1, cycles: 6, extraCycles: 0 },
-  0x78: { mnemonic: 'SEI', addressingMode: AddressingMode.IMPLIED, operandBytes: 0, cycles: 2, extraCycles: 0 },
-  0x79: { mnemonic: 'ADC', addressingMode: AddressingMode.ABSOLUTE_Y, operandBytes: 2, cycles: 4, extraCycles: 1 },
-  0x7D: { mnemonic: 'ADC', addressingMode: AddressingMode.ABSOLUTE_X, operandBytes: 2, cycles: 4, extraCycles: 1 },
-  0x7E: { mnemonic: 'ROR', addressingMode: AddressingMode.ABSOLUTE_X, operandBytes: 2, cycles: 7, extraCycles: 0 },
+  0x70: { opcode: 0x70, mnemonic: 'BVS', addressingMode: AddressingMode.RELATIVE, bytes: 1, cycles: 2, extraCycles: 1, description: 'Branch if Overflow Set' },
+  0x71: { opcode: 0x71, mnemonic: 'ADC', addressingMode: AddressingMode.INDIRECT_INDEXED, bytes: 1, cycles: 5, extraCycles: 1, description: 'Add with Carry' },
+  0x75: { opcode: 0x75, mnemonic: 'ADC', addressingMode: AddressingMode.ZERO_PAGE_X, bytes: 1, cycles: 4, extraCycles: 0, description: 'Add with Carry' },
+  0x76: { opcode: 0x76, mnemonic: 'ROR', addressingMode: AddressingMode.ZERO_PAGE_X, bytes: 1, cycles: 6, extraCycles: 0, description: 'Rotate Right' },
+  0x78: { opcode: 0x78, mnemonic: 'SEI', addressingMode: AddressingMode.IMPLIED, bytes: 0, cycles: 2, extraCycles: 0, description: 'Set Interrupt Flag' },
+  0x79: { opcode: 0x79, mnemonic: 'ADC', addressingMode: AddressingMode.ABSOLUTE_Y, bytes: 2, cycles: 4, extraCycles: 1, description: 'Add with Carry' },
+  0x7D: { opcode: 0x7D, mnemonic: 'ADC', addressingMode: AddressingMode.ABSOLUTE_X, bytes: 2, cycles: 4, extraCycles: 1, description: 'Add with Carry' },
+  0x7E: { opcode: 0x7E, mnemonic: 'ROR', addressingMode: AddressingMode.ABSOLUTE_X, bytes: 2, cycles: 7, extraCycles: 0, description: 'Rotate Right' },
 
   // 0x8_
-  0x81: { mnemonic: 'STA', addressingMode: AddressingMode.INDEXED_INDIRECT, operandBytes: 1, cycles: 6, extraCycles: 0 },
-  0x84: { mnemonic: 'STY', addressingMode: AddressingMode.ZERO_PAGE, operandBytes: 1, cycles: 3, extraCycles: 0 },
-  0x85: { mnemonic: 'STA', addressingMode: AddressingMode.ZERO_PAGE, operandBytes: 1, cycles: 3, extraCycles: 0 },
-  0x86: { mnemonic: 'STX', addressingMode: AddressingMode.ZERO_PAGE, operandBytes: 1, cycles: 3, extraCycles: 0 },
-  0x88: { mnemonic: 'DEY', addressingMode: AddressingMode.IMPLIED, operandBytes: 0, cycles: 2, extraCycles: 0 },
-  0x8A: { mnemonic: 'TXA', addressingMode: AddressingMode.IMPLIED, operandBytes: 0, cycles: 2, extraCycles: 0 },
-  0x8C: { mnemonic: 'STY', addressingMode: AddressingMode.ABSOLUTE, operandBytes: 2, cycles: 4, extraCycles: 0 },
-  0x8D: { mnemonic: 'STA', addressingMode: AddressingMode.ABSOLUTE, operandBytes: 2, cycles: 4, extraCycles: 0 },
-  0x8E: { mnemonic: 'STX', addressingMode: AddressingMode.ABSOLUTE, operandBytes: 2, cycles: 4, extraCycles: 0 },
+  0x81: { opcode: 0x81, mnemonic: 'STA', addressingMode: AddressingMode.INDEXED_INDIRECT, bytes: 1, cycles: 6, extraCycles: 0, description: 'Store Accumulator' },
+  0x84: { opcode: 0x84, mnemonic: 'STY', addressingMode: AddressingMode.ZERO_PAGE, bytes: 1, cycles: 3, extraCycles: 0, description: 'Store Y Register' },
+  0x85: { opcode: 0x85, mnemonic: 'STA', addressingMode: AddressingMode.ZERO_PAGE, bytes: 1, cycles: 3, extraCycles: 0, description: 'Store Accumulator' },
+  0x86: { opcode: 0x86, mnemonic: 'STX', addressingMode: AddressingMode.ZERO_PAGE, bytes: 1, cycles: 3, extraCycles: 0, description: 'Store X Register' },
+  0x88: { opcode: 0x88, mnemonic: 'DEY', addressingMode: AddressingMode.IMPLIED, bytes: 0, cycles: 2, extraCycles: 0, description: 'Decrement Y Register' },
+  0x8A: { opcode: 0x8A, mnemonic: 'TXA', addressingMode: AddressingMode.IMPLIED, bytes: 0, cycles: 2, extraCycles: 0, description: 'Transfer X to Accumulator' },
+  0x8C: { opcode: 0x8C, mnemonic: 'STY', addressingMode: AddressingMode.ABSOLUTE, bytes: 2, cycles: 4, extraCycles: 0, description: 'Store Y Register' },
+  0x8D: { opcode: 0x8D, mnemonic: 'STA', addressingMode: AddressingMode.ABSOLUTE, bytes: 2, cycles: 4, extraCycles: 0, description: 'Store Accumulator' },
+  0x8E: { opcode: 0x8E, mnemonic: 'STX', addressingMode: AddressingMode.ABSOLUTE, bytes: 2, cycles: 4, extraCycles: 0, description: 'Store X Register' },
 
   // 0x9_
-  0x90: { mnemonic: 'BCC', addressingMode: AddressingMode.RELATIVE, operandBytes: 1, cycles: 2, extraCycles: 1 },
-  0x91: { mnemonic: 'STA', addressingMode: AddressingMode.INDIRECT_INDEXED, operandBytes: 1, cycles: 6, extraCycles: 0 },
-  0x94: { mnemonic: 'STY', addressingMode: AddressingMode.ZERO_PAGE_X, operandBytes: 1, cycles: 4, extraCycles: 0 },
-  0x95: { mnemonic: 'STA', addressingMode: AddressingMode.ZERO_PAGE_X, operandBytes: 1, cycles: 4, extraCycles: 0 },
-  0x96: { mnemonic: 'STX', addressingMode: AddressingMode.ZERO_PAGE_Y, operandBytes: 1, cycles: 4, extraCycles: 0 },
-  0x98: { mnemonic: 'TYA', addressingMode: AddressingMode.IMPLIED, operandBytes: 0, cycles: 2, extraCycles: 0 },
-  0x99: { mnemonic: 'STA', addressingMode: AddressingMode.ABSOLUTE_Y, operandBytes: 2, cycles: 5, extraCycles: 0 },
-  0x9A: { mnemonic: 'TXS', addressingMode: AddressingMode.IMPLIED, operandBytes: 0, cycles: 2, extraCycles: 0 },
-  0x9D: { mnemonic: 'STA', addressingMode: AddressingMode.ABSOLUTE_X, operandBytes: 2, cycles: 5, extraCycles: 0 },
+  0x90: { opcode: 0x90, mnemonic: 'BCC', addressingMode: AddressingMode.RELATIVE, bytes: 1, cycles: 2, extraCycles: 1, description: 'Branch if Carry Clear' },
+  0x91: { opcode: 0x91, mnemonic: 'STA', addressingMode: AddressingMode.INDIRECT_INDEXED, bytes: 1, cycles: 6, extraCycles: 0, description: 'Store Accumulator' },
+  0x94: { opcode: 0x94, mnemonic: 'STY', addressingMode: AddressingMode.ZERO_PAGE_X, bytes: 1, cycles: 4, extraCycles: 0, description: 'Store Y Register' },
+  0x95: { opcode: 0x95, mnemonic: 'STA', addressingMode: AddressingMode.ZERO_PAGE_X, bytes: 1, cycles: 4, extraCycles: 0, description: 'Store Accumulator' },
+  0x96: { opcode: 0x96, mnemonic: 'STX', addressingMode: AddressingMode.ZERO_PAGE_Y, bytes: 1, cycles: 4, extraCycles: 0, description: 'Store X Register' },
+  0x98: { opcode: 0x98, mnemonic: 'TYA', addressingMode: AddressingMode.IMPLIED, bytes: 0, cycles: 2, extraCycles: 0, description: 'Transfer Y to Accumulator' },
+  0x99: { opcode: 0x99, mnemonic: 'STA', addressingMode: AddressingMode.ABSOLUTE_Y, bytes: 2, cycles: 5, extraCycles: 0, description: 'Store Accumulator' },
+  0x9A: { opcode: 0x9A, mnemonic: 'TXS', addressingMode: AddressingMode.IMPLIED, bytes: 0, cycles: 2, extraCycles: 0, description: 'Transfer X to Stack Pointer' },
+  0x9D: { opcode: 0x9D, mnemonic: 'STA', addressingMode: AddressingMode.ABSOLUTE_X, bytes: 2, cycles: 5, extraCycles: 0, description: 'Store Accumulator' },
 
   // 0xA_
-  0xA0: { mnemonic: 'LDY', addressingMode: AddressingMode.IMMEDIATE, operandBytes: 1, cycles: 2, extraCycles: 0 },
-  0xA1: { mnemonic: 'LDA', addressingMode: AddressingMode.INDEXED_INDIRECT, operandBytes: 1, cycles: 6, extraCycles: 0 },
-  0xA2: { mnemonic: 'LDX', addressingMode: AddressingMode.IMMEDIATE, operandBytes: 1, cycles: 2, extraCycles: 0 },
-  0xA4: { mnemonic: 'LDY', addressingMode: AddressingMode.ZERO_PAGE, operandBytes: 1, cycles: 3, extraCycles: 0 },
-  0xA5: { mnemonic: 'LDA', addressingMode: AddressingMode.ZERO_PAGE, operandBytes: 1, cycles: 3, extraCycles: 0 },
-  0xA6: { mnemonic: 'LDX', addressingMode: AddressingMode.ZERO_PAGE, operandBytes: 1, cycles: 3, extraCycles: 0 },
-  0xA8: { mnemonic: 'TAY', addressingMode: AddressingMode.IMPLIED, operandBytes: 0, cycles: 2, extraCycles: 0 },
-  0xA9: { mnemonic: 'LDA', addressingMode: AddressingMode.IMMEDIATE, operandBytes: 1, cycles: 2, extraCycles: 0 },
-  0xAA: { mnemonic: 'TAX', addressingMode: AddressingMode.IMPLIED, operandBytes: 0, cycles: 2, extraCycles: 0 },
-  0xAC: { mnemonic: 'LDY', addressingMode: AddressingMode.ABSOLUTE, operandBytes: 2, cycles: 4, extraCycles: 0 },
-  0xAD: { mnemonic: 'LDA', addressingMode: AddressingMode.ABSOLUTE, operandBytes: 2, cycles: 4, extraCycles: 0 },
-  0xAE: { mnemonic: 'LDX', addressingMode: AddressingMode.ABSOLUTE, operandBytes: 2, cycles: 4, extraCycles: 0 },
+  0xA0: { opcode: 0xA0, mnemonic: 'LDY', addressingMode: AddressingMode.IMMEDIATE, bytes: 1, cycles: 2, extraCycles: 0, description: 'Load Y Register' },
+  0xA1: { opcode: 0xA1, mnemonic: 'LDA', addressingMode: AddressingMode.INDEXED_INDIRECT, bytes: 1, cycles: 6, extraCycles: 0, description: 'Load Accumulator' },
+  0xA2: { opcode: 0xA2, mnemonic: 'LDX', addressingMode: AddressingMode.IMMEDIATE, bytes: 1, cycles: 2, extraCycles: 0, description: 'Load X Register' },
+  0xA4: { opcode: 0xA4, mnemonic: 'LDY', addressingMode: AddressingMode.ZERO_PAGE, bytes: 1, cycles: 3, extraCycles: 0, description: 'Load Y Register' },
+  0xA5: { opcode: 0xA5, mnemonic: 'LDA', addressingMode: AddressingMode.ZERO_PAGE, bytes: 1, cycles: 3, extraCycles: 0, description: 'Load Accumulator' },
+  0xA6: { opcode: 0xA6, mnemonic: 'LDX', addressingMode: AddressingMode.ZERO_PAGE, bytes: 1, cycles: 3, extraCycles: 0, description: 'Load X Register' },
+  0xA8: { opcode: 0xA8, mnemonic: 'TAY', addressingMode: AddressingMode.IMPLIED, bytes: 0, cycles: 2, extraCycles: 0, description: 'Transfer Accumulator to Y' },
+  0xA9: { opcode: 0xA9, mnemonic: 'LDA', addressingMode: AddressingMode.IMMEDIATE, bytes: 1, cycles: 2, extraCycles: 0, description: 'Load Accumulator' },
+  0xAA: { opcode: 0xAA, mnemonic: 'TAX', addressingMode: AddressingMode.IMPLIED, bytes: 0, cycles: 2, extraCycles: 0, description: 'Transfer Accumulator to X' },
+  0xAC: { opcode: 0xAC, mnemonic: 'LDY', addressingMode: AddressingMode.ABSOLUTE, bytes: 2, cycles: 4, extraCycles: 0, description: 'Load Y Register' },
+  0xAD: { opcode: 0xAD, mnemonic: 'LDA', addressingMode: AddressingMode.ABSOLUTE, bytes: 2, cycles: 4, extraCycles: 0, description: 'Load Accumulator' },
+  0xAE: { opcode: 0xAE, mnemonic: 'LDX', addressingMode: AddressingMode.ABSOLUTE, bytes: 2, cycles: 4, extraCycles: 0, description: 'Load X Register' },
 
   // 0xB_
-  0xB0: { mnemonic: 'BCS', addressingMode: AddressingMode.RELATIVE, operandBytes: 1, cycles: 2, extraCycles: 1 },
-  0xB1: { mnemonic: 'LDA', addressingMode: AddressingMode.INDIRECT_INDEXED, operandBytes: 1, cycles: 5, extraCycles: 1 },
-  0xB4: { mnemonic: 'LDY', addressingMode: AddressingMode.ZERO_PAGE_X, operandBytes: 1, cycles: 4, extraCycles: 0 },
-  0xB5: { mnemonic: 'LDA', addressingMode: AddressingMode.ZERO_PAGE_X, operandBytes: 1, cycles: 4, extraCycles: 0 },
-  0xB6: { mnemonic: 'LDX', addressingMode: AddressingMode.ZERO_PAGE_Y, operandBytes: 1, cycles: 4, extraCycles: 0 },
-  0xB8: { mnemonic: 'CLV', addressingMode: AddressingMode.IMPLIED, operandBytes: 0, cycles: 2, extraCycles: 0 },
-  0xB9: { mnemonic: 'LDA', addressingMode: AddressingMode.ABSOLUTE_Y, operandBytes: 2, cycles: 4, extraCycles: 1 },
-  0xBA: { mnemonic: 'TSX', addressingMode: AddressingMode.IMPLIED, operandBytes: 0, cycles: 2, extraCycles: 0 },
-  0xBC: { mnemonic: 'LDY', addressingMode: AddressingMode.ABSOLUTE_X, operandBytes: 2, cycles: 4, extraCycles: 1 },
-  0xBD: { mnemonic: 'LDA', addressingMode: AddressingMode.ABSOLUTE_X, operandBytes: 2, cycles: 4, extraCycles: 1 },
-  0xBE: { mnemonic: 'LDX', addressingMode: AddressingMode.ABSOLUTE_Y, operandBytes: 2, cycles: 4, extraCycles: 1 },
+  0xB0: { opcode: 0xB0, mnemonic: 'BCS', addressingMode: AddressingMode.RELATIVE, bytes: 1, cycles: 2, extraCycles: 1, description: 'Branch if Carry Set' },
+  0xB1: { opcode: 0xB1, mnemonic: 'LDA', addressingMode: AddressingMode.INDIRECT_INDEXED, bytes: 1, cycles: 5, extraCycles: 1, description: 'Load Accumulator' },
+  0xB4: { opcode: 0xB4, mnemonic: 'LDY', addressingMode: AddressingMode.ZERO_PAGE_X, bytes: 1, cycles: 4, extraCycles: 0, description: 'Load Y Register' },
+  0xB5: { opcode: 0xB5, mnemonic: 'LDA', addressingMode: AddressingMode.ZERO_PAGE_X, bytes: 1, cycles: 4, extraCycles: 0, description: 'Load Accumulator' },
+  0xB6: { opcode: 0xB6, mnemonic: 'LDX', addressingMode: AddressingMode.ZERO_PAGE_Y, bytes: 1, cycles: 4, extraCycles: 0, description: 'Load X Register' },
+  0xB8: { opcode: 0xB8, mnemonic: 'CLV', addressingMode: AddressingMode.IMPLIED, bytes: 0, cycles: 2, extraCycles: 0, description: 'Clear Overflow Flag' },
+  0xB9: { opcode: 0xB9, mnemonic: 'LDA', addressingMode: AddressingMode.ABSOLUTE_Y, bytes: 2, cycles: 4, extraCycles: 1, description: 'Load Accumulator' },
+  0xBA: { opcode: 0xBA, mnemonic: 'TSX', addressingMode: AddressingMode.IMPLIED, bytes: 0, cycles: 2, extraCycles: 0, description: 'Transfer Stack Pointer to X' },
+  0xBC: { opcode: 0xBC, mnemonic: 'LDY', addressingMode: AddressingMode.ABSOLUTE_X, bytes: 2, cycles: 4, extraCycles: 1, description: 'Load Y Register' },
+  0xBD: { opcode: 0xBD, mnemonic: 'LDA', addressingMode: AddressingMode.ABSOLUTE_X, bytes: 2, cycles: 4, extraCycles: 1, description: 'Load Accumulator' },
+  0xBE: { opcode: 0xBE, mnemonic: 'LDX', addressingMode: AddressingMode.ABSOLUTE_Y, bytes: 2, cycles: 4, extraCycles: 1, description: 'Load X Register' },
 
   // 0xC_
-  0xC0: { mnemonic: 'CPY', addressingMode: AddressingMode.IMMEDIATE, operandBytes: 1, cycles: 2, extraCycles: 0 },
-  0xC1: { mnemonic: 'CMP', addressingMode: AddressingMode.INDEXED_INDIRECT, operandBytes: 1, cycles: 6, extraCycles: 0 },
-  0xC4: { mnemonic: 'CPY', addressingMode: AddressingMode.ZERO_PAGE, operandBytes: 1, cycles: 3, extraCycles: 0 },
-  0xC5: { mnemonic: 'CMP', addressingMode: AddressingMode.ZERO_PAGE, operandBytes: 1, cycles: 3, extraCycles: 0 },
-  0xC6: { mnemonic: 'DEC', addressingMode: AddressingMode.ZERO_PAGE, operandBytes: 1, cycles: 5, extraCycles: 0 },
-  0xC8: { mnemonic: 'INY', addressingMode: AddressingMode.IMPLIED, operandBytes: 0, cycles: 2, extraCycles: 0 },
-  0xC9: { mnemonic: 'CMP', addressingMode: AddressingMode.IMMEDIATE, operandBytes: 1, cycles: 2, extraCycles: 0 },
-  0xCA: { mnemonic: 'DEX', addressingMode: AddressingMode.IMPLIED, operandBytes: 0, cycles: 2, extraCycles: 0 },
-  0xCC: { mnemonic: 'CPY', addressingMode: AddressingMode.ABSOLUTE, operandBytes: 2, cycles: 4, extraCycles: 0 },
-  0xCD: { mnemonic: 'CMP', addressingMode: AddressingMode.ABSOLUTE, operandBytes: 2, cycles: 4, extraCycles: 0 },
-  0xCE: { mnemonic: 'DEC', addressingMode: AddressingMode.ABSOLUTE, operandBytes: 2, cycles: 6, extraCycles: 0 },
+  0xC0: { opcode: 0xC0, mnemonic: 'CPY', addressingMode: AddressingMode.IMMEDIATE, bytes: 1, cycles: 2, extraCycles: 0, description: 'Compare Y Register' },
+  0xC1: { opcode: 0xC1, mnemonic: 'CMP', addressingMode: AddressingMode.INDEXED_INDIRECT, bytes: 1, cycles: 6, extraCycles: 0, description: 'Compare Accumulator' },
+  0xC4: { opcode: 0xC4, mnemonic: 'CPY', addressingMode: AddressingMode.ZERO_PAGE, bytes: 1, cycles: 3, extraCycles: 0, description: 'Compare Y Register' },
+  0xC5: { opcode: 0xC5, mnemonic: 'CMP', addressingMode: AddressingMode.ZERO_PAGE, bytes: 1, cycles: 3, extraCycles: 0, description: 'Compare Accumulator' },
+  0xC6: { opcode: 0xC6, mnemonic: 'DEC', addressingMode: AddressingMode.ZERO_PAGE, bytes: 1, cycles: 5, extraCycles: 0, description: 'Decrement Memory' },
+  0xC8: { opcode: 0xC8, mnemonic: 'INY', addressingMode: AddressingMode.IMPLIED, bytes: 0, cycles: 2, extraCycles: 0, description: 'Increment Y Register' },
+  0xC9: { opcode: 0xC9, mnemonic: 'CMP', addressingMode: AddressingMode.IMMEDIATE, bytes: 1, cycles: 2, extraCycles: 0, description: 'Compare Accumulator' },
+  0xCA: { opcode: 0xCA, mnemonic: 'DEX', addressingMode: AddressingMode.IMPLIED, bytes: 0, cycles: 2, extraCycles: 0, description: 'Decrement X Register' },
+  0xCC: { opcode: 0xCC, mnemonic: 'CPY', addressingMode: AddressingMode.ABSOLUTE, bytes: 2, cycles: 4, extraCycles: 0, description: 'Compare Y Register' },
+  0xCD: { opcode: 0xCD, mnemonic: 'CMP', addressingMode: AddressingMode.ABSOLUTE, bytes: 2, cycles: 4, extraCycles: 0, description: 'Compare Accumulator' },
+  0xCE: { opcode: 0xCE, mnemonic: 'DEC', addressingMode: AddressingMode.ABSOLUTE, bytes: 2, cycles: 6, extraCycles: 0, description: 'Decrement Memory' },
 
   // 0xD_
-  0xD0: { mnemonic: 'BNE', addressingMode: AddressingMode.RELATIVE, operandBytes: 1, cycles: 2, extraCycles: 1 },
-  0xD1: { mnemonic: 'CMP', addressingMode: AddressingMode.INDIRECT_INDEXED, operandBytes: 1, cycles: 5, extraCycles: 1 },
-  0xD5: { mnemonic: 'CMP', addressingMode: AddressingMode.ZERO_PAGE_X, operandBytes: 1, cycles: 4, extraCycles: 0 },
-  0xD6: { mnemonic: 'DEC', addressingMode: AddressingMode.ZERO_PAGE_X, operandBytes: 1, cycles: 6, extraCycles: 0 },
-  0xD8: { mnemonic: 'CLD', addressingMode: AddressingMode.IMPLIED, operandBytes: 0, cycles: 2, extraCycles: 0 },
-  0xD9: { mnemonic: 'CMP', addressingMode: AddressingMode.ABSOLUTE_Y, operandBytes: 2, cycles: 4, extraCycles: 1 },
-  0xDD: { mnemonic: 'CMP', addressingMode: AddressingMode.ABSOLUTE_X, operandBytes: 2, cycles: 4, extraCycles: 1 },
-  0xDE: { mnemonic: 'DEC', addressingMode: AddressingMode.ABSOLUTE_X, operandBytes: 2, cycles: 7, extraCycles: 0 },
+  0xD0: { opcode: 0xD0, mnemonic: 'BNE', addressingMode: AddressingMode.RELATIVE, bytes: 1, cycles: 2, extraCycles: 1, description: 'Branch if Not Equal' },
+  0xD1: { opcode: 0xD1, mnemonic: 'CMP', addressingMode: AddressingMode.INDIRECT_INDEXED, bytes: 1, cycles: 5, extraCycles: 1, description: 'Compare Accumulator' },
+  0xD5: { opcode: 0xD5, mnemonic: 'CMP', addressingMode: AddressingMode.ZERO_PAGE_X, bytes: 1, cycles: 4, extraCycles: 0, description: 'Compare Accumulator' },
+  0xD6: { opcode: 0xD6, mnemonic: 'DEC', addressingMode: AddressingMode.ZERO_PAGE_X, bytes: 1, cycles: 6, extraCycles: 0, description: 'Decrement Memory' },
+  0xD8: { opcode: 0xD8, mnemonic: 'CLD', addressingMode: AddressingMode.IMPLIED, bytes: 0, cycles: 2, extraCycles: 0, description: 'Clear Decimal Flag' },
+  0xD9: { opcode: 0xD9, mnemonic: 'CMP', addressingMode: AddressingMode.ABSOLUTE_Y, bytes: 2, cycles: 4, extraCycles: 1, description: 'Compare Accumulator' },
+  0xDD: { opcode: 0xDD, mnemonic: 'CMP', addressingMode: AddressingMode.ABSOLUTE_X, bytes: 2, cycles: 4, extraCycles: 1, description: 'Compare Accumulator' },
+  0xDE: { opcode: 0xDE, mnemonic: 'DEC', addressingMode: AddressingMode.ABSOLUTE_X, bytes: 2, cycles: 7, extraCycles: 0, description: 'Decrement Memory' },
 
   // 0xE_
-  0xE0: { mnemonic: 'CPX', addressingMode: AddressingMode.IMMEDIATE, operandBytes: 1, cycles: 2, extraCycles: 0 },
-  0xE1: { mnemonic: 'SBC', addressingMode: AddressingMode.INDEXED_INDIRECT, operandBytes: 1, cycles: 6, extraCycles: 0 },
-  0xE4: { mnemonic: 'CPX', addressingMode: AddressingMode.ZERO_PAGE, operandBytes: 1, cycles: 3, extraCycles: 0 },
-  0xE5: { mnemonic: 'SBC', addressingMode: AddressingMode.ZERO_PAGE, operandBytes: 1, cycles: 3, extraCycles: 0 },
-  0xE6: { mnemonic: 'INC', addressingMode: AddressingMode.ZERO_PAGE, operandBytes: 1, cycles: 5, extraCycles: 0 },
-  0xE8: { mnemonic: 'INX', addressingMode: AddressingMode.IMPLIED, operandBytes: 0, cycles: 2, extraCycles: 0 },
-  0xE9: { mnemonic: 'SBC', addressingMode: AddressingMode.IMMEDIATE, operandBytes: 1, cycles: 2, extraCycles: 0 },
-  0xEA: { mnemonic: 'NOP', addressingMode: AddressingMode.IMPLIED, operandBytes: 0, cycles: 2, extraCycles: 0 },
-  0xEC: { mnemonic: 'CPX', addressingMode: AddressingMode.ABSOLUTE, operandBytes: 2, cycles: 4, extraCycles: 0 },
-  0xED: { mnemonic: 'SBC', addressingMode: AddressingMode.ABSOLUTE, operandBytes: 2, cycles: 4, extraCycles: 0 },
-  0xEE: { mnemonic: 'INC', addressingMode: AddressingMode.ABSOLUTE, operandBytes: 2, cycles: 6, extraCycles: 0 },
+  0xE0: { opcode: 0xE0, mnemonic: 'CPX', addressingMode: AddressingMode.IMMEDIATE, bytes: 1, cycles: 2, extraCycles: 0, description: 'Compare X Register' },
+  0xE1: { opcode: 0xE1, mnemonic: 'SBC', addressingMode: AddressingMode.INDEXED_INDIRECT, bytes: 1, cycles: 6, extraCycles: 0, description: 'Subtract with Carry' },
+  0xE4: { opcode: 0xE4, mnemonic: 'CPX', addressingMode: AddressingMode.ZERO_PAGE, bytes: 1, cycles: 3, extraCycles: 0, description: 'Compare X Register' },
+  0xE5: { opcode: 0xE5, mnemonic: 'SBC', addressingMode: AddressingMode.ZERO_PAGE, bytes: 1, cycles: 3, extraCycles: 0, description: 'Subtract with Carry' },
+  0xE6: { opcode: 0xE6, mnemonic: 'INC', addressingMode: AddressingMode.ZERO_PAGE, bytes: 1, cycles: 5, extraCycles: 0, description: 'Increment Memory' },
+  0xE8: { opcode: 0xE8, mnemonic: 'INX', addressingMode: AddressingMode.IMPLIED, bytes: 0, cycles: 2, extraCycles: 0, description: 'Increment X Register' },
+  0xE9: { opcode: 0xE9, mnemonic: 'SBC', addressingMode: AddressingMode.IMMEDIATE, bytes: 1, cycles: 2, extraCycles: 0, description: 'Subtract with Carry' },
+  0xEA: { opcode: 0xEA, mnemonic: 'NOP', addressingMode: AddressingMode.IMPLIED, bytes: 0, cycles: 2, extraCycles: 0, description: 'No Operation' },
+  0xEC: { opcode: 0xEC, mnemonic: 'CPX', addressingMode: AddressingMode.ABSOLUTE, bytes: 2, cycles: 4, extraCycles: 0, description: 'Compare X Register' },
+  0xED: { opcode: 0xED, mnemonic: 'SBC', addressingMode: AddressingMode.ABSOLUTE, bytes: 2, cycles: 4, extraCycles: 0, description: 'Subtract with Carry' },
+  0xEE: { opcode: 0xEE, mnemonic: 'INC', addressingMode: AddressingMode.ABSOLUTE, bytes: 2, cycles: 6, extraCycles: 0, description: 'Increment Memory' },
 
   // 0xF_
-  0xF0: { mnemonic: 'BEQ', addressingMode: AddressingMode.RELATIVE, operandBytes: 1, cycles: 2, extraCycles: 1 },
-  0xF1: { mnemonic: 'SBC', addressingMode: AddressingMode.INDIRECT_INDEXED, operandBytes: 1, cycles: 5, extraCycles: 1 },
-  0xF5: { mnemonic: 'SBC', addressingMode: AddressingMode.ZERO_PAGE_X, operandBytes: 1, cycles: 4, extraCycles: 0 },
-  0xF6: { mnemonic: 'INC', addressingMode: AddressingMode.ZERO_PAGE_X, operandBytes: 1, cycles: 6, extraCycles: 0 },
-  0xF8: { mnemonic: 'SED', addressingMode: AddressingMode.IMPLIED, operandBytes: 0, cycles: 2, extraCycles: 0 },
-  0xF9: { mnemonic: 'SBC', addressingMode: AddressingMode.ABSOLUTE_Y, operandBytes: 2, cycles: 4, extraCycles: 1 },
-  0xFD: { mnemonic: 'SBC', addressingMode: AddressingMode.ABSOLUTE_X, operandBytes: 2, cycles: 4, extraCycles: 1 },
-  0xFE: { mnemonic: 'INC', addressingMode: AddressingMode.ABSOLUTE_X, operandBytes: 2, cycles: 7, extraCycles: 0 }
+  0xF0: { opcode: 0xF0, mnemonic: 'BEQ', addressingMode: AddressingMode.RELATIVE, bytes: 1, cycles: 2, extraCycles: 1, description: 'Branch if Equal' },
+  0xF1: { opcode: 0xF1, mnemonic: 'SBC', addressingMode: AddressingMode.INDIRECT_INDEXED, bytes: 1, cycles: 5, extraCycles: 1, description: 'Subtract with Carry' },
+  0xF5: { opcode: 0xF5, mnemonic: 'SBC', addressingMode: AddressingMode.ZERO_PAGE_X, bytes: 1, cycles: 4, extraCycles: 0, description: 'Subtract with Carry' },
+  0xF6: { opcode: 0xF6, mnemonic: 'INC', addressingMode: AddressingMode.ZERO_PAGE_X, bytes: 1, cycles: 6, extraCycles: 0, description: 'Increment Memory' },
+  0xF8: { opcode: 0xF8, mnemonic: 'SED', addressingMode: AddressingMode.IMPLIED, bytes: 0, cycles: 2, extraCycles: 0, description: 'Set Decimal Flag' },
+  0xF9: { opcode: 0xF9, mnemonic: 'SBC', addressingMode: AddressingMode.ABSOLUTE_Y, bytes: 2, cycles: 4, extraCycles: 1, description: 'Subtract with Carry' },
+  0xFD: { opcode: 0xFD, mnemonic: 'SBC', addressingMode: AddressingMode.ABSOLUTE_X, bytes: 2, cycles: 4, extraCycles: 1, description: 'Subtract with Carry' },
+  0xFE: { opcode: 0xFE, mnemonic: 'INC', addressingMode: AddressingMode.ABSOLUTE_X, bytes: 2, cycles: 7, extraCycles: 0, description: 'Increment Memory' },
 };
 
 /**
@@ -595,8 +604,8 @@ export class InstructionStats {
   /**
    * 주소 지정 모드별 개수 통계
    */
-  public static getAddressingModeStats(): Record<AddressingMode, number> {
-    const stats: Record<AddressingMode, number> = {} as any;
+  public static getAddressingModeStats(): Record<string, number> {
+    const stats: Record<string, number> = {};
     
     for (const info of Object.values(INSTRUCTION_TABLE)) {
       const mode = info.addressingMode;

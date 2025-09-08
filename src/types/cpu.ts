@@ -2,6 +2,8 @@
  * 6502 CPU Type Definitions
  */
 
+import type { MemoryInterface } from './memory';
+
 // CPU Status flags
 export interface StatusFlags {
   carry: boolean;        // C - Carry flag
@@ -164,6 +166,15 @@ export interface InstructionInfo {
   extraCycles?: number;
 }
 
+// 간단한 opcode 테이블 엔트리 타입
+export interface OpcodeTableEntry {
+  mnemonic: string;
+  addressingMode: AddressingMode;
+  cycles: number;
+  bytes: number;
+  extraCycles?: number;
+}
+
 // Opcode to instruction mapping
 export type OpcodeMap = Map<number, InstructionInfo> & {
   [key: number]: InstructionInfo;
@@ -233,4 +244,9 @@ export interface DisassemblyInfo {
   bytes: number;
   cycles: number;
   fullInstruction?: string;
+  isValid?: boolean;
+  addressingMode?: AddressingMode;
+  effectiveAddress?: number;
+  symbolName?: string;
+  comment?: string;
 }

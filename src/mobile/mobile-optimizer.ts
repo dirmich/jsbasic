@@ -139,7 +139,7 @@ export class MobileOptimizer extends EventEmitter {
    * 이벤트 리스너 설정
    */
   private setupEventListeners(): void {
-    const win = globalThis.window;
+    const win = globalThis.window as typeof window | undefined;
     if (!win) return;
 
     // 화면 방향 변경 감지
@@ -151,8 +151,8 @@ export class MobileOptimizer extends EventEmitter {
 
       if ('onorientationchange' in win) {
         win.addEventListener('orientationchange', orientationHandler);
-      } else if (win.screen && 'orientation' in win.screen && win.screen.orientation) {
-        win.screen.orientation.addEventListener('change', orientationHandler);
+      } else if ((win as any).screen && 'orientation' in (win as any).screen && (win as any).screen.orientation) {
+        (win as any).screen.orientation.addEventListener('change', orientationHandler);
       }
     }
 

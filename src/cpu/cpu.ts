@@ -659,4 +659,23 @@ export class CPU6502 extends EventEmitter<CPUEvents> implements CPUInterface {
     };
   }
 
+  /**
+   * P 레지스터를 바이트 값으로 반환
+   */
+  public getRegisterP(): number {
+    let value = 0;
+    const flags = this._registers.P;
+    
+    if (flags.carry) value |= 0x01;
+    if (flags.zero) value |= 0x02;
+    if (flags.interrupt) value |= 0x04;
+    if (flags.decimal) value |= 0x08;
+    if (flags.break) value |= 0x10;
+    if (flags.unused) value |= 0x20;
+    if (flags.overflow) value |= 0x40;
+    if (flags.negative) value |= 0x80;
+    
+    return value;
+  }
+
 }
