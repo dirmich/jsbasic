@@ -350,49 +350,50 @@ export class AddressingModes {
         return 'A';
         
       case 'IMMEDIATE':
-        return `#$${formatHex(operands[0])}`;
+        return `#$${formatHex(operands[0] ?? 0)}`;
         
       case 'ZERO_PAGE':
-        return `$${formatHex(operands[0])}`;
+        return `$${formatHex(operands[0] ?? 0)}`;
         
       case 'ZERO_PAGE_X':
-        return `$${formatHex(operands[0])},X`;
+        return `$${formatHex(operands[0] ?? 0)},X`;
         
       case 'ZERO_PAGE_Y':
-        return `$${formatHex(operands[0])},Y`;
+        return `$${formatHex(operands[0] ?? 0)},Y`;
         
       case 'ABSOLUTE': {
-        const addr = operands[0] | (operands[1] << 8);
+        const addr = (operands[0] ?? 0) | ((operands[1] ?? 0) << 8);
         return `$${formatHex(addr, 4)}`;
       }
       
       case 'ABSOLUTE_X': {
-        const addr = operands[0] | (operands[1] << 8);
+        const addr = (operands[0] ?? 0) | ((operands[1] ?? 0) << 8);
         return `$${formatHex(addr, 4)},X`;
       }
       
       case 'ABSOLUTE_Y': {
-        const addr = operands[0] | (operands[1] << 8);
+        const addr = (operands[0] ?? 0) | ((operands[1] ?? 0) << 8);
         return `$${formatHex(addr, 4)},Y`;
       }
       
       case 'RELATIVE': {
         // 상대 주소를 절대 주소로 변환하여 표시
-        const offset = operands[0] > 127 ? operands[0] - 256 : operands[0];
+        const operand = operands[0] ?? 0;
+        const offset = operand > 127 ? operand - 256 : operand;
         const target = (this.cpu.registers.PC + offset) & 0xFFFF;
         return `$${formatHex(target, 4)}`;
       }
       
       case 'INDIRECT': {
-        const addr = operands[0] | (operands[1] << 8);
+        const addr = (operands[0] ?? 0) | ((operands[1] ?? 0) << 8);
         return `($${formatHex(addr, 4)})`;
       }
       
       case 'INDEXED_INDIRECT':
-        return `($${formatHex(operands[0])},X)`;
+        return `($${formatHex(operands[0] ?? 0)},X)`;
         
       case 'INDIRECT_INDEXED':
-        return `($${formatHex(operands[0])}),Y`;
+        return `($${formatHex(operands[0] ?? 0)}),Y`;
         
       default:
         return '???';
