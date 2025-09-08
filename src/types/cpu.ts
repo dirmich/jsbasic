@@ -72,7 +72,7 @@ export interface CPU6502 {
   // Core operations
   reset(): void;
   step(): number;
-  execute(instruction: Instruction, operand?: number): void;
+  execute(maxCycles: number): number;
   
   // Memory operations
   read(address: number): number;
@@ -85,8 +85,8 @@ export interface CPU6502 {
   pullWord(): number;
   
   // Flag operations
-  setFlag(flag: keyof StatusFlags, value: boolean): void;
-  getFlag(flag: keyof StatusFlags): boolean;
+  setFlag(flag: CPUFlag, value: boolean): void;
+  getFlag(flag: CPUFlag): boolean;
   
   // Interrupt handling
   irq(): void;
@@ -135,6 +135,7 @@ export enum CPUFlag {
 export enum InterruptType {
   IRQ = 'IRQ',
   NMI = 'NMI',
+  BRK = 'BRK',
   RESET = 'RESET'
 }
 

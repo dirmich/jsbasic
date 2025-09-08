@@ -1,11 +1,16 @@
 import type {
   CPUInterface,
   CPURegisters,
-  CPUState,
-  CPUFlag,
-  InterruptType,
+  CPUStateInfo,
+  StatusFlags,
   CPUOptions,
   CPUEvents
+} from '@/types/cpu';
+
+import {
+  CPUState,
+  InterruptType,
+  CPUFlag
 } from '@/types/cpu';
 import type { MemoryInterface } from '@/types/memory';
 import { EventEmitter } from '../utils/events.js';
@@ -59,8 +64,11 @@ export class CPU6502 extends EventEmitter<CPUEvents> implements CPUInterface {
     
     this.memory = memory;
     this.options = {
+      clockSpeed: options.clockSpeed ?? 1000000, // 1MHz default
       frequencyMHz: options.frequencyMHz ?? 1.0,
+      enableLogging: options.enableLogging ?? false,
       enableDebug: options.enableDebug ?? false,
+      enableBreakpoints: options.enableBreakpoints ?? false,
       strictMode: options.strictMode ?? true,
       cycleAccurate: options.cycleAccurate ?? true
     };
@@ -72,7 +80,16 @@ export class CPU6502 extends EventEmitter<CPUEvents> implements CPUInterface {
       Y: 0,
       SP: 0xFF,
       PC: 0,
-      P: 0x20 // 인터럽트 비활성화, 미사용 비트 설정
+      P: { // StatusFlags 객체로 초기화
+        carry: false,
+        zero: false,
+        interrupt: true, // 인터럽트 비활성화
+        decimal: false,
+        break: false,
+        unused: true, // 미사용 비트 설정
+        overflow: false,
+        negative: false
+      }
     };
     
     // 명령어 세트와 주소 지정 모드 초기화
@@ -108,7 +125,16 @@ export class CPU6502 extends EventEmitter<CPUEvents> implements CPUInterface {
     this._registers.SP = 0xFF;
     
     // 상태 레지스터: 인터럽트 비활성화, 미사용 비트 설정
-    this._registers.P = 0x24; // I=1, U=1
+    this._registers.P = {
+      carry: false,
+      zero: false,
+      interrupt: true, // I=1
+      decimal: false,
+      break: false,
+      unused: true, // U=1
+      overflow: false,
+      negative: false
+    };
     
     // 카운터 및 상태 초기화
     this.cycleCount = 0;
@@ -166,18 +192,14 @@ export class CPU6502 extends EventEmitter<CPUEvents> implements CPUInterface {
       }
       
       // 실행 이벤트 발생
-      this.emit('step', {
-        pc: startPC,
-        opcode,
-        cycles,
-        registers: this.registers
-      });
+      this.emit('step', cycles);
       
       return cycles;
       
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
       const cpuError = new CPUError(
-        `Execution failed at PC=${formatHex(startPC, 4)}, opcode=${formatHex(opcode, 2)}: ${error.message}`,
+        `Execution failed at PC=${formatHex(startPC, 4)}, opcode=${formatHex(opcode, 2)}: ${errorMessage}`,
         'EXECUTION_ERROR',
         startPC
       );
@@ -250,23 +272,12 @@ export class CPU6502 extends EventEmitter<CPUEvents> implements CPUInterface {
   /**
    * 현재 CPU 상태 반환
    */
-  public getState(): CPUState {
+  public getState(): CPUStateInfo {
     return {
+      state: this.isHalted ? CPUState.HALTED : CPUState.RUNNING,
       registers: this.registers,
-      flags: {
-        carry: this.getFlag('CARRY'),
-        zero: this.getFlag('ZERO'),
-        interrupt: this.getFlag('INTERRUPT'),
-        decimal: this.getFlag('DECIMAL'),
-        break: this.getFlag('BREAK'),
-        unused: this.getFlag('UNUSED'),
-        overflow: this.getFlag('OVERFLOW'),
-        negative: this.getFlag('NEGATIVE')
-      },
-      cycleCount: this.cycleCount,
-      instructionCount: this.instructionCount,
-      isHalted: this.isHalted,
-      breakpoints: Array.from(this.breakpoints)
+      cycles: this.cycleCount,
+      instructionCount: this.instructionCount
     };
   }
   
@@ -368,39 +379,32 @@ export class CPU6502 extends EventEmitter<CPUEvents> implements CPUInterface {
    * 플래그 값 확인
    */
   public getFlag(flag: CPUFlag): boolean {
-    const flagMasks = {
-      CARRY: 0x01,
-      ZERO: 0x02,
-      INTERRUPT: 0x04,
-      DECIMAL: 0x08,
-      BREAK: 0x10,
-      UNUSED: 0x20,
-      OVERFLOW: 0x40,
-      NEGATIVE: 0x80
-    };
-    
-    return (this._registers.P & flagMasks[flag]) !== 0;
+    switch (flag) {
+      case 'C': return this._registers.P.carry;
+      case 'Z': return this._registers.P.zero;
+      case 'I': return this._registers.P.interrupt;
+      case 'D': return this._registers.P.decimal;
+      case 'B': return this._registers.P.break;
+      case 'U': return this._registers.P.unused;
+      case 'V': return this._registers.P.overflow;
+      case 'N': return this._registers.P.negative;
+      default: return false;
+    }
   }
   
   /**
    * 플래그 값 설정
    */
   public setFlag(flag: CPUFlag, value: boolean): void {
-    const flagMasks = {
-      CARRY: 0x01,
-      ZERO: 0x02,
-      INTERRUPT: 0x04,
-      DECIMAL: 0x08,
-      BREAK: 0x10,
-      UNUSED: 0x20,
-      OVERFLOW: 0x40,
-      NEGATIVE: 0x80
-    };
-    
-    if (value) {
-      this._registers.P |= flagMasks[flag];
-    } else {
-      this._registers.P &= ~flagMasks[flag];
+    switch (flag) {
+      case 'C': this._registers.P.carry = value; break;
+      case 'Z': this._registers.P.zero = value; break;
+      case 'I': this._registers.P.interrupt = value; break;
+      case 'D': this._registers.P.decimal = value; break;
+      case 'B': this._registers.P.break = value; break;
+      case 'U': this._registers.P.unused = value; break;
+      case 'V': this._registers.P.overflow = value; break;
+      case 'N': this._registers.P.negative = value; break;
     }
   }
   
@@ -408,8 +412,24 @@ export class CPU6502 extends EventEmitter<CPUEvents> implements CPUInterface {
    * Zero 및 Negative 플래그 자동 설정
    */
   public setZeroNegativeFlags(value: number): void {
-    this.setFlag('ZERO', (value & 0xFF) === 0);
-    this.setFlag('NEGATIVE', (value & 0x80) !== 0);
+    this.setFlag(CPUFlag.ZERO, (value & 0xFF) === 0);
+    this.setFlag(CPUFlag.NEGATIVE, (value & 0x80) !== 0);
+  }
+
+  /**
+   * StatusFlags 객체를 8비트 숫자로 변환
+   */
+  private statusFlagsToNumber(flags: StatusFlags): number {
+    return (
+      (flags.carry ? 0x01 : 0) |
+      (flags.zero ? 0x02 : 0) |
+      (flags.interrupt ? 0x04 : 0) |
+      (flags.decimal ? 0x08 : 0) |
+      (flags.break ? 0x10 : 0) |
+      (flags.unused ? 0x20 : 0) |
+      (flags.overflow ? 0x40 : 0) |
+      (flags.negative ? 0x80 : 0)
+    );
   }
   
   // =================================================================
@@ -459,10 +479,10 @@ export class CPU6502 extends EventEmitter<CPUEvents> implements CPUInterface {
   private handleNMI(): number {
     // PC와 P 레지스터 스택에 저장
     this.pushWord(this._registers.PC);
-    this.pushByte(this._registers.P & ~0x10); // B 플래그 클리어
+    this.pushByte(this.statusFlagsToNumber(this._registers.P) & ~0x10); // B 플래그 클리어
     
     // 인터럽트 비활성화
-    this.setFlag('INTERRUPT', true);
+    this.setFlag(CPUFlag.INTERRUPT, true);
     
     // NMI 벡터로 점프
     this._registers.PC = this.readWord(0xFFFA);
@@ -473,10 +493,10 @@ export class CPU6502 extends EventEmitter<CPUEvents> implements CPUInterface {
   private handleIRQ(): number {
     // PC와 P 레지스터 스택에 저장
     this.pushWord(this._registers.PC);
-    this.pushByte(this._registers.P & ~0x10); // B 플래그 클리어
+    this.pushByte(this.statusFlagsToNumber(this._registers.P) & ~0x10); // B 플래그 클리어
     
     // 인터럽트 비활성화
-    this.setFlag('INTERRUPT', true);
+    this.setFlag(CPUFlag.INTERRUPT, true);
     
     // IRQ 벡터로 점프
     this._registers.PC = this.readWord(0xFFFE);
@@ -492,7 +512,7 @@ export class CPU6502 extends EventEmitter<CPUEvents> implements CPUInterface {
     this.pushByte(this._registers.P | 0x10); // B 플래그 설정
     
     // 인터럽트 비활성화
-    this.setFlag('INTERRUPT', true);
+    this.setFlag(CPUFlag.INTERRUPT, true);
     
     // IRQ/BRK 벡터로 점프
     this._registers.PC = this.readWord(0xFFFE);
