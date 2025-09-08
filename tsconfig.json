@@ -30,7 +30,6 @@
 
     // Output configuration
     "outDir": "./dist",
-    "rootDir": "./src",
     "sourceMap": true,
     "declaration": true,
     "declarationMap": true,

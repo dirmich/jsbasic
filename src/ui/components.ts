@@ -6,6 +6,35 @@
 
 import { EventEmitter } from '../utils/events.js';
 
+// DOM 유틸리티 함수들
+function safeCreateElement(tagName: string): HTMLElement {
+  if (typeof document !== 'undefined') {
+    return safeCreateElement(tagName);
+  }
+  
+  // Node.js 환경에서는 더미 객체 반환
+  return {
+    id: '',
+    className: '',
+    style: {},
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    appendChild: () => {},
+    removeChild: () => {},
+    querySelector: () => null,
+    querySelectorAll: () => [],
+    innerHTML: '',
+    textContent: '',
+    tagName: tagName.toUpperCase(),
+    type: '',
+    value: '',
+    checked: false,
+    onclick: null,
+    oninput: null,
+    onchange: null
+  } as any;
+}
+
 /**
  * 기본 UI 컴포넌트 인터페이스
  */
@@ -41,7 +70,8 @@ export abstract class BaseComponent extends EventEmitter<ComponentEvents> implem
     elementTag: string = 'div'
   ) {
     super();
-    this._element = document.createElement(elementTag);
+    
+    this._element = safeCreateElement(elementTag);
     this._element.id = id;
     this._element.className = `component component-${id}`;
   }
@@ -107,21 +137,21 @@ export class TerminalComponent extends BaseComponent {
 
   private createElements(): void {
     // 출력 영역
-    this.outputElement = document.createElement('div');
+    this.outputElement = safeCreateElement('div');
     this.outputElement.className = 'terminal-output';
     this.outputElement.id = `${this.id}-output`;
 
     // 입력 영역 컨테이너
-    const inputContainer = document.createElement('div');
+    const inputContainer = safeCreateElement('div');
     inputContainer.className = 'terminal-input-container';
 
     // 프롬프트
-    this.promptElement = document.createElement('span');
+    this.promptElement = safeCreateElement('span');
     this.promptElement.className = 'terminal-prompt';
     this.promptElement.textContent = 'READY\n>';
 
     // 입력 필드
-    this.inputElement = document.createElement('input');
+    this.inputElement = safeCreateElement('input');
     this.inputElement.type = 'text';
     this.inputElement.className = 'terminal-input';
     this.inputElement.id = `${this.id}-input`;
@@ -198,7 +228,7 @@ export class TerminalComponent extends BaseComponent {
   }
 
   appendOutput(text: string, type: 'output' | 'error' | 'input' = 'output'): void {
-    const line = document.createElement('div');
+    const line = safeCreateElement('div');
     line.className = `terminal-line terminal-${type}`;
     line.textContent = text;
     this.outputElement.appendChild(line);
@@ -235,19 +265,19 @@ export class MemoryViewerComponent extends BaseComponent {
 
   private createElements(): void {
     // 제어 패널
-    const controls = document.createElement('div');
+    const controls = safeCreateElement('div');
     controls.className = 'memory-controls';
 
-    const addressLabel = document.createElement('label');
+    const addressLabel = safeCreateElement('label');
     addressLabel.textContent = 'Address: $';
 
-    this.addressInput = document.createElement('input');
+    this.addressInput = safeCreateElement('input');
     this.addressInput.type = 'text';
     this.addressInput.value = '0000';
     this.addressInput.maxLength = 4;
     this.addressInput.className = 'address-input';
 
-    const refreshButton = document.createElement('button');
+    const refreshButton = safeCreateElement('button');
     refreshButton.textContent = 'Refresh';
     refreshButton.onclick = () => this.refresh();
 
@@ -256,7 +286,7 @@ export class MemoryViewerComponent extends BaseComponent {
     controls.appendChild(refreshButton);
 
     // 메모리 테이블
-    this.tableElement = document.createElement('table');
+    this.tableElement = safeCreateElement('table');
     this.tableElement.className = 'memory-table';
 
     this._element.appendChild(controls);
@@ -368,28 +398,28 @@ export class CPUStatusComponent extends BaseComponent {
   }
 
   private createElements(): void {
-    const title = document.createElement('h3');
+    const title = safeCreateElement('h3');
     title.textContent = '6502 CPU Status';
     this._element.appendChild(title);
 
     // 레지스터 섹션
-    const registersSection = document.createElement('div');
+    const registersSection = safeCreateElement('div');
     registersSection.className = 'registers-section';
     
-    const registersTitle = document.createElement('h4');
+    const registersTitle = safeCreateElement('h4');
     registersTitle.textContent = 'Registers';
     registersSection.appendChild(registersTitle);
 
     const registers = ['A', 'X', 'Y', 'SP', 'PC'];
     registers.forEach(reg => {
-      const regDiv = document.createElement('div');
+      const regDiv = safeCreateElement('div');
       regDiv.className = 'register';
       
-      const label = document.createElement('span');
+      const label = safeCreateElement('span');
       label.className = 'register-label';
       label.textContent = `${reg}:`;
       
-      const value = document.createElement('span');
+      const value = safeCreateElement('span');
       value.className = 'register-value';
       value.id = `${this.id}-${reg}`;
       value.textContent = '$00';
@@ -402,10 +432,10 @@ export class CPUStatusComponent extends BaseComponent {
     });
 
     // 플래그 섹션
-    const flagsSection = document.createElement('div');
+    const flagsSection = safeCreateElement('div');
     flagsSection.className = 'flags-section';
     
-    const flagsTitle = document.createElement('h4');
+    const flagsTitle = safeCreateElement('h4');
     flagsTitle.textContent = 'Status Flags';
     flagsSection.appendChild(flagsTitle);
 
@@ -420,15 +450,15 @@ export class CPUStatusComponent extends BaseComponent {
     ];
 
     flags.forEach(flag => {
-      const flagDiv = document.createElement('div');
+      const flagDiv = safeCreateElement('div');
       flagDiv.className = 'flag';
       
-      const checkbox = document.createElement('input');
+      const checkbox = safeCreateElement('input');
       checkbox.type = 'checkbox';
       checkbox.disabled = true;
       checkbox.id = `${this.id}-flag-${flag.name}`;
       
-      const label = document.createElement('label');
+      const label = safeCreateElement('label');
       label.htmlFor = checkbox.id;
       label.textContent = `${flag.name} (${flag.description})`;
       
