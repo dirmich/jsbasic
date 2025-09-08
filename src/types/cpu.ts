@@ -177,3 +177,62 @@ export interface InstructionSet {
   disassemble(opcode: number, operand1?: number, operand2?: number): string;
   getInstruction(opcode: number): InstructionInfo | undefined;
 }
+
+// Debugger related types
+export interface CPUDebugInfo {
+  registers: CPURegisters;
+  flags: StatusFlags;
+  cycleCount: number;
+  instructionCount: number;
+  isHalted: boolean;
+  pendingInterrupts: {
+    nmi: boolean;
+    irq: boolean;
+  };
+  lastInstruction: string;
+  state?: CPUStateInfo;
+  breakpoints?: BreakpointInfo[];
+}
+
+export interface BreakpointInfo {
+  address: number;
+  enabled: boolean;
+  condition?: string;
+  hitCount: number;
+  name?: string;
+  lastHit?: number;
+}
+
+export interface WatchpointInfo {
+  address: number;
+  type: 'read' | 'write' | 'both' | 'access';
+  enabled: boolean;
+  condition?: string;
+  hitCount: number;
+  name?: string;
+  lastValue?: number;
+}
+
+export interface ExecutionTrace {
+  address: number;
+  opcode: number;
+  operand1?: number;
+  operand2?: number;
+  instruction: string;
+  registers: CPURegisters;
+  cycles: number;
+  timestamp: number;
+  flags?: StatusFlags;
+  stackDepth?: number;
+  disassembly?: string;
+}
+
+export interface DisassemblyInfo {
+  address: number;
+  opcode: number;
+  operands: number[];
+  instruction: string;
+  bytes: number;
+  cycles: number;
+  fullInstruction?: string;
+}
