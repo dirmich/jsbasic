@@ -59,13 +59,14 @@ export class CPUDebugger extends EventEmitter<DebuggerEvents> {
   }
 
   /**
-   * 브레이크포인트 설정
+   * 브레이크포인트 설정 (조건부 브레이크포인트 지원)
    */
   setBreakpoint(address: number, condition?: string, name?: string): void {
     const breakpoint: BreakpointInfo = {
       address,
       enabled: true,
       hitCount: 0,
+      lastHit: 0
     };
     
     if (condition !== undefined) {
@@ -79,6 +80,25 @@ export class CPUDebugger extends EventEmitter<DebuggerEvents> {
     
     this.breakpoints.set(address, breakpoint);
     console.log(`🔴 브레이크포인트 설정: ${breakpoint.name} at $${formatHex(address, 4)}`);
+    if (condition) {
+      console.log(`   조건: ${condition}`);
+    }
+  }
+
+  /**
+   * 조건부 브레이크포인트 설정
+   */
+  setConditionalBreakpoint(address: number, condition: string, name?: string): void {
+    this.setBreakpoint(address, condition, name || `CBP_${formatHex(address, 4)}`);
+  }
+
+  /**
+   * 임시 브레이크포인트 설정 (한 번만 실행되고 자동 제거)
+   */
+  setTemporaryBreakpoint(address: number, name?: string): void {
+    const tempName = name || `TBP_${formatHex(address, 4)}`;
+    this.setBreakpoint(address, `hitCount < 1`, tempName);
+    console.log(`⏰ 임시 브레이크포인트 설정: ${tempName}`);
   }
 
   /**
@@ -235,10 +255,145 @@ export class CPUDebugger extends EventEmitter<DebuggerEvents> {
     return '????????';
   }
 
+  // === 고급 워치포인트 기능 ===
+
+  /**
+   * 메모리 워치포인트 설정
+   */
+  setWatchpoint(address: number, type: 'read' | 'write' | 'both' | 'access' = 'both', condition?: string, name?: string): void {
+    const watchpoint: WatchpointInfo = {
+      address,
+      type,
+      enabled: true,
+      hitCount: 0,
+      lastValue: this.cpu.memory.read(address)
+    };
+    
+    if (condition) {
+      watchpoint.condition = condition;
+    }
+    if (name) {
+      watchpoint.name = name;
+    } else {
+      watchpoint.name = `WP_${formatHex(address, 4)}`;
+    }
+    
+    this.watchpoints.set(address, watchpoint);
+    console.log(`👁️ 워치포인트 설정: ${watchpoint.name} at $${formatHex(address, 4)} (${type})`);
+  }
+
+  /**
+   * 워치포인트 해제
+   */
+  removeWatchpoint(address: number): boolean {
+    const removed = this.watchpoints.delete(address);
+    if (removed) {
+      console.log(`⚪ 워치포인트 해제: $${formatHex(address, 4)}`);
+    }
+    return removed;
+  }
+
+  /**
+   * 모든 워치포인트 해제
+   */
+  clearWatchpoints(): void {
+    this.watchpoints.clear();
+    console.log('🧹 모든 워치포인트 해제');
+  }
+
+  // === 실행 추적 및 분석 기능 ===
+
+  /**
+   * 실행 추적 시작
+   */
+  startTracing(maxEntries: number = 100): void {
+    this.executionTrace = [];
+    this.isDebugging = true;
+    console.log(`📊 실행 추적 시작 (최대 ${maxEntries}개 엔트리)`);
+  }
+
+  /**
+   * 실행 추적 중지
+   */
+  stopTracing(): ExecutionTrace[] {
+    const trace = [...this.executionTrace];
+    this.executionTrace = [];
+    console.log(`📊 실행 추적 중지 (${trace.length}개 엔트리 수집)`);
+    return trace;
+  }
+
+  /**
+   * 성능 프로파일링
+   */
+  getPerformanceProfile(): {
+    totalInstructions: number;
+    totalCycles: number;
+    avgCyclesPerInstruction: number;
+    instructionFrequency: Record<string, number>;
+    addressHotspots: Array<{address: number, count: number}>;
+  } {
+    const profile = {
+      totalInstructions: this.executionTrace.length,
+      totalCycles: this.executionTrace.reduce((sum, trace) => sum + trace.cycles, 0),
+      avgCyclesPerInstruction: 0,
+      instructionFrequency: {} as Record<string, number>,
+      addressHotspots: [] as Array<{address: number, count: number}>
+    };
+
+    if (profile.totalInstructions > 0) {
+      profile.avgCyclesPerInstruction = profile.totalCycles / profile.totalInstructions;
+    }
+
+    // 명령어 빈도 분석
+    const addrCount = new Map<number, number>();
+    for (const trace of this.executionTrace) {
+      const instruction = trace.instruction || 'UNKNOWN';
+      profile.instructionFrequency[instruction] = (profile.instructionFrequency[instruction] || 0) + 1;
+      
+      // 주소별 실행 빈도
+      addrCount.set(trace.address, (addrCount.get(trace.address) || 0) + 1);
+    }
+
+    // 핫스팟 정렬 (상위 10개)
+    profile.addressHotspots = Array.from(addrCount.entries())
+      .map(([address, count]) => ({address, count}))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10);
+
+    return profile;
+  }
+
   /**
    * 디버깅 상태 확인
    */
   isDebuggingActive(): boolean {
     return this.isDebugging;
+  }
+
+  /**
+   * 종합 디버그 정보 반환
+   */
+  getComprehensiveDebugInfo(): {
+    cpu: CPUDebugInfo;
+    breakpoints: BreakpointInfo[];
+    watchpoints: WatchpointInfo[];
+    profile: any;
+    traceLength: number;
+  } {
+    return {
+      cpu: {
+        registers: this.cpu.registers,
+        flags: this.cpu.registers.P,
+        cycleCount: this.cpu.cycles,
+        instructionCount: 0, // TODO: CPU에서 제공되어야 함
+        isHalted: false, // TODO: CPU에서 제공되어야 함
+        pendingInterrupts: { nmi: false, irq: false }, // TODO: CPU에서 제공되어야 함
+        lastInstruction: 'N/A' // TODO: 디스어셈블러와 연동
+      },
+      breakpoints: Array.from(this.breakpoints.values()),
+      watchpoints: Array.from(this.watchpoints.values()),
+      profile: this.getPerformanceProfile(),
+      traceLength: this.executionTrace.length
+    };
   }
 }
