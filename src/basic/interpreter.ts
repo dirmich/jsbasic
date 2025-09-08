@@ -725,4 +725,32 @@ export class BasicInterpreter extends EventEmitter {
       variableCount: this.variables.size()
     };
   }
+
+  /**
+   * 프로그램 및 변수 초기화
+   */
+  public clear(): void {
+    this.state = ExecutionState.READY;
+    this.context = {
+      programCounter: 0,
+      statements: [],
+      lineNumberMap: new Map(),
+      dataPointer: 0,
+      dataValues: [],
+      forLoopStack: [],
+      gosubStack: [],
+      userFunctions: new Map()
+    };
+    this.variables.clear();
+    this.outputBuffer = [];
+    this.inputQueue = [];
+    this.pendingInput = null;
+  }
+
+  /**
+   * 프로그램 추가
+   */
+  public addProgram(program: Program): void {
+    this.initializeProgram(program);
+  }
 }

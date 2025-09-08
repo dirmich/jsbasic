@@ -151,7 +151,7 @@ export class MobileOptimizer extends EventEmitter {
 
       if ('onorientationchange' in win) {
         win.addEventListener('orientationchange', orientationHandler);
-      } else if (win.screen && 'orientation' in win.screen) {
+      } else if (win.screen && 'orientation' in win.screen && win.screen.orientation) {
         win.screen.orientation.addEventListener('change', orientationHandler);
       }
     }

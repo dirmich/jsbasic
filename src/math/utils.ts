@@ -45,7 +45,7 @@ export class MathUtils {
     const str = value.toString();
     if (str.indexOf('.') === -1) return 0;
     
-    return str.split('.')[1].length;
+    return str.split('.')[1]?.length ?? 0;
   }
 
   /**
@@ -180,9 +180,9 @@ export class MathUtils {
     const mid = Math.floor(sorted.length / 2);
     
     if (sorted.length % 2 === 0) {
-      return (sorted[mid - 1] + sorted[mid]) / 2;
+      return ((sorted[mid - 1] ?? 0) + (sorted[mid] ?? 0)) / 2;
     } else {
-      return sorted[mid];
+      return sorted[mid] ?? 0;
     }
   }
 

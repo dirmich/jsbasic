@@ -224,7 +224,7 @@ export class PerformanceMonitor {
                 this.metrics.loadTime <= this.targets.maxLoadTimeMs * 1.5 ? 'warn' : 'fail',
         unit: 'ms'
       }
-    ] as const;
+    ];
 
     const passCount = details.filter(d => d.status === 'pass').length;
     const overall = passCount >= 3 ? 'excellent' : passCount >= 2 ? 'good' : 'poor';

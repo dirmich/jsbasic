@@ -20,7 +20,7 @@ global.window = {
   },
   addEventListener: jest.fn(),
   removeEventListener: jest.fn(),
-  dispatchEvent: jest.fn((event) => {
+  dispatchEvent: jest.fn((event: any) => {
     // 이벤트 핸들러 시뮬레이션
     if (event.type === 'resize' && (global.window as any).__resizeHandlers) {
       (global.window as any).__resizeHandlers.forEach((handler: Function) => handler(event));

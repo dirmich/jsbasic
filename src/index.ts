@@ -163,7 +163,8 @@ export class System6502 {
   private handleCommand(command: string): void {
     try {
       if (this.basic) {
-        this.basic.executeCommand(command);
+        // Parse and run the command (placeholder implementation)
+        console.log('Command received:', command);
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);

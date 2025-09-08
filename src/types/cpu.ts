@@ -93,12 +93,6 @@ export interface CPU6502 {
   nmi(): void;
 }
 
-// Memory interface that CPU will use
-export interface MemoryInterface {
-  read(address: number): number;
-  write(address: number, value: number): void;
-  reset(): void;
-}
 
 // CPU Interface (alias for CPU6502)
 export type CPUInterface = CPU6502;

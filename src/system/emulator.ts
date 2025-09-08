@@ -275,7 +275,7 @@ export class BasicEmulator extends EventEmitter {
       const program = this.parser.parseProgram();
       
       // 라인 번호가 있는 경우 프로그램에 추가
-      if (program.statements.length > 0 && program.statements[0].lineNumber !== undefined) {
+      if (program.statements.length > 0 && program.statements[0]?.lineNumber !== undefined) {
         this.basicInterpreter.addProgram(program);
         this.terminal.showPrompt();
       } else {

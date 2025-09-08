@@ -61,16 +61,16 @@ export class BasicFloat {
       return 0;
     }
 
-    const exponent = this.bytes[0] - 128;
-    const sign = (this.bytes[1] & 0x80) ? -1 : 1;
+    const exponent = (this.bytes[0] ?? 0) - 128;
+    const sign = ((this.bytes[1] ?? 0) & 0x80) ? -1 : 1;
     
     // 가수 복원
-    const mantissaInt = ((this.bytes[1] & 0x7F) << 24) |
-                       (this.bytes[2] << 16) |
-                       (this.bytes[3] << 8) |
-                       this.bytes[4];
+    const mantissaInt = (((this.bytes[1] ?? 0) & 0x7F) << 24) |
+                       ((this.bytes[2] ?? 0) << 16) |
+                       ((this.bytes[3] ?? 0) << 8) |
+                       (this.bytes[4] ?? 0);
     
-    const mantissa = mantissaInt / 0x80000000;
+    const mantissa = (mantissaInt ?? 0) / 0x80000000;
     
     return sign * mantissa * Math.pow(2, exponent);
   }

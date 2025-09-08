@@ -226,7 +226,7 @@ export class MemoryManager extends EventEmitter<MemoryEvents> implements MemoryI
    */
   public setBytes(address: number, data: Uint8Array): void {
     for (let i = 0; i < data.length; i++) {
-      this.writeByte((address + i) & 0xFFFF, data[i]);
+      this.writeByte((address + i) & 0xFFFF, data[i] ?? 0);
     }
   }
 
@@ -473,9 +473,12 @@ export class MemoryManager extends EventEmitter<MemoryEvents> implements MemoryI
       address,
       operation,
       value,
-      oldValue,
       bank: this.currentBank
     };
+    
+    if (oldValue !== undefined) {
+      logEntry.oldValue = oldValue;
+    }
 
     this.accessLog.push(logEntry);
 

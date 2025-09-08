@@ -1,4 +1,5 @@
-import type { AddressingMode, InstructionInfo, OpcodeMap } from '@/types/cpu';
+import type { InstructionInfo, OpcodeMap } from '@/types/cpu';
+import { AddressingMode, CPUFlag } from '@/types/cpu';
 import type { CPU6502 } from './cpu';
 import { CPUError } from '@/utils/errors';
 
@@ -162,11 +163,11 @@ export class InstructionSet {
    * 추가 사이클이 필요한지 확인
    */
   private needsExtraCycle(instruction: InstructionInfo): boolean {
-    const { mode } = instruction;
+    const mode = instruction.addressingMode || instruction.addressing;
     
     // 페이지 경계를 넘는 인덱싱 모드에서 추가 사이클 발생
-    if (mode === 'ABSOLUTE_X' || mode === 'ABSOLUTE_Y' || 
-        mode === 'INDIRECT_INDEXED') {
+    if (mode === AddressingMode.ABSOLUTE_X || mode === AddressingMode.ABSOLUTE_Y || 
+        mode === AddressingMode.INDIRECT_INDEXED) {
       // 실제 페이지 경계 확인은 AddressingModes 클래스에서 처리
       return this.cpu.addressing.getExtraCycles(mode) > 0;
     }
@@ -252,8 +253,8 @@ export class InstructionSet {
     
     // 플래그 설정
     this.cpu.setFlag(CPUFlag.CARRY, result > 0xFF);
-    this.cpu.setFlag('Z', (result & 0xFF) === 0);
-    this.cpu.setFlag('N', (result & 0x80) !== 0);
+    this.cpu.setFlag(CPUFlag.ZERO, (result & 0xFF) === 0);
+    this.cpu.setFlag(CPUFlag.NEGATIVE, (result & 0x80) !== 0);
     
     // 오버플로우 플래그: 부호가 같은 두 수를 더했는데 결과 부호가 다르면 오버플로우
     this.cpu.setFlag(CPUFlag.OVERFLOW, ((accumulator ^ result) & (operand ^ result) & 0x80) !== 0);
@@ -274,8 +275,8 @@ export class InstructionSet {
     
     // 플래그 설정
     this.cpu.setFlag(CPUFlag.CARRY, result >= 0);
-    this.cpu.setFlag('Z', (result & 0xFF) === 0);
-    this.cpu.setFlag('N', (result & 0x80) !== 0);
+    this.cpu.setFlag(CPUFlag.ZERO, (result & 0xFF) === 0);
+    this.cpu.setFlag(CPUFlag.NEGATIVE, (result & 0x80) !== 0);
     
     // 오버플로우 플래그
     this.cpu.setFlag(CPUFlag.OVERFLOW, ((accumulator ^ operand) & (accumulator ^ result) & 0x80) !== 0);
@@ -296,8 +297,8 @@ export class InstructionSet {
     const result = this.cpu.registers.A & operand;
     
     this.cpu.setRegisterA(result);
-    this.cpu.setFlag('Z', result === 0);
-    this.cpu.setFlag('N', (result & 0x80) !== 0);
+    this.cpu.setFlag(CPUFlag.ZERO, result === 0);
+    this.cpu.setFlag(CPUFlag.NEGATIVE, (result & 0x80) !== 0);
   }
 
   /**
@@ -309,8 +310,8 @@ export class InstructionSet {
     const result = this.cpu.registers.A | operand;
     
     this.cpu.setRegisterA(result);
-    this.cpu.setFlag('Z', result === 0);
-    this.cpu.setFlag('N', (result & 0x80) !== 0);
+    this.cpu.setFlag(CPUFlag.ZERO, result === 0);
+    this.cpu.setFlag(CPUFlag.NEGATIVE, (result & 0x80) !== 0);
   }
 
   /**
@@ -322,8 +323,8 @@ export class InstructionSet {
     const result = this.cpu.registers.A ^ operand;
     
     this.cpu.setRegisterA(result);
-    this.cpu.setFlag('Z', result === 0);
-    this.cpu.setFlag('N', (result & 0x80) !== 0);
+    this.cpu.setFlag(CPUFlag.ZERO, result === 0);
+    this.cpu.setFlag(CPUFlag.NEGATIVE, (result & 0x80) !== 0);
   }
 
   // =================================================================
@@ -339,8 +340,8 @@ export class InstructionSet {
     const result = this.cpu.registers.A - operand;
     
     this.cpu.setFlag(CPUFlag.CARRY, this.cpu.registers.A >= operand);
-    this.cpu.setFlag('Z', (result & 0xFF) === 0);
-    this.cpu.setFlag('N', (result & 0x80) !== 0);
+    this.cpu.setFlag(CPUFlag.ZERO, (result & 0xFF) === 0);
+    this.cpu.setFlag(CPUFlag.NEGATIVE, (result & 0x80) !== 0);
   }
 
   /**
@@ -352,8 +353,8 @@ export class InstructionSet {
     const result = this.cpu.registers.X - operand;
     
     this.cpu.setFlag(CPUFlag.CARRY, this.cpu.registers.X >= operand);
-    this.cpu.setFlag('Z', (result & 0xFF) === 0);
-    this.cpu.setFlag('N', (result & 0x80) !== 0);
+    this.cpu.setFlag(CPUFlag.ZERO, (result & 0xFF) === 0);
+    this.cpu.setFlag(CPUFlag.NEGATIVE, (result & 0x80) !== 0);
   }
 
   /**
@@ -365,8 +366,8 @@ export class InstructionSet {
     const result = this.cpu.registers.Y - operand;
     
     this.cpu.setFlag(CPUFlag.CARRY, this.cpu.registers.Y >= operand);
-    this.cpu.setFlag('Z', (result & 0xFF) === 0);
-    this.cpu.setFlag('N', (result & 0x80) !== 0);
+    this.cpu.setFlag(CPUFlag.ZERO, (result & 0xFF) === 0);
+    this.cpu.setFlag(CPUFlag.NEGATIVE, (result & 0x80) !== 0);
   }
 
   // =================================================================
@@ -383,8 +384,8 @@ export class InstructionSet {
     const result = (value + 1) & 0xFF;
     
     this.cpu.writeByte(address, result);
-    this.cpu.setFlag('Z', result === 0);
-    this.cpu.setFlag('N', (result & 0x80) !== 0);
+    this.cpu.setFlag(CPUFlag.ZERO, result === 0);
+    this.cpu.setFlag(CPUFlag.NEGATIVE, (result & 0x80) !== 0);
   }
 
   /**
@@ -397,8 +398,8 @@ export class InstructionSet {
     const result = (value - 1) & 0xFF;
     
     this.cpu.writeByte(address, result);
-    this.cpu.setFlag('Z', result === 0);
-    this.cpu.setFlag('N', (result & 0x80) !== 0);
+    this.cpu.setFlag(CPUFlag.ZERO, result === 0);
+    this.cpu.setFlag(CPUFlag.NEGATIVE, (result & 0x80) !== 0);
   }
 
   /**
@@ -408,8 +409,8 @@ export class InstructionSet {
   private inx(): void {
     const result = (this.cpu.registers.X + 1) & 0xFF;
     this.cpu.setRegisterX(result);
-    this.cpu.setFlag('Z', result === 0);
-    this.cpu.setFlag('N', (result & 0x80) !== 0);
+    this.cpu.setFlag(CPUFlag.ZERO, result === 0);
+    this.cpu.setFlag(CPUFlag.NEGATIVE, (result & 0x80) !== 0);
   }
 
   /**
@@ -419,8 +420,8 @@ export class InstructionSet {
   private dex(): void {
     const result = (this.cpu.registers.X - 1) & 0xFF;
     this.cpu.setRegisterX(result);
-    this.cpu.setFlag('Z', result === 0);
-    this.cpu.setFlag('N', (result & 0x80) !== 0);
+    this.cpu.setFlag(CPUFlag.ZERO, result === 0);
+    this.cpu.setFlag(CPUFlag.NEGATIVE, (result & 0x80) !== 0);
   }
 
   /**
@@ -430,8 +431,8 @@ export class InstructionSet {
   private iny(): void {
     const result = (this.cpu.registers.Y + 1) & 0xFF;
     this.cpu.setRegisterY(result);
-    this.cpu.setFlag('Z', result === 0);
-    this.cpu.setFlag('N', (result & 0x80) !== 0);
+    this.cpu.setFlag(CPUFlag.ZERO, result === 0);
+    this.cpu.setFlag(CPUFlag.NEGATIVE, (result & 0x80) !== 0);
   }
 
   /**
@@ -441,8 +442,8 @@ export class InstructionSet {
   private dey(): void {
     const result = (this.cpu.registers.Y - 1) & 0xFF;
     this.cpu.setRegisterY(result);
-    this.cpu.setFlag('Z', result === 0);
-    this.cpu.setFlag('N', (result & 0x80) !== 0);
+    this.cpu.setFlag(CPUFlag.ZERO, result === 0);
+    this.cpu.setFlag(CPUFlag.NEGATIVE, (result & 0x80) !== 0);
   }
 
   // =================================================================
@@ -460,8 +461,8 @@ export class InstructionSet {
       
       this.cpu.setRegisterA(result);
       this.cpu.setFlag(CPUFlag.CARRY, (value & 0x80) !== 0);
-      this.cpu.setFlag('Z', result === 0);
-      this.cpu.setFlag('N', (result & 0x80) !== 0);
+      this.cpu.setFlag(CPUFlag.ZERO, result === 0);
+      this.cpu.setFlag(CPUFlag.NEGATIVE, (result & 0x80) !== 0);
     } else {
       const address = this.cpu.addressing.getOperandAddress(mode);
       const value = this.cpu.readByte(address);
@@ -469,8 +470,8 @@ export class InstructionSet {
       
       this.cpu.writeByte(address, result);
       this.cpu.setFlag(CPUFlag.CARRY, (value & 0x80) !== 0);
-      this.cpu.setFlag('Z', result === 0);
-      this.cpu.setFlag('N', (result & 0x80) !== 0);
+      this.cpu.setFlag(CPUFlag.ZERO, result === 0);
+      this.cpu.setFlag(CPUFlag.NEGATIVE, (result & 0x80) !== 0);
     }
   }
 
@@ -485,8 +486,8 @@ export class InstructionSet {
       
       this.cpu.setRegisterA(result);
       this.cpu.setFlag(CPUFlag.CARRY, (value & 0x01) !== 0);
-      this.cpu.setFlag('Z', result === 0);
-      this.cpu.setFlag('N', false); // 0이 들어오므로 항상 양수
+      this.cpu.setFlag(CPUFlag.ZERO, result === 0);
+      this.cpu.setFlag(CPUFlag.NEGATIVE, false); // 0이 들어오므로 항상 양수
     } else {
       const address = this.cpu.addressing.getOperandAddress(mode);
       const value = this.cpu.readByte(address);
@@ -494,8 +495,8 @@ export class InstructionSet {
       
       this.cpu.writeByte(address, result);
       this.cpu.setFlag(CPUFlag.CARRY, (value & 0x01) !== 0);
-      this.cpu.setFlag('Z', result === 0);
-      this.cpu.setFlag('N', false);
+      this.cpu.setFlag(CPUFlag.ZERO, result === 0);
+      this.cpu.setFlag(CPUFlag.NEGATIVE, false);
     }
   }
 
@@ -511,8 +512,8 @@ export class InstructionSet {
       
       this.cpu.setRegisterA(result);
       this.cpu.setFlag(CPUFlag.CARRY, (value & 0x80) !== 0);
-      this.cpu.setFlag('Z', result === 0);
-      this.cpu.setFlag('N', (result & 0x80) !== 0);
+      this.cpu.setFlag(CPUFlag.ZERO, result === 0);
+      this.cpu.setFlag(CPUFlag.NEGATIVE, (result & 0x80) !== 0);
     } else {
       const address = this.cpu.addressing.getOperandAddress(mode);
       const value = this.cpu.readByte(address);
@@ -521,8 +522,8 @@ export class InstructionSet {
       
       this.cpu.writeByte(address, result);
       this.cpu.setFlag(CPUFlag.CARRY, (value & 0x80) !== 0);
-      this.cpu.setFlag('Z', result === 0);
-      this.cpu.setFlag('N', (result & 0x80) !== 0);
+      this.cpu.setFlag(CPUFlag.ZERO, result === 0);
+      this.cpu.setFlag(CPUFlag.NEGATIVE, (result & 0x80) !== 0);
     }
   }
 
@@ -538,8 +539,8 @@ export class InstructionSet {
       
       this.cpu.setRegisterA(result);
       this.cpu.setFlag(CPUFlag.CARRY, (value & 0x01) !== 0);
-      this.cpu.setFlag('Z', result === 0);
-      this.cpu.setFlag('N', (result & 0x80) !== 0);
+      this.cpu.setFlag(CPUFlag.ZERO, result === 0);
+      this.cpu.setFlag(CPUFlag.NEGATIVE, (result & 0x80) !== 0);
     } else {
       const address = this.cpu.addressing.getOperandAddress(mode);
       const value = this.cpu.readByte(address);
@@ -548,8 +549,8 @@ export class InstructionSet {
       
       this.cpu.writeByte(address, result);
       this.cpu.setFlag(CPUFlag.CARRY, (value & 0x01) !== 0);
-      this.cpu.setFlag('Z', result === 0);
-      this.cpu.setFlag('N', (result & 0x80) !== 0);
+      this.cpu.setFlag(CPUFlag.ZERO, result === 0);
+      this.cpu.setFlag(CPUFlag.NEGATIVE, (result & 0x80) !== 0);
     }
   }
 
@@ -661,32 +662,32 @@ export class InstructionSet {
 
   private tax(): void { 
     this.cpu.setRegisterX(this.cpu.registers.A);
-    this.cpu.setFlag('Z', this.cpu.registers.A === 0);
-    this.cpu.setFlag('N', (this.cpu.registers.A & 0x80) !== 0);
+    this.cpu.setFlag(CPUFlag.ZERO, this.cpu.registers.A === 0);
+    this.cpu.setFlag(CPUFlag.NEGATIVE, (this.cpu.registers.A & 0x80) !== 0);
   }
 
   private tay(): void {
     this.cpu.setRegisterY(this.cpu.registers.A);
-    this.cpu.setFlag('Z', this.cpu.registers.A === 0);
-    this.cpu.setFlag('N', (this.cpu.registers.A & 0x80) !== 0);
+    this.cpu.setFlag(CPUFlag.ZERO, this.cpu.registers.A === 0);
+    this.cpu.setFlag(CPUFlag.NEGATIVE, (this.cpu.registers.A & 0x80) !== 0);
   }
 
   private txa(): void {
     this.cpu.setRegisterA(this.cpu.registers.X);
-    this.cpu.setFlag('Z', this.cpu.registers.X === 0);
-    this.cpu.setFlag('N', (this.cpu.registers.X & 0x80) !== 0);
+    this.cpu.setFlag(CPUFlag.ZERO, this.cpu.registers.X === 0);
+    this.cpu.setFlag(CPUFlag.NEGATIVE, (this.cpu.registers.X & 0x80) !== 0);
   }
 
   private tya(): void {
     this.cpu.setRegisterA(this.cpu.registers.Y);
-    this.cpu.setFlag('Z', this.cpu.registers.Y === 0);
-    this.cpu.setFlag('N', (this.cpu.registers.Y & 0x80) !== 0);
+    this.cpu.setFlag(CPUFlag.ZERO, this.cpu.registers.Y === 0);
+    this.cpu.setFlag(CPUFlag.NEGATIVE, (this.cpu.registers.Y & 0x80) !== 0);
   }
 
   private tsx(): void {
     this.cpu.setRegisterX(this.cpu.registers.SP);
-    this.cpu.setFlag('Z', this.cpu.registers.SP === 0);
-    this.cpu.setFlag('N', (this.cpu.registers.SP & 0x80) !== 0);
+    this.cpu.setFlag(CPUFlag.ZERO, this.cpu.registers.SP === 0);
+    this.cpu.setFlag(CPUFlag.NEGATIVE, (this.cpu.registers.SP & 0x80) !== 0);
   }
 
   private txs(): void {
@@ -705,9 +706,9 @@ export class InstructionSet {
     const operand = this.cpu.addressing.getOperandValue(mode);
     const result = this.cpu.registers.A & operand;
     
-    this.cpu.setFlag('Z', result === 0);
+    this.cpu.setFlag(CPUFlag.ZERO, result === 0);
     this.cpu.setFlag(CPUFlag.OVERFLOW, (operand & 0x40) !== 0); // 비트 6
-    this.cpu.setFlag('N', (operand & 0x80) !== 0); // 비트 7
+    this.cpu.setFlag(CPUFlag.NEGATIVE, (operand & 0x80) !== 0); // 비트 7
   }
 
   /**

@@ -16,7 +16,9 @@ export class ObjectPool<T extends Poolable> {
   constructor(createFn: () => T, maxSize: number = 100, resetFn?: (obj: T) => void) {
     this.createFn = createFn;
     this.maxSize = maxSize;
-    this.resetFn = resetFn;
+    if (resetFn) {
+      this.resetFn = resetFn;
+    }
   }
 
   /**

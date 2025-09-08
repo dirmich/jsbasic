@@ -42,7 +42,7 @@ import { AddressingModes } from './addressing';
  */
 export class CPU6502 extends EventEmitter<CPUEvents> implements CPUInterface {
   private readonly _registers: CPURegisters;
-  private readonly memory: MemoryInterface;
+  public readonly memory: MemoryInterface;
   private readonly instructions: InstructionSet;
   public readonly addressing: AddressingModes;
   
