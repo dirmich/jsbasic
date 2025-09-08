@@ -49,6 +49,32 @@ export class CPU6502 extends EventEmitter<CPUEvents> implements CPUInterface {
   private cycleCount: number = 0;
   private instructionCount: number = 0;
   private isHalted: boolean = false;
+  
+  // CPU6502 인터페이스 구현을 위한 속성들
+  public get cycles(): number {
+    return this.cycleCount;
+  }
+  
+  // 메모리 접근 메서드들 (CPU6502 인터페이스)
+  public read(address: number): number {
+    return this.memory.read(address);
+  }
+  
+  public write(address: number, value: number): void {
+    this.memory.write(address, value);
+  }
+  
+  // 인터럽트 메서드들 (CPU6502 인터페이스)
+  public irq(): void {
+    if (!this._registers.P.interrupt) {
+      this.irqPending = true;
+    }
+  }
+  
+  public nmi(): void {
+    this.nmiPending = true;
+  }
+  
   private readonly options: Required<CPUOptions>;
   
   // 인터럽트 관련
@@ -468,7 +494,7 @@ export class CPU6502 extends EventEmitter<CPUEvents> implements CPUInterface {
     }
     
     // IRQ (Interrupt Request) - 인터럽트가 비활성화되어 있으면 무시
-    if (this.irqPending && !this.getFlag('INTERRUPT')) {
+    if (this.irqPending && !this.getFlag(CPUFlag.INTERRUPT)) {
       this.irqPending = false;
       return this.handleIRQ();
     }
@@ -509,7 +535,7 @@ export class CPU6502 extends EventEmitter<CPUEvents> implements CPUInterface {
     this.pushWord(this._registers.PC + 1);
     
     // P 레지스터를 B 플래그와 함께 스택에 저장
-    this.pushByte(this._registers.P | 0x10); // B 플래그 설정
+    this.pushByte(this.statusFlagsToNumber(this._registers.P) | 0x10); // B 플래그 설정
     
     // 인터럽트 비활성화
     this.setFlag(CPUFlag.INTERRUPT, true);
@@ -560,8 +586,8 @@ export class CPU6502 extends EventEmitter<CPUEvents> implements CPUInterface {
   }
   
   private traceExecution(pc: number, opcode: number, cycles: number): void {
-    const instruction = this.instructions.disassemble(pc, opcode);
-    console.log(`[CPU] ${formatHex(pc, 4)}: ${instruction} [${cycles} cycles] A=${formatHex(this._registers.A)} X=${formatHex(this._registers.X)} Y=${formatHex(this._registers.Y)} SP=${formatHex(this._registers.SP)} P=${formatHex(this._registers.P)}`);
+    const instruction = `???`; // TODO: 디스어셈블러 구현
+    console.log(`[CPU] ${formatHex(pc, 4)}: ${instruction} [${cycles} cycles] A=${formatHex(this._registers.A)} X=${formatHex(this._registers.X)} Y=${formatHex(this._registers.Y)} SP=${formatHex(this._registers.SP)} P=${formatHex(this.statusFlagsToNumber(this._registers.P))}`);
   }
   
   /**
@@ -577,7 +603,7 @@ export class CPU6502 extends EventEmitter<CPUEvents> implements CPUInterface {
   public getDebugInfo() {
     return {
       registers: { ...this._registers },
-      flags: this.getFlags(),
+      flags: this._registers.P,
       cycleCount: this.cycleCount,
       instructionCount: this.instructionCount,
       isHalted: this.isHalted,
@@ -585,7 +611,7 @@ export class CPU6502 extends EventEmitter<CPUEvents> implements CPUInterface {
         nmi: this.nmiPending,
         irq: this.irqPending
       },
-      lastInstruction: this.instructions.disassemble(this._registers.PC, this.memory.readByte(this._registers.PC))
+      lastInstruction: `???` // TODO: 디스어셈블러 구현
     };
   }
 
