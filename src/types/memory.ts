@@ -63,6 +63,13 @@ export interface MemoryInfo {
   }>;
 }
 
+// Memory protection configuration
+export interface MemoryProtection {
+  readable: boolean;
+  writable: boolean;
+  description?: string;
+}
+
 // Memory access violation
 export interface MemoryViolation {
   address: number;
@@ -109,27 +116,32 @@ export interface MemoryInterface {
 // Memory bank information
 export interface MemoryBankInfo {
   name: string;
-  start: number;
-  end: number;
+  start?: number;
+  end?: number;
   size: number;
-  readonly: boolean;
-  usage: number;
+  readonly?: boolean;
+  usage?: number;
+  isCurrent?: boolean;
 }
 
 // Memory access log entry
 export interface MemoryAccessLog {
   address: number;
   value: number;
-  operation: 'READ' | 'WRITE';
+  operation: 'read' | 'write' | 'READ' | 'WRITE';
   timestamp: number;
   context?: string;
+  oldValue?: number;
+  bank?: string;
 }
 
 // Memory map entry
 export interface MemoryMapEntry {
   name: string;
-  start: number;
-  end: number;
-  type: 'RAM' | 'ROM' | 'IO' | 'STACK' | 'ZERO_PAGE';
+  start?: number;
+  end?: number;
+  type?: 'RAM' | 'ROM' | 'IO' | 'STACK' | 'ZERO_PAGE' | 'ram' | 'rom' | 'io';
   description?: string;
+  readHandler?: (address: number) => number;
+  writeHandler?: (address: number, value: number) => void;
 }

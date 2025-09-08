@@ -16,6 +16,7 @@ interface MemoryEvents {
   write: (address: number, value: number, oldValue: number, bank?: string) => void;
   bankSwitch: (oldBank: string, newBank: string) => void;
   protection: (address: number, operation: 'read' | 'write', protection: MemoryProtection) => void;
+  [key: string]: (...args: any[]) => void;
 }
 
 /**
@@ -89,6 +90,16 @@ export class MemoryManager extends EventEmitter<MemoryEvents> implements MemoryI
   }
 
   /**
+   * 바이트 쓰기 (별칭)
+   * 
+   * @param address 쓸 주소 (0x0000-0xFFFF)
+   * @param value 쓸 값 (0x00-0xFF)
+   */
+  public write(address: number, value: number): void {
+    this.writeByte(address, value);
+  }
+
+  /**
    * 바이트 읽기
    * 
    * @param address 읽을 주소 (0x0000-0xFFFF)
@@ -112,7 +123,7 @@ export class MemoryManager extends EventEmitter<MemoryEvents> implements MemoryI
       throw new MemoryError(`Memory bank not found: ${this.currentBank}`, 'BANK_NOT_FOUND');
     }
 
-    const value = bank[address % bank.length];
+    const value = bank[address % bank.length] ?? 0;
     
     // 접근 추적
     if (this.accessTracking) {
@@ -149,7 +160,7 @@ export class MemoryManager extends EventEmitter<MemoryEvents> implements MemoryI
       throw new MemoryError(`Memory bank not found: ${this.currentBank}`, 'BANK_NOT_FOUND');
     }
 
-    const oldValue = bank[address % bank.length];
+    const oldValue = bank[address % bank.length] ?? 0;
     bank[address % bank.length] = value;
     
     // 접근 추적
@@ -722,7 +733,7 @@ export class MemoryManager extends EventEmitter<MemoryEvents> implements MemoryI
         if (currentAddr >= startAddress + length) break;
         
         try {
-          const byte = this.readByte(currentAddr);
+          const byte = this.readByte(currentAddr) ?? 0;
           hexBytes.push(byte.toString(16).padStart(2, '0').toUpperCase());
           asciiBytes.push(byte >= 32 && byte < 127 ? String.fromCharCode(byte) : '.');
         } catch {
