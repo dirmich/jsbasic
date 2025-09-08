@@ -8,7 +8,7 @@
 export { CPU6502 } from './cpu.js';
 export { InstructionSet } from './instructions.js';
 export { AddressingModes } from './addressing.js';
-export { Opcodes } from './opcodes.js';
+export { OpcodeDecoder } from './opcodes.js';
 
 export const CPU_MODULE_VERSION = '0.1.0';
 

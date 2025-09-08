@@ -64,11 +64,18 @@ export class CPUDebugger extends EventEmitter<DebuggerEvents> {
   setBreakpoint(address: number, condition?: string, name?: string): void {
     const breakpoint: BreakpointInfo = {
       address,
-      condition,
-      name: name || `BP_${formatHex(address, 4)}`,
       enabled: true,
       hitCount: 0,
     };
+    
+    if (condition !== undefined) {
+      breakpoint.condition = condition;
+    }
+    if (name !== undefined) {
+      breakpoint.name = name;
+    } else {
+      breakpoint.name = `BP_${formatHex(address, 4)}`;
+    }
     
     this.breakpoints.set(address, breakpoint);
     console.log(`🔴 브레이크포인트 설정: ${breakpoint.name} at $${formatHex(address, 4)}`);
@@ -100,11 +107,18 @@ export class CPUDebugger extends EventEmitter<DebuggerEvents> {
     const watchpoint: WatchpointInfo = {
       address,
       type,
-      condition,
-      name: name || `WP_${formatHex(address, 4)}`,
       enabled: true,
       hitCount: 0,
     };
+    
+    if (condition !== undefined) {
+      watchpoint.condition = condition;
+    }
+    if (name !== undefined) {
+      watchpoint.name = name;
+    } else {
+      watchpoint.name = `WP_${formatHex(address, 4)}`;
+    }
     
     this.watchpoints.set(address, watchpoint);
     console.log(`👀 워치포인트 설정: ${watchpoint.name} at $${formatHex(address, 4)} (${type})`);

@@ -6,8 +6,7 @@
  */
 
 export { Terminal } from './terminal.js';
-export { Keyboard } from './keyboard.js';
-export { Storage } from './storage.js';
+// TODO: Keyboard and Storage modules will be implemented later
 
 export const IO_MODULE_VERSION = '0.1.0';
 

@@ -162,14 +162,18 @@ export interface CPUEvents extends Record<string, (...args: any[]) => void> {
 export interface InstructionInfo {
   opcode: number;
   mnemonic: string;
-  addressing: AddressingMode;
+  addressing?: AddressingMode;
+  addressingMode?: AddressingMode;
   cycles: number;
   bytes: number;
   description: string;
+  extraCycles?: number;
 }
 
 // Opcode to instruction mapping
-export type OpcodeMap = Map<number, InstructionInfo>;
+export type OpcodeMap = Map<number, InstructionInfo> & {
+  [key: number]: InstructionInfo;
+};
 
 // Instruction set interface
 export interface InstructionSet {

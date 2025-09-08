@@ -55,7 +55,7 @@ export class System6502 {
       this.memory = new MemoryManager();
       this.cpu = new CPU6502(this.memory);
       this.terminal = new Terminal();
-      this.basic = new BasicInterpreter(this.terminal);
+      this.basic = new BasicInterpreter();
       this.ui = new TerminalComponent();
 
       // Connect terminal to UI component
@@ -163,7 +163,7 @@ export class System6502 {
   private handleCommand(command: string): void {
     try {
       if (this.basic) {
-        this.basic.execute(command);
+        this.basic.executeCommand(command);
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
