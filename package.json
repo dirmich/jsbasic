@@ -1,7 +1,7 @@
 {
   "name": "jsbasic",
-  "version": "0.1.0",
-  "description": "6502 CPU and BASIC interpreter emulator in TypeScript",
+  "version": "2.0.0",
+  "description": "Complete 6502 CPU and Microsoft BASIC 1.1 emulator with TypeScript strict mode and cross-platform DOM support",
   "main": "dist/index.js",
   "module": "src/index.ts",
   "type": "module",
@@ -33,7 +33,12 @@
     "basic",
     "interpreter",
     "typescript",
-    "retro-computing"
+    "retro-computing",
+    "microsoft-basic",
+    "cross-platform",
+    "dom-compatibility",
+    "mobile-optimized",
+    "web-emulator"
   ],
   "author": "David, Shin",
   "license": "MIT",
