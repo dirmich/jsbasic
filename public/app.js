@@ -10,6 +10,8 @@ let emulator = null;
 let isRunning = false;
 let commandHistory = [];
 let historyIndex = -1;
+let inputWaitingCallback = null;
+let inputWaitingVariable = null;
 
 /**
  * 애플리케이션 초기화
@@ -151,6 +153,10 @@ async function initializeApp() {
 
                                     this.variables.set(varName, value);
                                 }
+                            } else if (upperText.startsWith('INPUT ')) {
+                                const varName = upperText.substring(6).trim();
+                                // INPUT 대기 상태 설정
+                                await this.waitForInput(varName);
                             } else if (upperText === 'END' || upperText === 'STOP') {
                                 break;
                             } else if (upperText.startsWith('REM ')) {
@@ -162,6 +168,26 @@ async function initializeApp() {
                             throw new Error(`Line ${line.number}: ${error.message}`);
                         }
                     }
+                },
+
+                // INPUT 대기 함수
+                async waitForInput(varName) {
+                    return new Promise((resolve) => {
+                        appendToTerminal(`${varName}? `, 'output');
+                        inputWaitingCallback = (value) => {
+                            const num = parseFloat(value);
+                            this.variables.set(varName, isNaN(num) ? value : num);
+                            inputWaitingCallback = null;
+                            inputWaitingVariable = null;
+                            resolve();
+                        };
+                        inputWaitingVariable = varName;
+                        // 프롬프트 변경
+                        const prompt = document.getElementById('terminal-prompt');
+                        if (prompt) {
+                            prompt.textContent = '? ';
+                        }
+                    });
                 },
 
                 getStats() {
@@ -200,6 +226,26 @@ async function initializeApp() {
                         registers: { A: 0, X: 0, Y: 0, PC: 0, SP: 0xFF, P: 0 },
                         flags: { N: false, V: false, B: false, D: false, I: false, Z: false, C: false }
                     };
+                },
+
+                // INPUT 대기 함수
+                async waitForInput(varName) {
+                    return new Promise((resolve) => {
+                        appendToTerminal(`${varName}? `, 'output');
+                        inputWaitingCallback = (value) => {
+                            const num = parseFloat(value);
+                            this.variables.set(varName, isNaN(num) ? value : num);
+                            inputWaitingCallback = null;
+                            inputWaitingVariable = null;
+                            resolve();
+                        };
+                        inputWaitingVariable = varName;
+                        // 프롬프트 변경
+                        const prompt = document.getElementById('terminal-prompt');
+                        if (prompt) {
+                            prompt.textContent = '? ';
+                        }
+                    });
                 }
             };
         } else if (window.BasicEmulator) {
@@ -351,11 +397,8 @@ async function initializeApp() {
                                 }
                             } else if (upperText.startsWith('INPUT ')) {
                                 const varName = upperText.substring(6).trim();
-                                const value = prompt(`${varName}?`);
-                                if (value !== null) {
-                                    const num = parseFloat(value);
-                                    this.variables.set(varName, isNaN(num) ? value : num);
-                                }
+                                // INPUT 대기 상태 설정
+                                await this.waitForInput(varName);
                             } else if (upperText.startsWith('READ ')) {
                                 const varNames = upperText.substring(5).split(',');
                                 for (const varName of varNames) {
@@ -385,6 +428,26 @@ async function initializeApp() {
                             throw new Error(`Line ${line.number}: ${error.message}`);
                         }
                     }
+                },
+
+                // INPUT 대기 함수
+                async waitForInput(varName) {
+                    return new Promise((resolve) => {
+                        appendToTerminal(`${varName}? `, 'output');
+                        inputWaitingCallback = (value) => {
+                            const num = parseFloat(value);
+                            this.variables.set(varName, isNaN(num) ? value : num);
+                            inputWaitingCallback = null;
+                            inputWaitingVariable = null;
+                            resolve();
+                        };
+                        inputWaitingVariable = varName;
+                        // 프롬프트 변경
+                        const prompt = document.getElementById('terminal-prompt');
+                        if (prompt) {
+                            prompt.textContent = '? ';
+                        }
+                    });
                 },
 
                 getStats() {
@@ -679,6 +742,28 @@ async function handleKeyDown(e) {
  */
 async function handleCommand(command) {
     if (!command.trim()) return;
+
+    // INPUT 대기 중인 경우
+    if (inputWaitingCallback) {
+        // 입력 표시
+        appendToTerminal(command, 'input');
+
+        // 입력창 비우기
+        const terminalInput = document.getElementById('terminal-input');
+        if (terminalInput) {
+            terminalInput.value = '';
+        }
+
+        // 콜백 실행
+        inputWaitingCallback(command);
+
+        // 프롬프트 원래대로
+        const prompt = document.getElementById('terminal-prompt');
+        if (prompt) {
+            prompt.textContent = 'READY. ';
+        }
+        return;
+    }
 
     // 명령어 히스토리에 추가
     commandHistory.push(command);
