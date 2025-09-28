@@ -203,9 +203,9 @@ function createMockEmulator() {
             
             if (cmd === 'LIST') {
                 if (this.program.length === 0) {
-                    return { output: '', type: 'output' };
+                    return { output: 'NO PROGRAM', type: 'output' };
                 }
-                const listing = this.program.map(line => 
+                const listing = this.program.map(line =>
                     `${line.number} ${line.text}`
                 ).join('\n');
                 return { output: listing, type: 'output' };
@@ -256,19 +256,19 @@ function createMockEmulator() {
             }
             
             // 프로그램 라인인지 확인 (숫자로 시작)
-            const lineMatch = command.match(/^(\d+)\s+(.*)/);
+            const lineMatch = command.match(/^(\d+)\s*(.*)/);  // \s* 로 변경 (공백이 없을 수도 있음)
             if (lineMatch) {
                 const lineNumber = parseInt(lineMatch[1]);
-                const lineText = lineMatch[2];
-                
+                const lineText = lineMatch[2] || '';  // 빈 라인도 허용
+
                 // 기존 라인 삭제 또는 업데이트
                 this.program = this.program.filter(line => line.number !== lineNumber);
-                
+
                 if (lineText.trim()) {
                     this.program.push({ number: lineNumber, text: lineText });
                     this.program.sort((a, b) => a.number - b.number);
                 }
-                
+
                 return { output: '', type: 'output' };
             }
             
@@ -734,6 +734,8 @@ function setupExampleLoader() {
             }
 
             try {
+                appendToTerminal(`예제 "${selectedExample}" 로드 중...`, 'system');
+
                 // 예제 파일 가져오기
                 const response = await fetch(`examples/${selectedExample}`);
                 if (!response.ok) {
@@ -741,23 +743,26 @@ function setupExampleLoader() {
                 }
 
                 const programText = await response.text();
+                console.log(`예제 파일 내용 (${selectedExample}):`, programText);
 
                 // NEW 명령으로 기존 프로그램 지우기
                 await executeCommand('NEW');
 
                 // 프로그램 라인별로 입력
                 const lines = programText.split('\n');
+                let loadedLines = 0;
                 for (const line of lines) {
                     const trimmedLine = line.trim();
-                    if (trimmedLine && !trimmedLine.startsWith('REM')) {
-                        // 라인 번호가 있는 경우만 입력
+                    if (trimmedLine) {
+                        // 라인 번호가 있는 경우만 입력 (REM 포함)
                         if (/^\d+/.test(trimmedLine)) {
                             await executeCommand(trimmedLine);
+                            loadedLines++;
                         }
                     }
                 }
 
-                appendToTerminal(`예제 "${selectedExample}" 로드 완료`, 'system');
+                appendToTerminal(`예제 "${selectedExample}" 로드 완료 (${loadedLines}줄)`, 'system');
                 appendToTerminal('RUN 명령으로 실행하세요', 'system');
 
                 // 프로그램 표시 업데이트
