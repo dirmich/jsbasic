@@ -174,8 +174,8 @@ async function initializeApp() {
                 // INPUT 대기 함수
                 async waitForInput(varName) {
                     return new Promise((resolve) => {
-                        // 변수명과 ? 를 별도로 출력
-                        appendToTerminal(`? ${varName}`, 'output');
+                        // INPUT 프롬프트
+                        appendToTerminal(`${varName}? `, 'system');
                         inputWaitingCallback = (value) => {
                             const num = parseFloat(value);
                             this.variables.set(varName, isNaN(num) ? value : num);
@@ -233,7 +233,8 @@ async function initializeApp() {
                 // INPUT 대기 함수
                 async waitForInput(varName) {
                     return new Promise((resolve) => {
-                        appendToTerminal(`${varName}? `, 'output');
+                        // INPUT 프롬프트
+                        appendToTerminal(`${varName}? `, 'system');
                         inputWaitingCallback = (value) => {
                             const num = parseFloat(value);
                             this.variables.set(varName, isNaN(num) ? value : num);
@@ -436,8 +437,8 @@ async function initializeApp() {
                 // INPUT 대기 함수
                 async waitForInput(varName) {
                     return new Promise((resolve) => {
-                        // 변수명과 ? 를 별도로 출력
-                        appendToTerminal(`? ${varName}`, 'output');
+                        // INPUT 프롬프트
+                        appendToTerminal(`${varName}? `, 'system');
                         inputWaitingCallback = (value) => {
                             const num = parseFloat(value);
                             this.variables.set(varName, isNaN(num) ? value : num);
@@ -749,8 +750,8 @@ async function handleCommand(command) {
 
     // INPUT 대기 중인 경우
     if (inputWaitingCallback) {
-        // 입력 표시
-        appendToTerminal(command, 'input');
+        // 입력값만 표시 (프롬프트 없이)
+        appendToTerminal(command, 'output');
 
         // 입력창 비우기
         const terminalInput = document.getElementById('terminal-input');
