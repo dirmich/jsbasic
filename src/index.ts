@@ -84,6 +84,7 @@ export class System6502 {
     }
 
     this.state.running = true
+    this.startTime = Date.now()
     console.log('System started')
 
     // Start main execution loop
@@ -128,6 +129,49 @@ export class System6502 {
   getConfig(): SystemConfig {
     return { ...this.config }
   }
+
+  /**
+   * Get CPU instance
+   */
+  getCPU(): CPU6502 {
+    return this.cpu
+  }
+
+  /**
+   * Get Memory Manager instance
+   */
+  getMemory(): MemoryManager {
+    return this.memory
+  }
+
+  /**
+   * Get Terminal instance
+   */
+  getTerminal(): Terminal {
+    return this.terminal
+  }
+
+  /**
+   * Get BASIC Interpreter instance
+   */
+  getBasic(): BasicInterpreter {
+    return this.basic
+  }
+
+  /**
+   * Get system statistics
+   */
+  getStats() {
+    return {
+      uptime: Date.now() - (this.startTime || Date.now()),
+      memoryUsed: this.memory ? 16384 : 0, // 16KB used as example
+      cpuCycles: this.cpu ? 0 : 0, // Would need cycle counting
+      instructionsPerSecond: this.state.performance.instructionsPerSecond,
+      cpuUsage: this.state.performance.cpuUsage
+    }
+  }
+
+  private startTime?: number
 
   /**
    * Main execution loop

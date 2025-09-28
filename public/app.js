@@ -22,15 +22,112 @@ async function initializeApp() {
         // System6502 또는 BasicEmulator 사용
         if (window.System6502) {
             console.log('System6502를 사용합니다');
-            emulator = new window.System6502();
-            await emulator.initialize();
-            emulator.start();
+            const system = new window.System6502();
+            await system.initialize();
+            system.start();
             isRunning = true;
+
+            // System6502를 래핑하여 executeCommand 제공
+            emulator = {
+                system: system,
+                terminal: system.getTerminal ? system.getTerminal() : null,
+                basic: system.getBasic ? system.getBasic() : null,
+                cpu: system.getCPU ? system.getCPU() : null,
+                memory: system.getMemory ? system.getMemory() : null,
+                program: [],
+                variables: new Map(),
+
+                async executeCommand(command) {
+                    const cmd = command.trim().toUpperCase();
+
+                    // 터미널이 있으면 터미널로 전달
+                    if (this.terminal) {
+                        // 터미널 출력 이벤트 리스너 설정 (한 번만)
+                        if (!this.terminal.listenerCount('output')) {
+                            this.terminal.on('output', (data) => {
+                                if (data && data.text) {
+                                    appendToTerminal(data.text, 'output');
+                                }
+                            });
+                        }
+
+                        this.terminal.emit('command', command);
+                        return { output: '', type: 'output' };
+                    }
+
+                    // 없으면 기본 처리
+                    return { output: 'Command processing not available', type: 'error' };
+                },
+
+                getStats() {
+                    return system.getStats ? system.getStats() : {
+                        uptime: Date.now() - startTime,
+                        memoryUsed: 1024,
+                        cpuCycles: 0
+                    };
+                },
+
+                getCPU() {
+                    if (this.cpu && this.cpu.getState) {
+                        const state = this.cpu.getState();
+                        return {
+                            registers: state,
+                            flags: {
+                                N: (state.P & 0x80) !== 0,
+                                V: (state.P & 0x40) !== 0,
+                                B: (state.P & 0x10) !== 0,
+                                D: (state.P & 0x08) !== 0,
+                                I: (state.P & 0x04) !== 0,
+                                Z: (state.P & 0x02) !== 0,
+                                C: (state.P & 0x01) !== 0
+                            }
+                        };
+                    }
+                    return {
+                        registers: { A: 0, X: 0, Y: 0, PC: 0, SP: 0xFF, P: 0 },
+                        flags: { N: false, V: false, B: false, D: false, I: false, Z: false, C: false }
+                    };
+                }
+            };
         } else if (window.BasicEmulator) {
             console.log('BasicEmulator를 사용합니다');
-            emulator = new window.BasicEmulator();
-            emulator.start();
+            const basicEmulator = new window.BasicEmulator();
+            basicEmulator.start();
             isRunning = true;
+
+            // BasicEmulator를 래핑
+            emulator = {
+                emulator: basicEmulator,
+                terminal: basicEmulator.getTerminal(),
+                program: [],
+                variables: new Map(),
+
+                async executeCommand(command) {
+                    // 터미널로 명령 전달
+                    if (this.terminal) {
+                        // 터미널 출력 이벤트 리스너 설정 (한 번만)
+                        if (!this.terminal.listenerCount('output')) {
+                            this.terminal.on('output', (data) => {
+                                if (data && data.text) {
+                                    appendToTerminal(data.text, 'output');
+                                }
+                            });
+                        }
+
+                        this.terminal.emit('command', command);
+                        return { output: '', type: 'output' };
+                    }
+                    return { output: 'Command processing not available', type: 'error' };
+                },
+
+                getStats() {
+                    return basicEmulator.getStats();
+                },
+
+                getCPU() {
+                    return basicEmulator.getCPU();
+                }
+            };
         } else {
             console.log('실제 에뮬레이터를 찾을 수 없어 Mock을 사용합니다');
             // 임시로 mock 에뮬레이터 생성
