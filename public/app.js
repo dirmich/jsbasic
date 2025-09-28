@@ -39,24 +39,129 @@ async function initializeApp() {
 
                 async executeCommand(command) {
                     const cmd = command.trim().toUpperCase();
+                    const trimmedCommand = command.trim();
 
-                    // 터미널이 있으면 터미널로 전달
-                    if (this.terminal) {
-                        // 터미널 출력 이벤트 리스너 설정 (한 번만)
-                        if (!this.terminal.listenerCount('output')) {
-                            this.terminal.on('output', (data) => {
-                                if (data && data.text) {
-                                    appendToTerminal(data.text, 'output');
-                                }
-                            });
+                    // 라인 번호가 있는 명령인지 확인
+                    const lineMatch = trimmedCommand.match(/^(\d+)\s*(.*)/);
+                    if (lineMatch) {
+                        const lineNum = parseInt(lineMatch[1]);
+                        const content = lineMatch[2] || '';
+
+                        // 프로그램 배열에 추가 또는 업데이트
+                        const existingIndex = this.program.findIndex(line => line.number === lineNum);
+                        if (existingIndex >= 0) {
+                            if (content) {
+                                this.program[existingIndex] = { number: lineNum, text: content };
+                            } else {
+                                this.program.splice(existingIndex, 1);
+                            }
+                        } else if (content) {
+                            this.program.push({ number: lineNum, text: content });
+                            this.program.sort((a, b) => a.number - b.number);
                         }
 
-                        this.terminal.emit('command', command);
-                        return { output: '', type: 'output' };
+                        return { output: '', type: 'system' };
                     }
 
-                    // 없으면 기본 처리
-                    return { output: 'Command processing not available', type: 'error' };
+                    // 즉시 실행 명령어 처리
+                    switch (cmd) {
+                        case 'NEW':
+                            this.program = [];
+                            this.variables.clear();
+                            return { output: 'NEW PROGRAM', type: 'system' };
+
+                        case 'LIST':
+                            if (this.program.length === 0) {
+                                return { output: 'NO PROGRAM', type: 'system' };
+                            }
+                            const listing = this.program
+                                .map(line => `${line.number} ${line.text}`)
+                                .join('\n');
+                            return { output: listing, type: 'output' };
+
+                        case 'RUN':
+                            if (this.program.length === 0) {
+                                return { output: 'NO PROGRAM TO RUN', type: 'error' };
+                            }
+                            try {
+                                await this.runProgram();
+                                return { output: '\nPROGRAM ENDED', type: 'system' };
+                            } catch (error) {
+                                return { output: `ERROR: ${error.message}`, type: 'error' };
+                            }
+
+                        default:
+                            // 터미널이 있으면 터미널로 전달
+                            if (this.terminal) {
+                                // 터미널 출력 이벤트 리스너 설정 (한 번만)
+                                if (!this.terminal.listenerCount('output')) {
+                                    this.terminal.on('output', (data) => {
+                                        if (data && data.text) {
+                                            appendToTerminal(data.text, 'output');
+                                        }
+                                    });
+                                }
+
+                                this.terminal.emit('command', command);
+                                return { output: '', type: 'output' };
+                            }
+                            return { output: '?SYNTAX ERROR', type: 'error' };
+                    }
+                },
+
+                // 프로그램 실행
+                async runProgram() {
+                    this.variables.clear();
+                    let pc = 0;
+
+                    while (pc < this.program.length) {
+                        const line = this.program[pc];
+                        const upperText = line.text.toUpperCase();
+
+                        try {
+                            if (upperText.startsWith('PRINT ')) {
+                                const printContent = line.text.substring(6).trim();
+                                let output = '';
+
+                                if (printContent.startsWith('"') && printContent.endsWith('"')) {
+                                    output = printContent.substring(1, printContent.length - 1);
+                                } else if (this.variables.has(printContent)) {
+                                    output = String(this.variables.get(printContent));
+                                } else {
+                                    const num = parseFloat(printContent);
+                                    output = isNaN(num) ? printContent : String(num);
+                                }
+
+                                appendToTerminal(output, 'output');
+                            } else if (upperText.startsWith('LET ')) {
+                                const letMatch = line.text.substring(4).match(/^([A-Z][A-Z0-9]*)\s*=\s*(.+)/);
+                                if (letMatch) {
+                                    const varName = letMatch[1];
+                                    const expression = letMatch[2].trim();
+
+                                    let value;
+                                    if (expression.startsWith('"') && expression.endsWith('"')) {
+                                        value = expression.substring(1, expression.length - 1);
+                                    } else if (this.variables.has(expression)) {
+                                        value = this.variables.get(expression);
+                                    } else {
+                                        value = parseFloat(expression);
+                                        if (isNaN(value)) value = expression;
+                                    }
+
+                                    this.variables.set(varName, value);
+                                }
+                            } else if (upperText === 'END' || upperText === 'STOP') {
+                                break;
+                            } else if (upperText.startsWith('REM ')) {
+                                // 주석은 무시
+                            }
+
+                            pc++;
+                        } catch (error) {
+                            throw new Error(`Line ${line.number}: ${error.message}`);
+                        }
+                    }
                 },
 
                 getStats() {
@@ -109,23 +214,177 @@ async function initializeApp() {
                 terminal: basicEmulator.getTerminal(),
                 program: [],
                 variables: new Map(),
+                dataValues: [],
+                dataPointer: 0,
 
                 async executeCommand(command) {
-                    // 터미널로 명령 전달
-                    if (this.terminal) {
-                        // 터미널 출력 이벤트 리스너 설정 (한 번만)
-                        if (!this.terminal.listenerCount('output')) {
-                            this.terminal.on('output', (data) => {
-                                if (data && data.text) {
-                                    appendToTerminal(data.text, 'output');
-                                }
-                            });
+                    const cmd = command.trim().toUpperCase();
+                    const trimmedCommand = command.trim();
+
+                    // 라인 번호가 있는 명령인지 확인
+                    const lineMatch = trimmedCommand.match(/^(\d+)\s*(.*)/);
+                    if (lineMatch) {
+                        const lineNum = parseInt(lineMatch[1]);
+                        const content = lineMatch[2] || '';
+
+                        // 프로그램 배열에 추가 또는 업데이트
+                        const existingIndex = this.program.findIndex(line => line.number === lineNum);
+                        if (existingIndex >= 0) {
+                            if (content) {
+                                this.program[existingIndex] = { number: lineNum, text: content };
+                            } else {
+                                this.program.splice(existingIndex, 1);
+                            }
+                        } else if (content) {
+                            this.program.push({ number: lineNum, text: content });
+                            this.program.sort((a, b) => a.number - b.number);
                         }
 
-                        this.terminal.emit('command', command);
-                        return { output: '', type: 'output' };
+                        // DATA 문 처리
+                        if (content.toUpperCase().startsWith('DATA ')) {
+                            const dataContent = content.substring(5);
+                            const values = dataContent.split(',').map(v => {
+                                const trimmed = v.trim();
+                                if (trimmed.startsWith('"') && trimmed.endsWith('"')) {
+                                    return trimmed.substring(1, trimmed.length - 1);
+                                }
+                                const num = parseFloat(trimmed);
+                                return isNaN(num) ? trimmed : num;
+                            });
+                            this.dataValues.push(...values);
+                        }
+
+                        return { output: '', type: 'system' };
                     }
-                    return { output: 'Command processing not available', type: 'error' };
+
+                    // 즉시 실행 명령어 처리
+                    switch (cmd) {
+                        case 'NEW':
+                            this.program = [];
+                            this.variables.clear();
+                            this.dataValues = [];
+                            this.dataPointer = 0;
+                            return { output: 'NEW PROGRAM', type: 'system' };
+
+                        case 'LIST':
+                            if (this.program.length === 0) {
+                                return { output: 'NO PROGRAM', type: 'system' };
+                            }
+                            const listing = this.program
+                                .map(line => `${line.number} ${line.text}`)
+                                .join('\n');
+                            return { output: listing, type: 'output' };
+
+                        case 'RUN':
+                            if (this.program.length === 0) {
+                                return { output: 'NO PROGRAM TO RUN', type: 'error' };
+                            }
+                            try {
+                                await this.runProgram();
+                                return { output: '\nPROGRAM ENDED', type: 'system' };
+                            } catch (error) {
+                                return { output: `ERROR: ${error.message}`, type: 'error' };
+                            }
+
+                        default:
+                            // 터미널로 명령 전달
+                            if (this.terminal) {
+                                // 터미널 출력 이벤트 리스너 설정 (한 번만)
+                                if (!this.terminal.listenerCount('output')) {
+                                    this.terminal.on('output', (data) => {
+                                        if (data && data.text) {
+                                            appendToTerminal(data.text, 'output');
+                                        }
+                                    });
+                                }
+
+                                this.terminal.emit('command', command);
+                                return { output: '', type: 'output' };
+                            }
+                            return { output: '?SYNTAX ERROR', type: 'error' };
+                    }
+                },
+
+                // 프로그램 실행
+                async runProgram() {
+                    this.dataPointer = 0;
+                    this.variables.clear();
+                    let pc = 0;
+
+                    while (pc < this.program.length) {
+                        const line = this.program[pc];
+                        const upperText = line.text.toUpperCase();
+
+                        try {
+                            if (upperText.startsWith('PRINT ')) {
+                                const printContent = line.text.substring(6).trim();
+                                let output = '';
+
+                                // 간단한 PRINT 처리
+                                if (printContent.startsWith('"') && printContent.endsWith('"')) {
+                                    output = printContent.substring(1, printContent.length - 1);
+                                } else if (this.variables.has(printContent)) {
+                                    output = String(this.variables.get(printContent));
+                                } else {
+                                    const num = parseFloat(printContent);
+                                    output = isNaN(num) ? printContent : String(num);
+                                }
+
+                                appendToTerminal(output, 'output');
+                            } else if (upperText.startsWith('LET ')) {
+                                const letMatch = line.text.substring(4).match(/^([A-Z][A-Z0-9]*)\s*=\s*(.+)/);
+                                if (letMatch) {
+                                    const varName = letMatch[1];
+                                    const expression = letMatch[2].trim();
+
+                                    let value;
+                                    if (expression.startsWith('"') && expression.endsWith('"')) {
+                                        value = expression.substring(1, expression.length - 1);
+                                    } else if (this.variables.has(expression)) {
+                                        value = this.variables.get(expression);
+                                    } else {
+                                        value = parseFloat(expression);
+                                        if (isNaN(value)) value = expression;
+                                    }
+
+                                    this.variables.set(varName, value);
+                                }
+                            } else if (upperText.startsWith('INPUT ')) {
+                                const varName = upperText.substring(6).trim();
+                                const value = prompt(`${varName}?`);
+                                if (value !== null) {
+                                    const num = parseFloat(value);
+                                    this.variables.set(varName, isNaN(num) ? value : num);
+                                }
+                            } else if (upperText.startsWith('READ ')) {
+                                const varNames = upperText.substring(5).split(',');
+                                for (const varName of varNames) {
+                                    if (this.dataPointer < this.dataValues.length) {
+                                        this.variables.set(varName.trim(), this.dataValues[this.dataPointer++]);
+                                    } else {
+                                        throw new Error('OUT OF DATA');
+                                    }
+                                }
+                            } else if (upperText === 'END' || upperText === 'STOP') {
+                                break;
+                            } else if (upperText.startsWith('REM ')) {
+                                // 주석은 무시
+                            } else if (upperText.startsWith('DATA ')) {
+                                // DATA는 이미 처리됨
+                            } else if (upperText.startsWith('FOR ')) {
+                                // FOR 루프는 간단히 건너뛰기
+                                const nextIndex = this.program.findIndex((l, i) => i > pc && l.text.toUpperCase().startsWith('NEXT'));
+                                if (nextIndex >= 0) {
+                                    pc = nextIndex;
+                                    continue;
+                                }
+                            }
+
+                            pc++;
+                        } catch (error) {
+                            throw new Error(`Line ${line.number}: ${error.message}`);
+                        }
+                    }
                 },
 
                 getStats() {
