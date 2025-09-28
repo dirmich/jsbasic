@@ -4,7 +4,39 @@
  */
 
 import '../setup.js';
+import { describe, test, expect, beforeEach, afterEach } from 'bun:test';
 import { PerformanceMonitor } from '../../performance/performance-monitor.js';
+
+// Bun 테스트를 위한 jest 호환 레이어
+const jest = {
+  fn: (impl?: any) => {
+    const fn: any = impl || (() => {});
+    let mockImpl = impl;
+    let returnValue: any;
+    const calls: any[] = [];
+
+    const wrapper = (...args: any[]) => {
+      calls.push(args);
+      if (returnValue !== undefined) return returnValue;
+      return mockImpl ? mockImpl(...args) : undefined;
+    };
+
+    wrapper.mock = { calls };
+    wrapper.mockImplementation = (newImpl: any) => {
+      mockImpl = newImpl;
+      return wrapper;
+    };
+    wrapper.mockReturnValue = (value: any) => {
+      returnValue = value;
+      return wrapper;
+    };
+    wrapper.mockClear = () => {
+      calls.length = 0;
+      return wrapper;
+    };
+    return wrapper;
+  }
+};
 
 // performance.now 모킹
 const mockPerformanceNow = jest.fn();

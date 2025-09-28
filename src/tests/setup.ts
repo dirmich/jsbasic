@@ -3,10 +3,30 @@
  * 브라우저 API 모킹 및 전역 설정
  */
 
-// Jest 글로벌 타입 선언
+// Jest 또는 Bun 테스트 환경용 모킹 헬퍼
 declare global {
   const jest: any;
 }
+
+// jest가 없는 경우 (Bun 테스트 환경) 대체 모킹 함수 제공
+const createMockFn = (defaultImpl?: Function) => {
+  if (typeof jest !== 'undefined') {
+    return jest.fn(defaultImpl);
+  }
+  // Bun 테스트를 위한 간단한 모킹 함수
+  const fn: any = defaultImpl || (() => {});
+  fn.mock = { calls: [] };
+  fn.mockImplementation = (impl: Function) => Object.assign(fn, impl);
+  fn.mockReturnValue = (value: any) => Object.assign(fn, () => value);
+  fn.mockReturnValueOnce = (value: any) => {
+    const original = fn.bind({});
+    Object.assign(fn, () => {
+      Object.assign(fn, original);
+      return value;
+    });
+  };
+  return fn;
+};
 
 // DOM 및 브라우저 API 모킹
 global.window = {
@@ -18,9 +38,9 @@ global.window = {
   cancelAnimationFrame: (id: number) => {
     global.clearTimeout(id);
   },
-  addEventListener: jest.fn(),
-  removeEventListener: jest.fn(),
-  dispatchEvent: jest.fn((event: any) => {
+  addEventListener: createMockFn(),
+  removeEventListener: createMockFn(),
+  dispatchEvent: createMockFn((event: any) => {
     // 이벤트 핸들러 시뮬레이션
     if (event.type === 'resize' && (global.window as any).__resizeHandlers) {
       (global.window as any).__resizeHandlers.forEach((handler: Function) => handler(event));
@@ -33,7 +53,7 @@ global.window = {
     width: 1024,
     height: 768,
     orientation: {
-      addEventListener: jest.fn()
+      addEventListener: createMockFn()
     }
   },
   localStorage: {
@@ -45,9 +65,9 @@ global.window = {
     get length() { return Object.keys(this.data).length; },
     key(index: number) { return Object.keys(this.data)[index] || null; }
   },
-  confirm: jest.fn(() => true),
+  confirm: createMockFn(() => true),
   performance: {
-    now: jest.fn(() => Date.now()),
+    now: createMockFn(() => Date.now()),
     memory: {
       usedJSHeapSize: 1024 * 1024 * 20,
       totalJSHeapSize: 1024 * 1024 * 50,
@@ -62,10 +82,10 @@ global.window = {
 } as any;
 
 global.document = {
-  createElement: jest.fn((tagName: string) => {
+  createElement: createMockFn((tagName: string) => {
     if (tagName === 'canvas') {
       return {
-        getContext: jest.fn(() => ({ /* WebGL 컨텍스트 모킹 */ }))
+        getContext: createMockFn(() => ({ /* WebGL 컨텍스트 모킹 */ }))
       };
     }
     if (tagName === 'script') {
@@ -79,19 +99,19 @@ global.document = {
     }
     return {};
   }),
-  querySelectorAll: jest.fn(() => []),
-  getElementById: jest.fn(() => null),
+  querySelectorAll: createMockFn(() => []),
+  getElementById: createMockFn(() => null),
   body: {
     classList: {
-      add: jest.fn(),
-      remove: jest.fn(),
-      contains: jest.fn(() => false),
-      toggle: jest.fn()
+      add: createMockFn(),
+      remove: createMockFn(),
+      contains: createMockFn(() => false),
+      toggle: createMockFn()
     },
     className: ''
   },
   head: {
-    appendChild: jest.fn()
+    appendChild: createMockFn()
   }
 } as any;
 

@@ -4,6 +4,60 @@
  */
 
 import '../setup.js';
+import { describe, test, expect, beforeEach, afterEach } from 'bun:test';
+
+// Bun 테스트를 위한 jest 호환 레이어
+const jest = {
+  fn: (impl?: any) => {
+    const fn: any = impl || (() => {});
+    let mockImpl = impl;
+    let returnValue: any;
+    let returnValueOnce: any;
+    const calls: any[] = [];
+
+    const wrapper = (...args: any[]) => {
+      calls.push(args);
+      if (returnValueOnce !== undefined) {
+        const val = returnValueOnce;
+        returnValueOnce = undefined;
+        return val;
+      }
+      if (returnValue !== undefined) return returnValue;
+      return mockImpl ? mockImpl(...args) : undefined;
+    };
+
+    wrapper.mock = { calls };
+    wrapper.mockImplementation = (newImpl: any) => {
+      mockImpl = newImpl;
+      return wrapper;
+    };
+    wrapper.mockReturnValue = (value: any) => {
+      returnValue = value;
+      return wrapper;
+    };
+    wrapper.mockReturnValueOnce = (value: any) => {
+      returnValueOnce = value;
+      return wrapper;
+    };
+    wrapper.mockClear = () => {
+      calls.length = 0;
+      return wrapper;
+    };
+    return wrapper;
+  },
+  spyOn: (obj: any, method: string) => {
+    const original = obj[method];
+    const spy = jest.fn(original);
+    spy.mockRestore = () => {
+      obj[method] = original;
+    };
+    obj[method] = spy;
+    return spy;
+  },
+  useFakeTimers: () => {},
+  useRealTimers: () => {},
+  advanceTimersByTime: (time: number) => {}
+};
 import { 
   ObjectPool, 
   MemoryOptimizer, 
