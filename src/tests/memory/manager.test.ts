@@ -474,11 +474,13 @@ describe('MemoryManager', () => {
       
       // 리셋 실행
       memory.reset();
-      
+
       // 리셋 확인
-      expect(memory.readByte(0x1000)).toBe(0x00);
       expect(memory.getCurrentBank()).toBe('main');
+      // 접근 로그 확인 (readByte 호출 전에)
       expect(memory.getAccessLog().length).toBe(0);
+      // 메모리 값 확인
+      expect(memory.readByte(0x1000)).toBe(0x00);
     });
   });
 

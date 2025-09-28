@@ -315,7 +315,8 @@ describe('BasicEmulator 통합 시스템', () => {
     test('BASIC 인터프리터 접근', () => {
       const basic = emulator.getBasicInterpreter();
       expect(basic).toBeDefined();
-      expect(typeof basic.reset).toBe('function');
+      expect(typeof basic.run).toBe('function');
+      expect(typeof basic.stop).toBe('function');
     });
 
     test('메모리 매니저 접근', () => {

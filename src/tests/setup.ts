@@ -121,6 +121,9 @@ global.navigator = {
   serviceWorker: undefined
 } as any;
 
+// localStorage를 전역으로도 설정
+global.localStorage = (global.window as any).localStorage;
+
 global.WebAssembly = {} as any;
 global.Worker = class MockWorker {} as any;
 global.AudioContext = class MockAudioContext {} as any;
