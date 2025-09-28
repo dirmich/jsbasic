@@ -220,13 +220,13 @@ export class BasicEmulator extends EventEmitter {
       }
       
       if (upperCommand.startsWith('SAVE ')) {
-        const filename = upperCommand.substring(5).trim().replace(/"/g, '');
+        const filename = command.substring(5).trim().replace(/"/g, '').toUpperCase();
         this.saveProgram(filename);
         return;
       }
-      
+
       if (upperCommand.startsWith('LOAD ')) {
-        const filename = upperCommand.substring(5).trim().replace(/"/g, '');
+        const filename = command.substring(5).trim().replace(/"/g, '').toUpperCase();
         this.loadProgram(filename);
         return;
       }

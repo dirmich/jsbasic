@@ -748,9 +748,48 @@ export class BasicInterpreter extends EventEmitter {
   }
 
   /**
-   * 프로그램 추가
+   * 프로그램 추가 (라인 병합)
    */
   public addProgram(program: Program): void {
-    this.initializeProgram(program);
+    // 새로운 라인들을 기존 프로그램에 병합
+    for (const newStmt of program.statements) {
+      if (newStmt.lineNumber !== undefined) {
+        // 같은 라인 번호가 있으면 교체, 없으면 추가
+        const existingIndex = this.context.statements.findIndex(
+          s => s.lineNumber === newStmt.lineNumber
+        );
+
+        if (existingIndex >= 0) {
+          this.context.statements[existingIndex] = newStmt;
+        } else {
+          // 라인 번호 순서대로 삽입
+          let insertIndex = this.context.statements.length;
+          for (let i = 0; i < this.context.statements.length; i++) {
+            const stmt = this.context.statements[i];
+            if (stmt?.lineNumber !== undefined && stmt.lineNumber > newStmt.lineNumber) {
+              insertIndex = i;
+              break;
+            }
+          }
+          this.context.statements.splice(insertIndex, 0, newStmt);
+        }
+
+        // 라인 번호 맵 업데이트
+        this.updateLineNumberMap();
+      }
+    }
+  }
+
+  /**
+   * 라인 번호 맵 업데이트
+   */
+  private updateLineNumberMap(): void {
+    this.context.lineNumberMap.clear();
+    for (let i = 0; i < this.context.statements.length; i++) {
+      const stmt = this.context.statements[i];
+      if (stmt?.lineNumber !== undefined) {
+        this.context.lineNumberMap.set(stmt.lineNumber, i);
+      }
+    }
   }
 }
