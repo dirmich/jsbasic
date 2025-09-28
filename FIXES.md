@@ -2,7 +2,32 @@
 
 ## 수정 일자: 2025-09-28
 
-### 최신 수정 (네 번째 수정) - 2025-09-28 (계속)
+### 최신 수정 (다섯 번째 수정) - 2025-09-28 (계속)
+
+#### 추가 테스트 호환성 개선
+- **문제**: 모바일 및 성능 모니터 테스트 실패
+- **원인**:
+  1. 모바일 테스트: navigator.vibrate 감지 타이밍 문제
+  2. 성능 모니터: console.group 복수 호출 처리 누락
+- **해결책**:
+  1. 모바일 테스트에서 navigator mock을 optimizer 생성 전에 설정
+  2. 성능 로깅 테스트에서 복수 console.group 호출 허용
+
+#### 수정된 파일
+- `src/tests/mobile/mobile-simplified.test.ts`:
+  - navigator.vibrate 모킹 타이밍 수정
+- `src/tests/performance/performance-monitor.test.ts`:
+  - console.group/log/groupEnd 모킹 개선
+  - 복수 호출 처리
+
+#### 테스트 결과
+- **다섯 번째 수정 전**: 526 pass, 37 fail, 1 error
+- **다섯 번째 수정 후**: 528 pass, 35 fail, 1 error
+- **개선**: 2개 테스트 추가 수정 완료
+
+---
+
+### 네 번째 수정 - 2025-09-28 (계속)
 
 #### Bun 테스트 환경 완전 호환성 개선
 - **문제**: Bun 테스트 환경에서 Jest 스타일 mock 함수 사용 시 오류 발생

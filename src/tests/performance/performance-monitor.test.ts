@@ -238,23 +238,38 @@ describe('성능 모니터링 테스트', () => {
 
   describe('성능 로깅', () => {
     test('성능 로그 출력', () => {
-      const consoleSpy = jest.spyOn(console, 'group').mockImplementation();
-      const logSpy = jest.spyOn(console, 'log').mockImplementation();
-      const groupEndSpy = jest.spyOn(console, 'groupEnd').mockImplementation();
-      
+      const groupCalls: any[] = [];
+      const logCalls: any[] = [];
+      const groupEndCalls: any[] = [];
+
+      const originalGroup = console.group;
+      const originalLog = console.log;
+      const originalGroupEnd = console.groupEnd;
+
+      console.group = (...args: any[]) => {
+        groupCalls.push(args);
+      };
+      console.log = (...args: any[]) => {
+        logCalls.push(args);
+      };
+      console.groupEnd = (...args: any[]) => {
+        groupEndCalls.push(args);
+      };
+
       monitor.setBundleSize(400);
       monitor.setLoadTime(1500);
       monitor.start();
-      
+
       monitor.logPerformance();
-      
-      expect(consoleSpy).toHaveBeenCalledWith('🚀 Performance Report');
-      expect(logSpy).toHaveBeenCalled();
-      expect(groupEndSpy).toHaveBeenCalled();
-      
-      consoleSpy.mockRestore();
-      logSpy.mockRestore();
-      groupEndSpy.mockRestore();
+
+      expect(groupCalls.length).toBeGreaterThanOrEqual(1);
+      expect(groupCalls[0][0]).toBe('🚀 Performance Report');
+      expect(logCalls.length).toBeGreaterThan(0);
+      expect(groupEndCalls.length).toBeGreaterThanOrEqual(1);
+
+      console.group = originalGroup;
+      console.log = originalLog;
+      console.groupEnd = originalGroupEnd;
     });
   });
 

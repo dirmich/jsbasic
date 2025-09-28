@@ -67,13 +67,24 @@ describe('모바일 최적화 핵심 테스트', () => {
   });
 
   test('진동 피드백 (지원하지 않는 환경)', () => {
+    // navigator.vibrate가 없는 환경을 먼저 설정
+    const originalNavigator = globalThis.navigator;
+    const mockNav = { ...originalNavigator };
+    delete (mockNav as any).vibrate;
+    Object.defineProperty(globalThis, 'navigator', {
+      value: mockNav,
+      configurable: true
+    });
+
     const optimizer = new MobileOptimizer({
       enableVibration: true
     });
-    
-    // navigator.vibrate가 없는 환경
+
     const result = optimizer.vibrate(100);
     expect(result).toBe(false);
+
+    // 원래 navigator 복원
+    globalThis.navigator = originalNavigator;
   });
 
   test('최적화 요약 정보', () => {
