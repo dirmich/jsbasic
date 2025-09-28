@@ -565,9 +565,12 @@ export class InstructionSet {
     if (condition) {
       const address = this.cpu.addressing.getOperandAddress(AddressingMode.RELATIVE);
       this.cpu.setRegisterPC(address);
-      
+
       // 분기가 발생하면 추가 사이클이 필요할 수 있음
       // (페이지 경계를 넘으면 +1 사이클)
+    } else {
+      // 분기하지 않을 때도 오퍼랜드 바이트를 건너뛰어야 함
+      this.cpu.fetchByte();
     }
   }
 
@@ -598,12 +601,14 @@ export class InstructionSet {
    * 서브루틴 호출
    */
   private jsr(): void {
+    // 새 주소 가져오기 (이 과정에서 PC가 명령어 다음으로 이동)
+    const address = this.cpu.addressing.getOperandAddress(AddressingMode.ABSOLUTE);
+
     // 현재 PC-1을 스택에 저장 (RTS에서 올바른 위치로 돌아가기 위해)
     const returnAddress = this.cpu.registers.PC - 1;
     this.cpu.pushWord(returnAddress);
-    
+
     // 새 주소로 점프
-    const address = this.cpu.addressing.getOperandAddress(AddressingMode.ABSOLUTE);
     this.cpu.setRegisterPC(address);
   }
 

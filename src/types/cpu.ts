@@ -111,8 +111,11 @@ export enum CPUState {
 export interface CPUStateInfo {
   state: CPUState;
   registers: CPURegisters;
+  flags: StatusFlags;
   cycles: number;
+  cycleCount: number;
   instructionCount: number;
+  isHalted: boolean;
 }
 
 // CPU Flags enum
@@ -149,6 +152,8 @@ export interface CPUOptions {
 // CPU Events
 export interface CPUEvents extends Record<string, (...args: any[]) => void> {
   step: (cycles: number) => void;
+  beforeStep: (state: CPUStateInfo) => void;
+  afterStep: (state: CPUStateInfo, cycles: number) => void;
   interrupt: (type: InterruptType) => void;
   stateChange: (state: CPUState) => void;
   error: (error: Error) => void;

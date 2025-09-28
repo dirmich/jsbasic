@@ -36,7 +36,7 @@ describe('CPU6502', () => {
       expect(state.registers.Y).toBe(0);
       expect(state.registers.PC).toBe(0);
       expect(state.registers.SP).toBe(0xFF);
-      expect(state.registers.P).toBe(0x34); // I 플래그와 unused 비트 설정
+      expect(state.registers.P).toBe(0x24); // I 플래그와 unused 비트 설정
       expect(state.flags.I).toBe(true);
       expect(state.flags.Z).toBe(false);
       expect(state.flags.C).toBe(false);

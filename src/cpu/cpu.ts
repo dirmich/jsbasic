@@ -130,8 +130,11 @@ export class CPU6502 extends EventEmitter<CPUEvents> implements CPUInterface {
   /**
    * 레지스터 읽기 전용 접근
    */
-  public get registers(): Readonly<CPURegisters> {
-    return { ...this._registers };
+  public get registers(): Readonly<CPURegisters & { P: number }> {
+    return {
+      ...this._registers,
+      P: this.getRegisterP() // P를 숫자로도 제공
+    };
   }
   
   /**
@@ -186,13 +189,13 @@ export class CPU6502 extends EventEmitter<CPUEvents> implements CPUInterface {
     if (this.isHalted) {
       return 0;
     }
-    
+
     // 인터럽트 처리
     const interruptCycles = this.handleInterrupts();
     if (interruptCycles > 0) {
       return interruptCycles;
     }
-    
+
     // 브레이크포인트 확인
     if (this.breakpoints.has(this._registers.PC)) {
       this.emit('breakpoint', this._registers.PC);
@@ -200,28 +203,34 @@ export class CPU6502 extends EventEmitter<CPUEvents> implements CPUInterface {
         return 0; // 디버그 모드가 아니면 멈춤
       }
     }
-    
+
+    // beforeStep 이벤트 발생
+    this.emit('beforeStep', this.getState());
+
     // 명령어 페치
     const opcode = this.fetchByte();
     const startPC = this._registers.PC - 1;
-    
+
     // 명령어 실행
     try {
       const cycles = this.instructions.execute(opcode);
-      
+
       this.cycleCount += cycles;
       this.instructionCount++;
-      
+
       // 트레이스 출력
       if (this.traceEnabled) {
         this.traceExecution(startPC, opcode, cycles);
       }
-      
+
+      // afterStep 이벤트 발생
+      this.emit('afterStep', this.getState(), cycles);
+
       // 실행 이벤트 발생
       this.emit('step', cycles);
-      
+
       return cycles;
-      
+
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       const cpuError = new CPUError(
@@ -229,7 +238,7 @@ export class CPU6502 extends EventEmitter<CPUEvents> implements CPUInterface {
         'EXECUTION_ERROR',
         startPC
       );
-      
+
       this.emit('error', cpuError);
       throw cpuError;
     }
@@ -302,8 +311,11 @@ export class CPU6502 extends EventEmitter<CPUEvents> implements CPUInterface {
     return {
       state: this.isHalted ? CPUState.HALTED : CPUState.RUNNING,
       registers: this.registers,
+      flags: { ...this._registers.P },
       cycles: this.cycleCount,
-      instructionCount: this.instructionCount
+      cycleCount: this.cycleCount,
+      instructionCount: this.instructionCount,
+      isHalted: this.isHalted
     };
   }
   
@@ -404,8 +416,9 @@ export class CPU6502 extends EventEmitter<CPUEvents> implements CPUInterface {
   /**
    * 플래그 값 확인
    */
-  public getFlag(flag: CPUFlag): boolean {
-    switch (flag) {
+  public getFlag(flag: CPUFlag | string): boolean {
+    const flagKey = typeof flag === 'string' ? flag.charAt(0).toUpperCase() : flag;
+    switch (flagKey) {
       case 'C': return this._registers.P.carry;
       case 'Z': return this._registers.P.zero;
       case 'I': return this._registers.P.interrupt;
@@ -421,8 +434,9 @@ export class CPU6502 extends EventEmitter<CPUEvents> implements CPUInterface {
   /**
    * 플래그 값 설정
    */
-  public setFlag(flag: CPUFlag, value: boolean): void {
-    switch (flag) {
+  public setFlag(flag: CPUFlag | string, value: boolean): void {
+    const flagKey = typeof flag === 'string' ? flag.charAt(0).toUpperCase() : flag;
+    switch (flagKey) {
       case 'C': this._registers.P.carry = value; break;
       case 'Z': this._registers.P.zero = value; break;
       case 'I': this._registers.P.interrupt = value; break;
