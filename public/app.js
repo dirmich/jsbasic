@@ -70,16 +70,24 @@ async function initializeApp() {
                 getCPU() {
                     if (this.cpu && this.cpu.getState) {
                         const state = this.cpu.getState();
+                        const P = state.P || 0;
                         return {
-                            registers: state,
+                            registers: {
+                                A: state.A || 0,
+                                X: state.X || 0,
+                                Y: state.Y || 0,
+                                PC: state.PC || 0,
+                                SP: state.SP || 0xFF,
+                                P: P
+                            },
                             flags: {
-                                N: (state.P & 0x80) !== 0,
-                                V: (state.P & 0x40) !== 0,
-                                B: (state.P & 0x10) !== 0,
-                                D: (state.P & 0x08) !== 0,
-                                I: (state.P & 0x04) !== 0,
-                                Z: (state.P & 0x02) !== 0,
-                                C: (state.P & 0x01) !== 0
+                                N: (P & 0x80) !== 0,
+                                V: (P & 0x40) !== 0,
+                                B: (P & 0x10) !== 0,
+                                D: (P & 0x08) !== 0,
+                                I: (P & 0x04) !== 0,
+                                Z: (P & 0x02) !== 0,
+                                C: (P & 0x01) !== 0
                             }
                         };
                     }
@@ -600,24 +608,40 @@ function updateSystemInfo() {
  */
 function updateCPUInfo() {
     if (!emulator) return;
-    
-    const cpu = emulator.getCPU();
-    
-    document.getElementById('reg-a').textContent = `$${cpu.registers.A.toString(16).padStart(2, '0').toUpperCase()}`;
-    document.getElementById('reg-x').textContent = `$${cpu.registers.X.toString(16).padStart(2, '0').toUpperCase()}`;
-    document.getElementById('reg-y').textContent = `$${cpu.registers.Y.toString(16).padStart(2, '0').toUpperCase()}`;
-    document.getElementById('reg-pc').textContent = `$${cpu.registers.PC.toString(16).padStart(4, '0').toUpperCase()}`;
-    document.getElementById('reg-sp').textContent = `$${cpu.registers.SP.toString(16).padStart(2, '0').toUpperCase()}`;
-    document.getElementById('reg-p').textContent = `$${cpu.registers.P.toString(16).padStart(2, '0').toUpperCase()}`;
-    
-    // 플래그 업데이트
-    updateFlag('flag-n', cpu.flags.N);
-    updateFlag('flag-v', cpu.flags.V);
-    updateFlag('flag-b', cpu.flags.B);
-    updateFlag('flag-d', cpu.flags.D);
-    updateFlag('flag-i', cpu.flags.I);
-    updateFlag('flag-z', cpu.flags.Z);
-    updateFlag('flag-c', cpu.flags.C);
+
+    try {
+        const cpu = emulator.getCPU();
+
+        if (!cpu || !cpu.registers) return;
+
+        // 안전하게 레지스터 값 가져오기
+        const regA = (cpu.registers.A || 0);
+        const regX = (cpu.registers.X || 0);
+        const regY = (cpu.registers.Y || 0);
+        const regPC = (cpu.registers.PC || 0);
+        const regSP = (cpu.registers.SP || 0xFF);
+        const regP = (cpu.registers.P || 0);
+
+        document.getElementById('reg-a').textContent = `$${regA.toString(16).padStart(2, '0').toUpperCase()}`;
+        document.getElementById('reg-x').textContent = `$${regX.toString(16).padStart(2, '0').toUpperCase()}`;
+        document.getElementById('reg-y').textContent = `$${regY.toString(16).padStart(2, '0').toUpperCase()}`;
+        document.getElementById('reg-pc').textContent = `$${regPC.toString(16).padStart(4, '0').toUpperCase()}`;
+        document.getElementById('reg-sp').textContent = `$${regSP.toString(16).padStart(2, '0').toUpperCase()}`;
+        document.getElementById('reg-p').textContent = `$${regP.toString(16).padStart(2, '0').toUpperCase()}`;
+
+        // 플래그 업데이트
+        if (cpu.flags) {
+            updateFlag('flag-n', cpu.flags.N);
+            updateFlag('flag-v', cpu.flags.V);
+            updateFlag('flag-b', cpu.flags.B);
+            updateFlag('flag-d', cpu.flags.D);
+            updateFlag('flag-i', cpu.flags.I);
+            updateFlag('flag-z', cpu.flags.Z);
+            updateFlag('flag-c', cpu.flags.C);
+        }
+    } catch (error) {
+        console.error('CPU 정보 업데이트 오류:', error);
+    }
 }
 
 /**
