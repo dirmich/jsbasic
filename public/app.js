@@ -367,11 +367,14 @@ function setupEventHandlers() {
             }
         }
     });
-    
+
     // 터미널 클릭 시 입력 포커스
     document.getElementById('terminal').addEventListener('click', () => {
         terminalInput.focus();
     });
+
+    // 예제 프로그램 로더 설정
+    setupExampleLoader();
 }
 
 /**
@@ -384,7 +387,7 @@ async function handleKeyDown(e) {
         case 'Enter':
             e.preventDefault();
             await handleCommand(terminalInput.value);
-            terminalInput.value = '';
+            // handleCommand에서 이미 입력창을 비우므로 여기서는 제거
             break;
             
         case 'ArrowUp':
@@ -409,17 +412,17 @@ async function handleKeyDown(e) {
  */
 async function handleCommand(command) {
     if (!command.trim()) return;
-    
+
     // 명령어 히스토리에 추가
     commandHistory.push(command);
     if (commandHistory.length > 100) {
         commandHistory.shift();
     }
     historyIndex = -1;
-    
+
     // 입력 표시
     appendToTerminal(`${getCurrentPrompt()}${command}`, 'input');
-    
+
     try {
         const result = await emulator.executeCommand(command);
         if (result.output) {
@@ -428,11 +431,17 @@ async function handleCommand(command) {
     } catch (error) {
         appendToTerminal(`ERROR: ${error.message}`, 'error');
     }
-    
+
     // UI 업데이트
     updateSystemInfo();
     updateCPUInfo();
     updateProgramDisplay();
+
+    // 입력창 비우기
+    const terminalInput = document.getElementById('terminal-input');
+    if (terminalInput) {
+        terminalInput.value = '';
+    }
 }
 
 /**
@@ -677,6 +686,88 @@ function viewMemory() {
  */
 function updateSystemStatus(status) {
     document.querySelector('.cpu-status').textContent = `CPU: ${status}`;
+}
+
+/**
+ * 예제 프로그램 로더 설정
+ */
+function setupExampleLoader() {
+    const exampleSelect = document.getElementById('example-select');
+    const loadExampleBtn = document.getElementById('load-example-btn');
+    const exampleDescription = document.getElementById('example-description');
+
+    // 예제 설명
+    const exampleDescriptions = {
+        'hello.bas': '간단한 Hello World 프로그램',
+        'hello-world.bas': '확장된 Hello World 프로그램 - 반복문과 변수 사용',
+        'calculator.bas': '기본적인 사칙연산 계산기',
+        'guess-game.bas': '1부터 100까지의 숫자를 맞추는 게임',
+        'loops-and-arrays.bas': '반복문과 배열 사용법 데모',
+        'math-demo.bas': '수학 연산 데모 프로그램',
+        'math-functions.bas': '다양한 수학 함수 사용 예제',
+        'multiplication-table.bas': '구구단 출력 프로그램',
+        'prime-numbers.bas': '소수를 찾아서 출력하는 프로그램',
+        'tic-tac-toe.bas': '틱택토 게임 구현',
+        'sorting.bas': '배열 정렬 알고리즘 구현',
+        'address-book.bas': '간단한 주소록 프로그램'
+    };
+
+    // 예제 선택 시 설명 표시
+    if (exampleSelect) {
+        exampleSelect.addEventListener('change', () => {
+            const selectedExample = exampleSelect.value;
+            if (selectedExample && exampleDescriptions[selectedExample]) {
+                exampleDescription.textContent = exampleDescriptions[selectedExample];
+            } else {
+                exampleDescription.textContent = '예제를 선택하면 설명이 표시됩니다.';
+            }
+        });
+    }
+
+    // 예제 로드 버튼 클릭
+    if (loadExampleBtn) {
+        loadExampleBtn.addEventListener('click', async () => {
+            const selectedExample = exampleSelect.value;
+            if (!selectedExample) {
+                appendToTerminal('예제를 선택해주세요', 'error');
+                return;
+            }
+
+            try {
+                // 예제 파일 가져오기
+                const response = await fetch(`examples/${selectedExample}`);
+                if (!response.ok) {
+                    throw new Error('예제 파일을 로드할 수 없습니다');
+                }
+
+                const programText = await response.text();
+
+                // NEW 명령으로 기존 프로그램 지우기
+                await executeCommand('NEW');
+
+                // 프로그램 라인별로 입력
+                const lines = programText.split('\n');
+                for (const line of lines) {
+                    const trimmedLine = line.trim();
+                    if (trimmedLine && !trimmedLine.startsWith('REM')) {
+                        // 라인 번호가 있는 경우만 입력
+                        if (/^\d+/.test(trimmedLine)) {
+                            await executeCommand(trimmedLine);
+                        }
+                    }
+                }
+
+                appendToTerminal(`예제 "${selectedExample}" 로드 완료`, 'system');
+                appendToTerminal('RUN 명령으로 실행하세요', 'system');
+
+                // 프로그램 표시 업데이트
+                await executeCommand('LIST');
+
+            } catch (error) {
+                appendToTerminal(`예제 로드 실패: ${error.message}`, 'error');
+            }
+        });
+    }
 }
 
 /**
