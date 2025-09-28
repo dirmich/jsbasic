@@ -67,12 +67,12 @@ export class CPU6502 extends EventEmitter<CPUEvents> implements CPUInterface {
   // 인터럽트 메서드들 (CPU6502 인터페이스)
   public irq(): void {
     if (!this._registers.P.interrupt) {
-      this.irqPending = true;
+      this.handleIRQ();
     }
   }
   
   public nmi(): void {
-    this.nmiPending = true;
+    this.handleNMI();
   }
   
   private readonly options: Required<CPUOptions>;
@@ -308,10 +308,22 @@ export class CPU6502 extends EventEmitter<CPUEvents> implements CPUInterface {
    * 현재 CPU 상태 반환
    */
   public getState(): CPUStateInfo {
+    const flags = this._registers.P;
     return {
       state: this.isHalted ? CPUState.HALTED : CPUState.RUNNING,
       registers: this.registers,
-      flags: { ...this._registers.P },
+      flags: {
+        ...flags,
+        // 단일 문자 플래그 접근을 위한 별칭
+        C: flags.carry,
+        Z: flags.zero,
+        I: flags.interrupt,
+        D: flags.decimal,
+        B: flags.break,
+        U: flags.unused,
+        V: flags.overflow,
+        N: flags.negative
+      } as any,
       cycles: this.cycleCount,
       cycleCount: this.cycleCount,
       instructionCount: this.instructionCount,
@@ -445,6 +457,7 @@ export class CPU6502 extends EventEmitter<CPUEvents> implements CPUInterface {
       case 'U': this._registers.P.unused = value; break;
       case 'V': this._registers.P.overflow = value; break;
       case 'N': this._registers.P.negative = value; break;
+      default: throw new Error(`Invalid flag: ${flag}`);
     }
   }
   
@@ -478,14 +491,17 @@ export class CPU6502 extends EventEmitter<CPUEvents> implements CPUInterface {
   
   public setRegisterA(value: number): void {
     this._registers.A = value & 0xFF;
+    this.setZeroNegativeFlags(this._registers.A);
   }
-  
+
   public setRegisterX(value: number): void {
     this._registers.X = value & 0xFF;
+    this.setZeroNegativeFlags(this._registers.X);
   }
-  
+
   public setRegisterY(value: number): void {
     this._registers.Y = value & 0xFF;
+    this.setZeroNegativeFlags(this._registers.Y);
   }
   
   public setPC(address: number): void {

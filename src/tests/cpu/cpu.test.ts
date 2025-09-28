@@ -304,9 +304,9 @@ describe('CPU6502', () => {
       cpu.nmi();
       
       // PC와 P가 스택에 저장되었는지 확인
-      const savedPCH = cpu.readByte(0x01FE);
-      const savedPCL = cpu.readByte(0x01FD);
-      const savedP = cpu.readByte(0x01FC);
+      const savedPCH = cpu.readByte(0x01FF);  // 상위 바이트가 먼저 푸시됨
+      const savedPCL = cpu.readByte(0x01FE);  // 하위 바이트가 나중에 푸시됨
+      const savedP = cpu.readByte(0x01FD);
       
       expect((savedPCH << 8) | savedPCL).toBe(0x1234);
       expect(savedP & 0x01).toBe(0x01); // C 플래그 저장됨
