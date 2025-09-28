@@ -174,8 +174,10 @@ async function initializeApp() {
                 // INPUT 대기 함수
                 async waitForInput(varName) {
                     return new Promise((resolve) => {
-                        // INPUT 프롬프트
-                        appendToTerminal(`${varName}? `, 'system');
+                        // 새 줄에 INPUT 프롬프트 표시
+                        setTimeout(() => {
+                            appendToTerminal(`? ${varName}`, 'system');
+                        }, 10);
                         inputWaitingCallback = (value) => {
                             const num = parseFloat(value);
                             this.variables.set(varName, isNaN(num) ? value : num);
@@ -233,8 +235,10 @@ async function initializeApp() {
                 // INPUT 대기 함수
                 async waitForInput(varName) {
                     return new Promise((resolve) => {
-                        // INPUT 프롬프트
-                        appendToTerminal(`${varName}? `, 'system');
+                        // 새 줄에 INPUT 프롬프트 표시
+                        setTimeout(() => {
+                            appendToTerminal(`? ${varName}`, 'system');
+                        }, 10);
                         inputWaitingCallback = (value) => {
                             const num = parseFloat(value);
                             this.variables.set(varName, isNaN(num) ? value : num);
@@ -437,8 +441,10 @@ async function initializeApp() {
                 // INPUT 대기 함수
                 async waitForInput(varName) {
                     return new Promise((resolve) => {
-                        // INPUT 프롬프트
-                        appendToTerminal(`${varName}? `, 'system');
+                        // 새 줄에 INPUT 프롬프트 표시
+                        setTimeout(() => {
+                            appendToTerminal(`? ${varName}`, 'system');
+                        }, 10);
                         inputWaitingCallback = (value) => {
                             const num = parseFloat(value);
                             this.variables.set(varName, isNaN(num) ? value : num);
