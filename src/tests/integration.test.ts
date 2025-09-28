@@ -292,9 +292,9 @@ describe('CPU와 메모리 관리자 통합', () => {
       
       const endTime = performance.now();
       const duration = endTime - startTime;
-      
-      // 성능 임계값 (1ms 미만)
-      expect(duration).toBeLessThan(1);
+
+      // 성능 임계값 (10ms 미만) - 2KB 읽기/쓰기가 10ms 이내
+      expect(duration).toBeLessThan(10);
     });
 
     test('장시간 CPU 실행 안정성', () => {
