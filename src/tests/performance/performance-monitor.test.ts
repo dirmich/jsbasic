@@ -369,14 +369,25 @@ describe('성능 모니터링 테스트', () => {
     });
 
     test('동일한 시간에서의 프레임 렌더링', () => {
+      // performance.now를 고정된 값으로 모킹
+      const originalPerformance = globalThis.performance;
+      let callCount = 0;
+      Object.defineProperty(globalThis, 'performance', {
+        value: {
+          now: () => 100 // 항상 같은 시간 반환
+        },
+        configurable: true
+      });
+
       monitor.start();
-      
-      mockTime = 100;
       monitor.frameRendered();
       monitor.frameRendered(); // 같은 시간에 다시 호출
-      
+
       const metrics = monitor.getMetrics();
       expect(metrics.renderTime).toBe(0);
+
+      // 원래 performance 복원
+      globalThis.performance = originalPerformance;
     });
   });
 });
