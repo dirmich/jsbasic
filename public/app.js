@@ -87,7 +87,8 @@ async function initializeApp() {
                             }
                             try {
                                 await this.runProgram();
-                                return { output: '\nPROGRAM ENDED', type: 'system' };
+                                // 프로그램 종료 시 메시지 표시하지 않음
+                                return { output: '', type: 'system' };
                             } catch (error) {
                                 return { output: `ERROR: ${error.message}`, type: 'error' };
                             }
@@ -173,7 +174,8 @@ async function initializeApp() {
                 // INPUT 대기 함수
                 async waitForInput(varName) {
                     return new Promise((resolve) => {
-                        appendToTerminal(`${varName}? `, 'output');
+                        // 변수명과 ? 를 별도로 출력
+                        appendToTerminal(`? ${varName}`, 'output');
                         inputWaitingCallback = (value) => {
                             const num = parseFloat(value);
                             this.variables.set(varName, isNaN(num) ? value : num);
@@ -327,7 +329,8 @@ async function initializeApp() {
                             }
                             try {
                                 await this.runProgram();
-                                return { output: '\nPROGRAM ENDED', type: 'system' };
+                                // 프로그램 종료 시 메시지 표시하지 않음
+                                return { output: '', type: 'system' };
                             } catch (error) {
                                 return { output: `ERROR: ${error.message}`, type: 'error' };
                             }
@@ -433,7 +436,8 @@ async function initializeApp() {
                 // INPUT 대기 함수
                 async waitForInput(varName) {
                     return new Promise((resolve) => {
-                        appendToTerminal(`${varName}? `, 'output');
+                        // 변수명과 ? 를 별도로 출력
+                        appendToTerminal(`? ${varName}`, 'output');
                         inputWaitingCallback = (value) => {
                             const num = parseFloat(value);
                             this.variables.set(varName, isNaN(num) ? value : num);
