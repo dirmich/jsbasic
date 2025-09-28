@@ -16,11 +16,26 @@ let historyIndex = -1;
  */
 async function initializeApp() {
     try {
-        // 모듈 로드 (실제로는 번들러를 통해 처리되어야 함)
+        // 모듈 로드
         console.log('에뮬레이터 모듈 로딩 중...');
-        
-        // 임시로 mock 에뮬레이터 생성
-        emulator = createMockEmulator();
+
+        // System6502 또는 BasicEmulator 사용
+        if (window.System6502) {
+            console.log('System6502를 사용합니다');
+            emulator = new window.System6502();
+            await emulator.initialize();
+            emulator.start();
+            isRunning = true;
+        } else if (window.BasicEmulator) {
+            console.log('BasicEmulator를 사용합니다');
+            emulator = new window.BasicEmulator();
+            emulator.start();
+            isRunning = true;
+        } else {
+            console.log('실제 에뮬레이터를 찾을 수 없어 Mock을 사용합니다');
+            // 임시로 mock 에뮬레이터 생성
+            emulator = createMockEmulator();
+        }
         
         // UI 이벤트 설정
         setupEventHandlers();

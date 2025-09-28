@@ -30,6 +30,7 @@ try {
   console.log("📋 정적 파일 복사 중...");
   await $`cp ${PUBLIC_DIR}/index.html ${BUILD_DIR}/`;
   await $`cp ${PUBLIC_DIR}/style.css ${BUILD_DIR}/`;
+  await $`cp ${PUBLIC_DIR}/app.js ${BUILD_DIR}/`;
   
   // 에셋 파일 복사 (있는 경우)
   try {
@@ -96,7 +97,7 @@ try {
   console.log("\n📊 번들 분석:");
   for (const output of bundleFiles) {
     const file = Bun.file(output.path);
-    const sizeBytes = await file.size();
+    const sizeBytes = file.size;  // size는 속성, 함수가 아님
     const sizeKB = sizeBytes / 1024;
     totalSize += sizeKB;
     
