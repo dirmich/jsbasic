@@ -2,7 +2,55 @@
 
 ## 수정 일자: 2025-09-28
 
-### 최신 수정 (두 번째 수정)
+### 최신 수정 (네 번째 수정) - 2025-09-28 (계속)
+
+#### Bun 테스트 환경 완전 호환성 개선
+- **문제**: Bun 테스트 환경에서 Jest 스타일 mock 함수 사용 시 오류 발생
+- **원인**:
+  1. Bun의 mock 함수와 Jest mock API가 완전히 호환되지 않음
+  2. globalThis.performance와 window.performance 모킹 불일치
+  3. readonly 속성에 대한 할당 시도 오류
+- **해결책**:
+  1. Jest 호환 래퍼 함수 개선 (Object.assign 사용)
+  2. globalThis.performance 직접 모킹으로 변경
+  3. 모든 Jest 스타일 assertions을 Bun 호환 코드로 변환
+
+#### 수정된 파일
+- `src/tests/performance/object-pool.test.ts`:
+  - createJestMock 함수 개선 (readonly 속성 문제 해결)
+  - toHaveBeenCalledWith 등 Jest assertions 제거
+  - globalThis.performance 모킹으로 통일
+  - 배치 업데이트, 메모리 측정, 시간 측정 테스트 수정
+
+#### 테스트 결과
+- **네 번째 수정 전**: 522 pass, 41 fail, 1 error
+- **네 번째 수정 후**: 526 pass, 37 fail, 1 error
+- **개선**: 4개 테스트 추가 수정 완료 (object-pool.test.ts 완전 통과)
+
+---
+
+### 세 번째 수정
+
+#### Jest 호환성 문제 해결
+- **문제**: Bun 테스트 환경에서 jest 함수 사용 시 오류 발생
+- **원인**: Bun은 jest와 호환되지만 jest 글로벌 객체가 자동으로 제공되지 않음
+- **해결책**:
+  1. setup.ts에 createMockFn 헬퍼 함수 추가
+  2. 모든 jest.fn()을 createMockFn()으로 교체
+  3. 성능 테스트 파일에 jest 호환 레이어 추가
+
+#### 수정된 파일
+- `src/tests/setup.ts`: jest/Bun 호환 모킹 헬퍼 추가
+- `src/tests/performance/object-pool.test.ts`: jest 호환 레이어 추가
+- `src/tests/performance/performance-monitor.test.ts`: jest 호환 레이어 추가
+
+#### 테스트 결과
+- **세 번째 수정 전**: 522 pass, 41 fail
+- **세 번째 수정 후**: 522 pass, 41 fail (초기 시도는 부분적 성공)
+
+---
+
+### 두 번째 수정
 
 #### 메모리 보호 영역 충돌 문제
 - **문제**: CPU 테스트에서 0xFFFA-0xFFFF 영역(인터럽트 벡터)에 쓰기를 시도하여 오류 발생

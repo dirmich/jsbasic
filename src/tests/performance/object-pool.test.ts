@@ -4,54 +4,56 @@
  */
 
 import '../setup.js';
-import { describe, test, expect, beforeEach, afterEach } from 'bun:test';
+import { describe, test, expect, beforeEach, afterEach, mock, spyOn } from 'bun:test';
 
-// Bun 테스트를 위한 jest 호환 레이어
-const jest = {
-  fn: (impl?: any) => {
-    const fn: any = impl || (() => {});
-    let mockImpl = impl;
-    let returnValue: any;
-    let returnValueOnce: any;
-    const calls: any[] = [];
-
-    const wrapper = (...args: any[]) => {
-      calls.push(args);
-      if (returnValueOnce !== undefined) {
-        const val = returnValueOnce;
-        returnValueOnce = undefined;
-        return val;
+// Bun mock을 jest 스타일로 래핑하는 헬퍼
+const createJestMock = (impl?: any) => {
+  const fn = mock(impl || (() => {}));
+  // Bun의 mock은 이미 mock.calls를 가지고 있음
+  // 새로운 객체를 만들어서 속성을 추가
+  const wrapper: any = Object.assign((...args: any[]) => fn(...args), {
+    mock: fn.mock,
+    mockImplementation: (newImpl: any) => {
+      // Bun에서는 직접 구현 변경이 어려우므로 새 mock 반환
+      return mock(newImpl);
+    },
+    mockReturnValue: (value: any) => {
+      return mock(() => value);
+    },
+    mockReturnValueOnce: (value: any) => {
+      let called = false;
+      return mock((...args: any[]) => {
+        if (!called) {
+          called = true;
+          return value;
+        }
+        return impl ? impl(...args) : undefined;
+      });
+    },
+    mockClear: () => {
+      if (fn.mock) {
+        fn.mock.calls = [];
       }
-      if (returnValue !== undefined) return returnValue;
-      return mockImpl ? mockImpl(...args) : undefined;
-    };
+      return wrapper;
+    }
+  });
+  return wrapper;
+};
 
-    wrapper.mock = { calls };
-    wrapper.mockImplementation = (newImpl: any) => {
-      mockImpl = newImpl;
-      return wrapper;
-    };
-    wrapper.mockReturnValue = (value: any) => {
-      returnValue = value;
-      return wrapper;
-    };
-    wrapper.mockReturnValueOnce = (value: any) => {
-      returnValueOnce = value;
-      return wrapper;
-    };
-    wrapper.mockClear = () => {
-      calls.length = 0;
-      return wrapper;
-    };
-    return wrapper;
-  },
+// jest 호환 객체
+const jest = {
+  fn: createJestMock,
   spyOn: (obj: any, method: string) => {
-    const original = obj[method];
-    const spy = jest.fn(original);
+    const spy = spyOn(obj, method);
+    // @ts-ignore
     spy.mockRestore = () => {
-      obj[method] = original;
+      spy.mockRestore();
     };
-    obj[method] = spy;
+    // @ts-ignore
+    spy.mockImplementation = (impl: any) => {
+      spy.mockImplementation(impl);
+      return spy;
+    };
     return spy;
   },
   useFakeTimers: () => {},
@@ -133,19 +135,23 @@ describe('객체 풀링 시스템 테스트', () => {
     });
 
     test('사용자 정의 리셋 함수', () => {
-      const customResetFn = jest.fn();
+      const resetCalls: any[] = [];
+      const customResetFn = (obj: any) => {
+        resetCalls.push(obj);
+      };
       const customPool = new ObjectPool(
-        () => new TestPoolable(), 
-        5, 
+        () => new TestPoolable(),
+        5,
         customResetFn
       );
-      
+
       const obj = customPool.acquire();
       customPool.release(obj);
-      
+
       const obj2 = customPool.acquire();
-      
-      expect(customResetFn).toHaveBeenCalledWith(obj2);
+
+      expect(resetCalls).toHaveLength(1);
+      expect(resetCalls[0]).toBe(obj2);
     });
 
     test('풀 비우기', () => {
@@ -362,116 +368,166 @@ describe('객체 풀링 시스템 테스트', () => {
       jest.useRealTimers();
     });
 
-    test('디바운스 함수', () => {
-      const mockFn = jest.fn();
-      const debouncedFn = PerformanceUtils.debounce(mockFn, 100);
-      
+    test('디바운스 함수', (done) => {
+      let callCount = 0;
+      let lastArg: any;
+      const mockFn = (arg: any) => {
+        callCount++;
+        lastArg = arg;
+      };
+
+      const debouncedFn = PerformanceUtils.debounce(mockFn, 50);
+
       debouncedFn('arg1');
       debouncedFn('arg2');
       debouncedFn('arg3');
-      
-      expect(mockFn).not.toHaveBeenCalled();
-      
-      jest.advanceTimersByTime(100);
-      
-      expect(mockFn).toHaveBeenCalledTimes(1);
-      expect(mockFn).toHaveBeenCalledWith('arg3');
+
+      expect(callCount).toBe(0);
+
+      setTimeout(() => {
+        expect(callCount).toBe(1);
+        expect(lastArg).toBe('arg3');
+        done();
+      }, 100);
     });
 
-    test('스로틀 함수', () => {
-      const mockFn = jest.fn();
-      const throttledFn = PerformanceUtils.throttle(mockFn, 100);
-      
+    test('스로틀 함수', (done) => {
+      let callCount = 0;
+      const calls: any[] = [];
+      const mockFn = (arg: any) => {
+        callCount++;
+        calls.push(arg);
+      };
+
+      const throttledFn = PerformanceUtils.throttle(mockFn, 50);
+
       throttledFn('arg1');
       throttledFn('arg2');
       throttledFn('arg3');
-      
-      expect(mockFn).toHaveBeenCalledTimes(1);
-      expect(mockFn).toHaveBeenCalledWith('arg1');
-      
-      jest.advanceTimersByTime(100);
-      
-      throttledFn('arg4');
-      expect(mockFn).toHaveBeenCalledTimes(2);
-      expect(mockFn).toHaveBeenCalledWith('arg4');
+
+      expect(callCount).toBe(1);
+      expect(calls[0]).toBe('arg1');
+
+      setTimeout(() => {
+        throttledFn('arg4');
+        expect(callCount).toBe(2);
+        expect(calls[1]).toBe('arg4');
+        done();
+      }, 100);
     });
 
     test('배치 업데이트', () => {
-      const mockCallback = jest.fn();
-      const mockRAF = jest.fn((cb) => cb());
-      
+      let rafCalls: any[] = [];
+      const mockCallback = () => {};
+      const mockRAF = (cb: any) => {
+        rafCalls.push(cb);
+        cb();
+      };
+
       // requestAnimationFrame 모킹
       Object.defineProperty(window, 'requestAnimationFrame', {
         value: mockRAF,
         configurable: true
       });
-      
+
       PerformanceUtils.batchUpdate(mockCallback);
-      
-      expect(mockRAF).toHaveBeenCalledWith(mockCallback);
+
+      expect(rafCalls).toHaveLength(1);
+      expect(rafCalls[0]).toBe(mockCallback);
     });
 
     test('메모리 사용량 측정', () => {
       // performance.memory가 있는 경우
-      Object.defineProperty(window.performance, 'memory', {
+      const originalPerformance = globalThis.performance;
+      Object.defineProperty(globalThis, 'performance', {
         value: {
-          usedJSHeapSize: 1024 * 1024 * 25 // 25MB
+          memory: {
+            usedJSHeapSize: 1024 * 1024 * 25 // 25MB
+          }
         },
         configurable: true
       });
-      
+
       const memoryUsage = PerformanceUtils.measureMemory();
       expect(memoryUsage).toBe(25);
-      
+
       // performance.memory가 없는 경우
-      delete (window.performance as any).memory;
-      
+      Object.defineProperty(globalThis, 'performance', {
+        value: {},
+        configurable: true
+      });
+
       const memoryUsage2 = PerformanceUtils.measureMemory();
       expect(memoryUsage2).toBe(0);
+
+      // 원래 값 복원
+      globalThis.performance = originalPerformance;
     });
 
     test('실행 시간 측정', () => {
-      const mockPerformanceNow = jest.fn()
-        .mockReturnValueOnce(100) // 시작 시간
-        .mockReturnValueOnce(150); // 종료 시간
-      
-      Object.defineProperty(window.performance, 'now', {
-        value: mockPerformanceNow,
+      let callCount = 0;
+      const mockPerformanceNow = () => {
+        callCount++;
+        return callCount === 1 ? 100 : 150; // 첫 번째 호출: 100, 두 번째 호출: 150
+      };
+
+      const originalPerformance = globalThis.performance;
+      Object.defineProperty(globalThis, 'performance', {
+        value: {
+          now: mockPerformanceNow
+        },
         configurable: true
       });
-      
-      const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
-      
+
+      const logCalls: any[] = [];
+      const originalLog = console.log;
+      console.log = (...args: any[]) => {
+        logCalls.push(args);
+      };
+
       const result = PerformanceUtils.measureTime('test', () => {
         return 'result';
       });
-      
+
       expect(result).toBe('result');
-      expect(consoleSpy).toHaveBeenCalledWith('⏱️ test: 50.00ms');
-      
-      consoleSpy.mockRestore();
+      expect(logCalls).toHaveLength(1);
+      expect(logCalls[0][0]).toBe('⏱️ test: 50.00ms');
+
+      console.log = originalLog;
+      globalThis.performance = originalPerformance;
     });
 
     test('비동기 실행 시간 측정', async () => {
-      const mockPerformanceNow = jest.fn()
-        .mockReturnValueOnce(200) // 시작 시간
-        .mockReturnValueOnce(300); // 종료 시간
-      
-      Object.defineProperty(window.performance, 'now', {
-        value: mockPerformanceNow,
+      let callCount = 0;
+      const mockPerformanceNow = () => {
+        callCount++;
+        return callCount === 1 ? 200 : 300; // 첫 번째 호출: 200, 두 번째 호출: 300
+      };
+
+      const originalPerformance = globalThis.performance;
+      Object.defineProperty(globalThis, 'performance', {
+        value: {
+          now: mockPerformanceNow
+        },
         configurable: true
       });
-      
-      const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
-      
+
+      const logCalls: any[] = [];
+      const originalLog = console.log;
+      console.log = (...args: any[]) => {
+        logCalls.push(args);
+      };
+
       const result = await PerformanceUtils.measureTimeAsync('async test', async () => {
         return Promise.resolve('async result');
       });
-      
+
       expect(result).toBe('async result');
-      expect(consoleSpy).toHaveBeenCalledWith('⏱️ async test: 100.00ms');
-      
-      consoleSpy.mockRestore();
+      expect(logCalls).toHaveLength(1);
+      expect(logCalls[0][0]).toBe('⏱️ async test: 100.00ms');
+
+      console.log = originalLog;
+      globalThis.performance = originalPerformance;
     });
   });
 
