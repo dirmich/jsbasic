@@ -117,18 +117,26 @@ export class WebEmulator extends EventEmitter<WebEmulatorEvents> {
    * 이벤트 핸들러 설정
    */
   private setupEventHandlers(): void {
+    console.log('[WebEmulator] Setting up event handlers...');
+
     // 에뮬레이터 이벤트
     this.emulator.on('stateChange', (event: any) => {
       this.callbacks.onStateChange?.(event.to);
       this.emit('stateChange', { oldState: event.from, newState: event.to });
     });
-    
+
     // 터미널 이벤트
     const terminal = this.emulator.getTerminal();
+    console.log('[WebEmulator] Terminal obtained:', terminal);
+    console.log('[WebEmulator] Setting up terminal output listener...');
+
     terminal.on('output', (event) => {
+      console.log('[WebEmulator] Terminal output event received:', event);
       this.displayOutput(event.text, event.type);
       this.callbacks.onOutput?.(event.text, event.type);
     });
+
+    console.log('[WebEmulator] Terminal output listener registered');
     
     // 키보드 이벤트
     if (this.terminalInput) {
@@ -152,14 +160,15 @@ export class WebEmulator extends EventEmitter<WebEmulatorEvents> {
    */
   private async handleKeyDown(e: KeyboardEvent): Promise<void> {
     const input = e.target as HTMLInputElement;
-    
+
     switch (e.key) {
       case 'Enter':
         e.preventDefault();
         const command = input.value;
         input.value = '';
-        
+
         if (command.trim()) {
+          console.log('[WebEmulator] Command entered:', command);
           this.callbacks.onCommand?.(command);
           await this.executeCommand(command);
         }
@@ -183,20 +192,18 @@ export class WebEmulator extends EventEmitter<WebEmulatorEvents> {
    */
   private async executeCommand(command: string): Promise<void> {
     try {
+      console.log('[WebEmulator] executeCommand called:', command);
       const terminal = this.emulator.getTerminal();
-      
-      // 입력 표시
-      this.displayOutput(`READY. ${command}`, 'input');
-      
-      // 명령어 실행 (터미널 이벤트를 통해 처리)
-      terminal.handleKeyInput(command.split('').pop() || '');
-      for (const char of command) {
-        terminal.handleKeyInput(char);
-      }
-      terminal.handleKeyInput('Enter');
-      
+      console.log('[WebEmulator] Terminal obtained:', terminal);
+
+      // 명령어를 터미널에 직접 전달 (command 이벤트 발생)
+      // 결과는 터미널 output 이벤트로 표시됨
+      console.log('[WebEmulator] Emitting command to terminal');
+      terminal.emit('command', command);
+      console.log('[WebEmulator] Command emitted');
+
     } catch (error) {
-      console.error('Command execution error:', error);
+      console.error('[WebEmulator] Command execution error:', error);
       this.displayOutput(`ERROR: ${error}`, 'error');
     }
   }
@@ -205,16 +212,24 @@ export class WebEmulator extends EventEmitter<WebEmulatorEvents> {
    * 터미널 출력 표시
    */
   private displayOutput(text: string, type: 'input' | 'output' | 'error' | 'system'): void {
-    if (!this.terminalOutput) return;
-    
+    console.log('[WebEmulator] displayOutput called:', { text, type, hasTerminalOutput: !!this.terminalOutput });
+
+    if (!this.terminalOutput) {
+      console.error('[WebEmulator] terminalOutput element not found!');
+      return;
+    }
+
     const lines = text.split('\n');
+    console.log('[WebEmulator] Lines to display:', lines);
+
     lines.forEach(line => {
       const div = document.createElement('div');
       div.className = `terminal-line ${type}`;
       div.textContent = line;
       this.terminalOutput!.appendChild(div);
+      console.log('[WebEmulator] Line added to terminal:', line);
     });
-    
+
     // 스크롤을 맨 아래로
     this.terminalOutput.scrollTop = this.terminalOutput.scrollHeight;
   }

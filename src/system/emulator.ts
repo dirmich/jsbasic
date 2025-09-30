@@ -99,6 +99,7 @@ export class BasicEmulator extends EventEmitter {
   private setupEventHandlers(): void {
     // 터미널 명령 처리
     this.terminal.on('command', async (command: string) => {
+      console.log('[Emulator] Terminal command received:', command);
       await this.handleTerminalCommand(command);
     });
     
@@ -109,6 +110,7 @@ export class BasicEmulator extends EventEmitter {
     
     // BASIC 인터프리터 출력 처리
     this.basicInterpreter.on('output', (text: string) => {
+      console.log('[Emulator] BasicInterpreter output:', text);
       this.terminal.write(text);
     });
     
@@ -175,8 +177,10 @@ export class BasicEmulator extends EventEmitter {
    * 터미널 명령 처리
    */
   private async handleTerminalCommand(command: string): Promise<void> {
+    console.log('[Emulator] handleTerminalCommand called:', command);
     const upperCommand = command.toUpperCase().trim();
-    
+    console.log('[Emulator] upperCommand:', upperCommand);
+
     try {
       // 시스템 명령 처리
       if (upperCommand === 'NEW') {
@@ -188,13 +192,18 @@ export class BasicEmulator extends EventEmitter {
       
       if (upperCommand === 'LIST') {
         const program = this.basicInterpreter.getCurrentProgram();
+        console.log('[Emulator] LIST command, program:', program);
         if (program && program.statements.length > 0) {
           // 프로그램 리스트 출력
           for (const stmt of program.statements) {
             if (stmt.lineNumber !== undefined) {
-              this.terminal.writeLine(`${stmt.lineNumber} ${this.formatStatement(stmt)}`);
+              const line = `${stmt.lineNumber} ${this.formatStatement(stmt)}`;
+              console.log('[Emulator] LIST line:', line);
+              this.terminal.writeLine(line);
             }
           }
+        } else {
+          console.log('[Emulator] No program to list');
         }
         this.terminal.showPrompt();
         return;
@@ -221,6 +230,7 @@ export class BasicEmulator extends EventEmitter {
       
       if (upperCommand.startsWith('SAVE ')) {
         const filename = command.substring(5).trim().replace(/"/g, '').toUpperCase();
+        console.log('[Emulator] SAVE command detected, filename:', filename);
         this.saveProgram(filename);
         return;
       }
@@ -271,20 +281,26 @@ export class BasicEmulator extends EventEmitter {
    */
   private async parseAndExecuteBasic(code: string): Promise<void> {
     try {
+      console.log('[Emulator] Parsing code:', code);
       this.parser = new Parser(code);
       const program = this.parser.parseProgram();
-      
+      console.log('[Emulator] Parsed AST:', JSON.stringify(program, null, 2));
+
       // 라인 번호가 있는 경우 프로그램에 추가
       if (program.statements.length > 0 && program.statements[0]?.lineNumber !== undefined) {
+        console.log('[Emulator] Adding to program');
         this.basicInterpreter.addProgram(program);
         this.terminal.showPrompt();
       } else {
         // 즉시 실행
+        console.log('[Emulator] Immediate execution');
         await this.basicInterpreter.run(program);
+        console.log('[Emulator] Execution complete');
         this.terminal.showPrompt();
       }
-      
+
     } catch (error) {
+      console.error('[Emulator] Parse/Execute error:', error);
       this.handleError(`Syntax Error: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
@@ -295,22 +311,36 @@ export class BasicEmulator extends EventEmitter {
   private saveProgram(filename: string): void {
     try {
       const program = this.basicInterpreter.getCurrentProgram();
+      console.log('[Emulator] Saving program:', program);
+
       if (program && program.statements.length > 0) {
         // 로컬 스토리지에 저장 (브라우저 환경)
         if (typeof localStorage !== 'undefined') {
-          const programData = JSON.stringify(program);
-          localStorage.setItem(`basic_program_${filename}`, programData);
+          // AST를 BASIC 소스 코드로 변환하여 저장
+          const sourceLines: string[] = [];
+          for (const stmt of program.statements) {
+            if (stmt.lineNumber !== undefined) {
+              const formattedLine = `${stmt.lineNumber} ${this.formatStatement(stmt)}`;
+              console.log('[Emulator] Formatted line:', formattedLine);
+              sourceLines.push(formattedLine);
+            }
+          }
+          const sourceCode = sourceLines.join('\n');
+          console.log('[Emulator] Source code to save:', sourceCode);
+          localStorage.setItem(`basic_program_${filename}`, sourceCode);
           this.terminal.writeLine(`SAVED "${filename}"`);
         } else {
           this.terminal.writeLine('SAVE NOT SUPPORTED');
         }
       } else {
+        console.log('[Emulator] No program to save');
         this.terminal.writeLine('NO PROGRAM TO SAVE');
       }
     } catch (error) {
+      console.error('[Emulator] Save error:', error);
       this.handleError(`Save Error: ${error instanceof Error ? error.message : String(error)}`);
     }
-    
+
     this.terminal.showPrompt();
   }
 
@@ -320,10 +350,37 @@ export class BasicEmulator extends EventEmitter {
   private loadProgram(filename: string): void {
     try {
       if (typeof localStorage !== 'undefined') {
-        const programData = localStorage.getItem(`basic_program_${filename}`);
-        if (programData) {
-          const program = JSON.parse(programData);
-          this.basicInterpreter.addProgram(program);
+        const sourceCode = localStorage.getItem(`basic_program_${filename}`);
+        console.log('[Emulator] Loading program:', filename, 'Source code:', sourceCode);
+
+        if (sourceCode) {
+          // 프로그램 클리어
+          this.basicInterpreter.clear();
+
+          // 소스 코드를 라인별로 파싱하여 로드
+          const lines = sourceCode.split('\n');
+          console.log('[Emulator] Lines to load:', lines);
+
+          for (const line of lines) {
+            const trimmed = line.trim();
+            // 빈 줄이나 라인 번호만 있는 줄 건너뛰기
+            if (trimmed && !/^\d+\s*$/.test(trimmed)) {
+              console.log('[Emulator] Parsing line:', line);
+              try {
+                this.parser = new Parser(line);
+                const program = this.parser.parseProgram();
+                console.log('[Emulator] Parsed program:', program);
+                this.basicInterpreter.addProgram(program);
+              } catch (error) {
+                console.error('[Emulator] Error parsing line:', line, error);
+                // 개별 라인 오류는 무시하고 계속 진행
+              }
+            }
+          }
+
+          const loadedProgram = this.basicInterpreter.getCurrentProgram();
+          console.log('[Emulator] Loaded program:', loadedProgram);
+
           this.terminal.writeLine(`LOADED "${filename}"`);
         } else {
           this.terminal.writeLine(`FILE NOT FOUND: "${filename}"`);
@@ -332,9 +389,10 @@ export class BasicEmulator extends EventEmitter {
         this.terminal.writeLine('LOAD NOT SUPPORTED');
       }
     } catch (error) {
+      console.error('[Emulator] Load error:', error);
       this.handleError(`Load Error: ${error instanceof Error ? error.message : String(error)}`);
     }
-    
+
     this.terminal.showPrompt();
   }
 
@@ -342,8 +400,89 @@ export class BasicEmulator extends EventEmitter {
    * 문장을 문자열로 포맷
    */
   private formatStatement(stmt: any): string {
-    // 간단한 문장 포맷팅 (실제로는 더 복잡한 로직 필요)
-    return JSON.stringify(stmt).substring(0, 50) + '...';
+    // AST 노드를 BASIC 코드로 변환
+    if (stmt.type === 'PrintStatement') {
+      if (!stmt.expressions || stmt.expressions.length === 0) {
+        return 'PRINT';
+      }
+      const separator = stmt.separator === 'semicolon' ? '; ' : stmt.separator === 'comma' ? ', ' : ' ';
+      const args = stmt.expressions.map((expr: any) => this.formatExpression(expr)).join(separator);
+      return `PRINT ${args}`;
+    }
+    if (stmt.type === 'LetStatement') {
+      const varName = typeof stmt.variable === 'string' ? stmt.variable : stmt.variable?.name || 'unknown';
+      return `LET ${varName} = ${this.formatExpression(stmt.expression || stmt.value)}`;
+    }
+    if (stmt.type === 'InputStatement') {
+      const vars = stmt.variables?.map((v: any) => typeof v === 'string' ? v : v?.name || 'unknown').join(', ') || '';
+      const prompt = stmt.prompt ? `"${stmt.prompt.value || stmt.prompt}"; ` : '';
+      return `INPUT ${prompt}${vars}`;
+    }
+    if (stmt.type === 'GotoStatement') {
+      return `GOTO ${stmt.lineNumber}`;
+    }
+    if (stmt.type === 'IfStatement') {
+      return `IF ${this.formatExpression(stmt.condition)} THEN ${stmt.thenLineNumber || ''}`;
+    }
+    if (stmt.type === 'ForStatement') {
+      const varName = typeof stmt.variable === 'string' ? stmt.variable : stmt.variable?.name || 'unknown';
+      return `FOR ${varName} = ${this.formatExpression(stmt.start)} TO ${this.formatExpression(stmt.end)}${stmt.step ? ` STEP ${this.formatExpression(stmt.step)}` : ''}`;
+    }
+    if (stmt.type === 'NextStatement') {
+      const varName = stmt.variable ? (typeof stmt.variable === 'string' ? stmt.variable : stmt.variable?.name || '') : '';
+      return `NEXT ${varName}`;
+    }
+    if (stmt.type === 'EndStatement') {
+      return 'END';
+    }
+    if (stmt.type === 'RemStatement') {
+      return `REM ${stmt.comment}`;
+    }
+    return JSON.stringify(stmt).substring(0, 50);
+  }
+
+  /**
+   * 표현식을 문자열로 포맷
+   */
+  private formatExpression(expr: any): string {
+    if (!expr) return '';
+
+    if (expr.type === 'NumberLiteral') {
+      return String(expr.value);
+    }
+    if (expr.type === 'StringLiteral') {
+      return `"${expr.value}"`;
+    }
+    if (expr.type === 'Identifier') {
+      return expr.name;
+    }
+    if (expr.type === 'BinaryExpression') {
+      return `${this.formatExpression(expr.left)} ${expr.operator} ${this.formatExpression(expr.right)}`;
+    }
+    if (expr.type === 'UnaryExpression') {
+      return `${expr.operator}${this.formatExpression(expr.operand)}`;
+    }
+    if (expr.type === 'CallExpression' || expr.type === 'FunctionCall') {
+      // FunctionCall의 name은 Identifier 객체이므로 .name 속성을 가져옴
+      let funcName = '';
+      if (expr.callee) {
+        funcName = typeof expr.callee === 'string' ? expr.callee : expr.callee.name;
+      } else if (expr.name) {
+        funcName = typeof expr.name === 'string' ? expr.name : expr.name.name;
+      } else if (expr.function) {
+        funcName = typeof expr.function === 'string' ? expr.function : expr.function.name;
+      }
+      const args = expr.arguments?.map((arg: any) => this.formatExpression(arg)).join(', ') || '';
+      return `${funcName}(${args})`;
+    }
+    if (expr.type === 'ArrayAccess') {
+      const indices = expr.indices?.map((idx: any) => this.formatExpression(idx)).join(', ') || '';
+      return `${expr.name}(${indices})`;
+    }
+    if (expr.type === 'ParenthesizedExpression') {
+      return `(${this.formatExpression(expr.expression)})`;
+    }
+    return String(expr);
   }
 
   /**

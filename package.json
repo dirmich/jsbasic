@@ -13,8 +13,8 @@
     "build:web": "NODE_ENV=production bun run build.js",
     "build:web:dev": "NODE_ENV=development bun run build.js",
     "build:analyze": "NODE_ENV=production ANALYZE=true bun run build.js",
-    "serve:web": "bun run build:web && cd dist && python3 -m http.server 8080",
-    "serve:local": "bun run build:web:dev && cd dist && python3 -m http.server 8080",
+    "serve:web": "bun run build:web && bunx serve dist -p 8080",
+    "serve:local": "bun run build:web:dev && bunx serve dist -p 8080",
     "deploy:prepare": "bun run clean && bun run test && bun run build:web",
     "deploy:analyze": "bun run build:analyze",
     "test": "bun test",
@@ -24,7 +24,7 @@
     "clean": "rm -rf dist",
     "start": "bun run dist/index.js",
     "serve": "bun run --hot src/index.ts",
-    "preview": "bun run build:web:dev && cd dist && python3 -m http.server 3000"
+    "preview": "bun run build:web:dev && bunx serve dist -p 3000"
   },
   "keywords": [
     "6502",

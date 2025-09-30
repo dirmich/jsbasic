@@ -114,21 +114,24 @@ export class Terminal extends EventEmitter {
   write(text: string, type: TerminalLine['type'] = 'output'): void {
     // 탭 문자를 공백으로 변환
     const processedText = this.processTabCharacters(text);
-    
+
+    console.log('[Terminal] write() called:', { text: processedText, type });
+
     // 각 write 호출에 대해 새로운 라인 생성
     this.lines.push({
       content: processedText,
       type,
       timestamp: Date.now()
     });
-    
+
     // 개행 문자가 있으면 커서 위치 업데이트
     if (processedText.includes('\n')) {
       this.newLine();
     }
-    
+
+    console.log('[Terminal] Emitting output event');
     this.emit('output', { text: processedText, type });
-    
+
     // 히스토리 관리
     this.enforceHistoryLimit();
   }

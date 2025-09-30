@@ -38,73 +38,69 @@ async function initializeApp() {
                 memory: system.getMemory ? system.getMemory() : null,
                 program: [],
                 variables: new Map(),
+                _terminalListenerAttached: false,
+
+                // 터미널 이벤트 리스너 초기화
+                initTerminalListener() {
+                    if (this.terminal && !this._terminalListenerAttached) {
+                        this.terminal.on('output', (data) => {
+                            console.log('[app.js] Terminal output received:', data);
+                            if (data && data.text) {
+                                appendToTerminal(data.text, 'output');
+                            }
+                        });
+                        this._terminalListenerAttached = true;
+                        console.log('[app.js] Terminal listener registered');
+                    }
+                },
 
                 async executeCommand(command) {
+                    // 터미널 리스너 초기화 (최초 1회만)
+                    this.initTerminalListener();
+
                     const cmd = command.trim().toUpperCase();
                     const trimmedCommand = command.trim();
 
                     // 라인 번호가 있는 명령인지 확인
                     const lineMatch = trimmedCommand.match(/^(\d+)\s*(.*)/);
                     if (lineMatch) {
-                        const lineNum = parseInt(lineMatch[1]);
-                        const content = lineMatch[2] || '';
-
-                        // 프로그램 배열에 추가 또는 업데이트
-                        const existingIndex = this.program.findIndex(line => line.number === lineNum);
-                        if (existingIndex >= 0) {
-                            if (content) {
-                                this.program[existingIndex] = { number: lineNum, text: content };
-                            } else {
-                                this.program.splice(existingIndex, 1);
-                            }
-                        } else if (content) {
-                            this.program.push({ number: lineNum, text: content });
-                            this.program.sort((a, b) => a.number - b.number);
+                        // 터미널을 통해 라인 번호가 있는 명령 전달
+                        if (this.terminal) {
+                            this.terminal.emit('command', trimmedCommand);
+                            return { output: '', type: 'output' };
                         }
-
-                        return { output: '', type: 'system' };
+                        return { output: 'NO TERMINAL', type: 'error' };
                     }
 
                     // 즉시 실행 명령어 처리
                     switch (cmd) {
                         case 'NEW':
-                            this.program = [];
-                            this.variables.clear();
-                            return { output: 'NEW PROGRAM', type: 'system' };
+                            // 터미널을 통해 NEW 명령 전달
+                            if (this.terminal) {
+                                this.terminal.emit('command', 'NEW');
+                                return { output: '', type: 'output' };
+                            }
+                            return { output: 'NO TERMINAL', type: 'error' };
 
                         case 'LIST':
-                            if (this.program.length === 0) {
-                                return { output: 'NO PROGRAM', type: 'system' };
+                            // 터미널을 통해 LIST 명령 전달
+                            if (this.terminal) {
+                                this.terminal.emit('command', 'LIST');
+                                return { output: '', type: 'output' };
                             }
-                            const listing = this.program
-                                .map(line => `${line.number} ${line.text}`)
-                                .join('\n');
-                            return { output: listing, type: 'output' };
+                            return { output: 'NO TERMINAL', type: 'error' };
 
                         case 'RUN':
-                            if (this.program.length === 0) {
-                                return { output: 'NO PROGRAM TO RUN', type: 'error' };
+                            // 터미널을 통해 RUN 명령 전달
+                            if (this.terminal) {
+                                this.terminal.emit('command', 'RUN');
+                                return { output: '', type: 'output' };
                             }
-                            try {
-                                await this.runProgram();
-                                // 프로그램 종료 시 메시지 표시하지 않음
-                                return { output: '', type: 'system' };
-                            } catch (error) {
-                                return { output: `ERROR: ${error.message}`, type: 'error' };
-                            }
+                            return { output: 'NO TERMINAL', type: 'error' };
 
                         default:
                             // 터미널이 있으면 터미널로 전달
                             if (this.terminal) {
-                                // 터미널 출력 이벤트 리스너 설정 (한 번만)
-                                if (!this.terminal.listenerCount('output')) {
-                                    this.terminal.on('output', (data) => {
-                                        if (data && data.text) {
-                                            appendToTerminal(data.text, 'output');
-                                        }
-                                    });
-                                }
-
                                 this.terminal.emit('command', command);
                                 return { output: '', type: 'output' };
                             }
@@ -269,89 +265,69 @@ async function initializeApp() {
                 variables: new Map(),
                 dataValues: [],
                 dataPointer: 0,
+                _terminalListenerAttached: false,
+
+                // 터미널 이벤트 리스너 초기화
+                initTerminalListener() {
+                    if (this.terminal && !this._terminalListenerAttached) {
+                        this.terminal.on('output', (data) => {
+                            console.log('[app.js] Terminal output received:', data);
+                            if (data && data.text) {
+                                appendToTerminal(data.text, 'output');
+                            }
+                        });
+                        this._terminalListenerAttached = true;
+                        console.log('[app.js] Terminal listener registered');
+                    }
+                },
 
                 async executeCommand(command) {
+                    // 터미널 리스너 초기화 (최초 1회만)
+                    this.initTerminalListener();
+
                     const cmd = command.trim().toUpperCase();
                     const trimmedCommand = command.trim();
 
                     // 라인 번호가 있는 명령인지 확인
                     const lineMatch = trimmedCommand.match(/^(\d+)\s*(.*)/);
                     if (lineMatch) {
-                        const lineNum = parseInt(lineMatch[1]);
-                        const content = lineMatch[2] || '';
-
-                        // 프로그램 배열에 추가 또는 업데이트
-                        const existingIndex = this.program.findIndex(line => line.number === lineNum);
-                        if (existingIndex >= 0) {
-                            if (content) {
-                                this.program[existingIndex] = { number: lineNum, text: content };
-                            } else {
-                                this.program.splice(existingIndex, 1);
-                            }
-                        } else if (content) {
-                            this.program.push({ number: lineNum, text: content });
-                            this.program.sort((a, b) => a.number - b.number);
+                        // 터미널을 통해 라인 번호가 있는 명령 전달
+                        if (this.terminal) {
+                            this.terminal.emit('command', trimmedCommand);
+                            return { output: '', type: 'output' };
                         }
-
-                        // DATA 문 처리
-                        if (content.toUpperCase().startsWith('DATA ')) {
-                            const dataContent = content.substring(5);
-                            const values = dataContent.split(',').map(v => {
-                                const trimmed = v.trim();
-                                if (trimmed.startsWith('"') && trimmed.endsWith('"')) {
-                                    return trimmed.substring(1, trimmed.length - 1);
-                                }
-                                const num = parseFloat(trimmed);
-                                return isNaN(num) ? trimmed : num;
-                            });
-                            this.dataValues.push(...values);
-                        }
-
-                        return { output: '', type: 'system' };
+                        return { output: 'NO TERMINAL', type: 'error' };
                     }
 
                     // 즉시 실행 명령어 처리
                     switch (cmd) {
                         case 'NEW':
-                            this.program = [];
-                            this.variables.clear();
-                            this.dataValues = [];
-                            this.dataPointer = 0;
-                            return { output: 'NEW PROGRAM', type: 'system' };
+                            // 터미널을 통해 NEW 명령 전달
+                            if (this.terminal) {
+                                this.terminal.emit('command', 'NEW');
+                                return { output: '', type: 'output' };
+                            }
+                            return { output: 'NO TERMINAL', type: 'error' };
 
                         case 'LIST':
-                            if (this.program.length === 0) {
-                                return { output: 'NO PROGRAM', type: 'system' };
+                            // 터미널을 통해 LIST 명령 전달
+                            if (this.terminal) {
+                                this.terminal.emit('command', 'LIST');
+                                return { output: '', type: 'output' };
                             }
-                            const listing = this.program
-                                .map(line => `${line.number} ${line.text}`)
-                                .join('\n');
-                            return { output: listing, type: 'output' };
+                            return { output: 'NO TERMINAL', type: 'error' };
 
                         case 'RUN':
-                            if (this.program.length === 0) {
-                                return { output: 'NO PROGRAM TO RUN', type: 'error' };
+                            // 터미널을 통해 RUN 명령 전달
+                            if (this.terminal) {
+                                this.terminal.emit('command', 'RUN');
+                                return { output: '', type: 'output' };
                             }
-                            try {
-                                await this.runProgram();
-                                // 프로그램 종료 시 메시지 표시하지 않음
-                                return { output: '', type: 'system' };
-                            } catch (error) {
-                                return { output: `ERROR: ${error.message}`, type: 'error' };
-                            }
+                            return { output: 'NO TERMINAL', type: 'error' };
 
                         default:
                             // 터미널로 명령 전달
                             if (this.terminal) {
-                                // 터미널 출력 이벤트 리스너 설정 (한 번만)
-                                if (!this.terminal.listenerCount('output')) {
-                                    this.terminal.on('output', (data) => {
-                                        if (data && data.text) {
-                                            appendToTerminal(data.text, 'output');
-                                        }
-                                    });
-                                }
-
                                 this.terminal.emit('command', command);
                                 return { output: '', type: 'output' };
                             }
@@ -1133,8 +1109,9 @@ function setupExampleLoader() {
                 for (const line of lines) {
                     const trimmedLine = line.trim();
                     if (trimmedLine) {
-                        // 라인 번호가 있는 경우만 입력 (REM 포함)
-                        if (/^\d+/.test(trimmedLine)) {
+                        // 라인 번호가 있고 그 뒤에 명령어가 있는 경우만 입력
+                        // 라인 번호만 있는 줄(예: "460 ")은 건너뛰기
+                        if (/^\d+\s+\S/.test(trimmedLine)) {
                             await executeCommand(trimmedLine);
                             loadedLines++;
                         }

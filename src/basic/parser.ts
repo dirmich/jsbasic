@@ -160,6 +160,8 @@ export class Parser {
         return this.parseEndStatement();
       case TokenType.STOP:
         return this.parseStopStatement();
+      case TokenType.REM:
+        return this.parseRemStatement();
       case TokenType.DEF:
         return this.parseDefStatement();
       case TokenType.ON:
@@ -668,11 +670,32 @@ export class Parser {
   private parseStopStatement(): StopStatement {
     const line = this.current.line;
     const column = this.current.column;
-    
+
     this.consume(TokenType.STOP);
-    
+
     return {
       type: 'StopStatement',
+      line: line,
+      column: column
+    };
+  }
+
+  private parseRemStatement(): RemStatement {
+    const line = this.current.line;
+    const column = this.current.column;
+
+    this.consume(TokenType.REM);
+
+    // REM 뒤의 모든 텍스트를 주석으로 수집
+    let comment = '';
+    while (!this.checkNewlineOrEOF()) {
+      comment += this.current.value;
+      this.advance();
+    }
+
+    return {
+      type: 'RemStatement',
+      comment: comment.trim(),
       line: line,
       column: column
     };

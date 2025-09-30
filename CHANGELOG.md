@@ -5,6 +5,50 @@
 이 형식은 [Keep a Changelog](https://keepachangelog.com/ko/1.0.0/) 기준을 따르며,
 이 프로젝트는 [Semantic Versioning](https://semver.org/spec/v2.0.0.html)을 준수합니다.
 
+## [2.1.0] - 2024-12-09 - BASIC LIST 명령어 및 INPUT 기능 완전 구현
+
+### 추가됨 (Added)
+- **REM 문 지원**: REM 주석문을 정식 키워드로 구현
+  - TokenType.REM 추가 및 KEYWORDS 등록
+  - parseRemStatement 메서드 구현
+  - LIST 명령에서 REM 문 올바르게 표시
+- **INPUT 기능 완전 구현**: 사용자 입력 받기 기능 완성
+  - System6502에 waitingForInput 상태 관리 추가
+  - BasicInterpreter의 inputRequired 이벤트 연결
+  - handleCommand에서 INPUT 모드 자동 감지 및 처리
+  - '?' 프롬프트 표시 및 입력 전달
+
+### 수정됨 (Fixed)
+- **LIST 표현식 표시 오류**: [object Object] 대신 실제 코드 표시
+  - FunctionCall의 name이 Identifier 객체임을 인식하여 .name 속성 추출
+  - LetStatement, InputStatement, ForStatement, NextStatement의 변수명 처리
+  - CallExpression, FunctionCall, ArrayAccess, ParenthesizedExpression 타입 모두 지원
+  - StringLiteral의 value 속성 올바르게 추출
+- **.bas 파일 로드 오류**: 빈 라인 번호(예: "460 ") 처리
+  - app.js에서 라인 번호만 있는 줄 건너뛰기 (정규식: /^\d+\s+\S/)
+  - emulator.ts에서 빈 줄과 라인 번호만 있는 줄 필터링
+  - 개별 라인 파싱 오류를 무시하고 계속 진행
+- **REM 문이 프로그램 삭제**: 주석으로 처리되어 명령어가 사라지는 문제 해결
+  - tokenizer에서 REM을 skipComment가 아닌 키워드로 처리
+  - 모든 REM 라인이 프로그램에 정상 저장됨
+
+### 향상됨 (Improved)
+- **formatExpression 강화**: 모든 표현식 타입 완벽 지원
+  - 함수 호출: callee/name/function 필드 모두 처리
+  - 변수명: Identifier 객체와 문자열 모두 호환
+  - 배열 접근, 괄호 표현식 지원 추가
+- **formatStatement 강화**: 모든 명령문 타입 정확한 포맷팅
+  - LET, INPUT, FOR, NEXT의 변수명 Identifier 객체 처리
+  - LetStatement의 expression/value 필드 모두 지원
+  - InputStatement의 prompt StringLiteral 처리
+
+### 테스트 결과
+- ✅ math-demo.bas 완전 동작 (LOAD → LIST → RUN → INPUT)
+- ✅ REM 주석문 정상 표시 및 실행
+- ✅ 함수 호출 (SQR, LOG, SIN 등) 올바르게 표시
+- ✅ INPUT 프롬프트 및 사용자 입력 처리 완성
+- ✅ LIST 명령으로 원본 BASIC 소스 코드 재구성
+
 ## [2.0.0] - 2024-12-09 - 완전한 TypeScript 호환성 및 DOM 크로스 플랫폼 지원
 
 ### 추가됨 (Added)

@@ -58,7 +58,7 @@ try {
     format: "esm",
     target: "browser",
     minify: isProduction,
-    sourcemap: isProduction ? false : "external",
+    sourcemap: isProduction ? "none" : "external",
     splitting: true, // 코드 분할 활성화
     external: [], // 모든 의존성 포함
     

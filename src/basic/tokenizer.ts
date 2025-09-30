@@ -113,6 +113,7 @@ export enum TokenType {
   LIST = 'LIST',
   SAVE = 'SAVE',
   LOAD = 'LOAD',
+  REM = 'REM',
   
   // 특수 토큰
   NEWLINE = 'NEWLINE',
@@ -209,7 +210,8 @@ export const KEYWORDS: Record<string, TokenType> = {
   'NEW': TokenType.NEW,
   'LIST': TokenType.LIST,
   'SAVE': TokenType.SAVE,
-  'LOAD': TokenType.LOAD
+  'LOAD': TokenType.LOAD,
+  'REM': TokenType.REM
 };
 
 /**
@@ -320,21 +322,12 @@ export class Tokenizer {
     if (startChar === "'") {
       // ' 주석 - 다음 줄까지 건너뛰기
       this.advance(); // ' 문자 건너뛰기
-      while (this.position < this.source.length && 
-             this.current !== '\n' && this.current !== '\r') {
-        this.advance();
-      }
-    } else if (startChar === 'R') {
-      // REM 주석
-      this.advance(); // R
-      this.advance(); // E
-      this.advance(); // M
-      this.skipWhitespace();
-      while (this.position < this.source.length && 
+      while (this.position < this.source.length &&
              this.current !== '\n' && this.current !== '\r') {
         this.advance();
       }
     }
+    // REM은 더 이상 여기서 건너뛰지 않고 키워드로 처리됨
   }
 
   private readNewline(): Token {
