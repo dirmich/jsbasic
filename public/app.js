@@ -728,14 +728,18 @@ async function handleKeyDown(e) {
 
 /**
  * 명령어 처리
+ * @param {string} command - 실행할 명령어
+ * @param {boolean} silent - true이면 터미널에 입력/출력 표시 안함
  */
-async function handleCommand(command) {
+async function handleCommand(command, silent = false) {
     if (!command.trim()) return;
 
     // INPUT 대기 중인 경우
     if (inputWaitingCallback) {
         // 입력값만 표시 (프롬프트 없이)
-        appendToTerminal(command, 'output');
+        if (!silent) {
+            appendToTerminal(command, 'output');
+        }
 
         // 입력창 비우기
         const terminalInput = document.getElementById('terminal-input');
@@ -754,23 +758,28 @@ async function handleCommand(command) {
         return;
     }
 
-    // 명령어 히스토리에 추가
-    commandHistory.push(command);
-    if (commandHistory.length > 100) {
-        commandHistory.shift();
-    }
-    historyIndex = -1;
+    // 명령어 히스토리에 추가 (silent 모드가 아닐 때만)
+    if (!silent) {
+        commandHistory.push(command);
+        if (commandHistory.length > 100) {
+            commandHistory.shift();
+        }
+        historyIndex = -1;
 
-    // 입력 표시
-    appendToTerminal(`${getCurrentPrompt()}${command}`, 'input');
+        // 입력 표시
+        appendToTerminal(`${getCurrentPrompt()}${command}`, 'input');
+    }
 
     try {
         const result = await emulator.executeCommand(command);
-        if (result.output) {
+        if (result.output && !silent) {
             appendToTerminal(result.output, result.type);
         }
     } catch (error) {
-        appendToTerminal(`ERROR: ${error.message}`, 'error');
+        if (!silent) {
+            appendToTerminal(`ERROR: ${error.message}`, 'error');
+        }
+        console.error(`Command error (${command}):`, error);
     }
 
     // UI 업데이트
@@ -778,21 +787,29 @@ async function handleCommand(command) {
     updateCPUInfo();
     updateProgramDisplay();
 
-    // 입력창 비우기
-    const terminalInput = document.getElementById('terminal-input');
-    if (terminalInput) {
-        terminalInput.value = '';
+    // 입력창 비우기 (silent 모드가 아닐 때만)
+    if (!silent) {
+        const terminalInput = document.getElementById('terminal-input');
+        if (terminalInput) {
+            terminalInput.value = '';
+        }
     }
 }
 
 /**
- * 명령어 실행 (버튼에서 호출)
+ * 명령어 실행 (버튼/예제 로더에서 호출)
+ * @param {string} command - 실행할 명령어
+ * @param {boolean} silent - true이면 조용히 실행 (기본값: false)
  */
-async function executeCommand(command) {
+async function executeCommand(command, silent = false) {
     const terminalInput = document.getElementById('terminal-input');
-    terminalInput.value = command;
-    await handleCommand(command);
-    terminalInput.value = '';
+    if (!silent) {
+        terminalInput.value = command;
+    }
+    await handleCommand(command, silent);
+    if (!silent) {
+        terminalInput.value = '';
+    }
 }
 
 /**
@@ -1143,10 +1160,10 @@ function setupExampleLoader() {
                 const programText = await response.text();
                 console.log(`예제 파일 내용 (${selectedExample}):`, programText);
 
-                // NEW 명령으로 기존 프로그램 지우기
-                await executeCommand('NEW');
+                // NEW 명령으로 기존 프로그램 지우기 (조용히)
+                await executeCommand('NEW', true);
 
-                // 프로그램 라인별로 입력
+                // 프로그램 라인별로 입력 (조용히)
                 const lines = programText.split('\n');
                 let loadedLines = 0;
                 for (const line of lines) {
@@ -1155,7 +1172,7 @@ function setupExampleLoader() {
                         // 라인 번호가 있고 그 뒤에 명령어가 있는 경우만 입력
                         // 라인 번호만 있는 줄(예: "460 ")은 건너뛰기
                         if (/^\d+\s+\S/.test(trimmedLine)) {
-                            await executeCommand(trimmedLine);
+                            await executeCommand(trimmedLine, true);
                             loadedLines++;
                         }
                     }
@@ -1164,8 +1181,8 @@ function setupExampleLoader() {
                 appendToTerminal(`예제 "${selectedExample}" 로드 완료 (${loadedLines}줄)`, 'system');
                 appendToTerminal('RUN 명령으로 실행하세요', 'system');
 
-                // 프로그램 표시 업데이트
-                await executeCommand('LIST');
+                // 프로그램 표시 업데이트 (LIST는 화면에 표시)
+                await executeCommand('LIST', false);
 
             } catch (error) {
                 appendToTerminal(`예제 로드 실패: ${error.message}`, 'error');
