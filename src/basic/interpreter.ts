@@ -13,6 +13,7 @@ import type {
   InputStatement,
   IfStatement,
   ForStatement,
+  NextStatement,
   WhileStatement,
   GotoStatement,
   GosubStatement,
@@ -219,6 +220,10 @@ export class BasicInterpreter extends EventEmitter {
           break;
         case 'ForStatement':
           await this.executeFor(statement as ForStatement);
+          break;
+        case 'NextStatement':
+          // NEXT는 FOR 루프 실행 시 자동으로 처리됨
+          // 여기서는 단순히 무시 (독립 실행되면 안됨)
           break;
         case 'WhileStatement':
           await this.executeWhile(statement as WhileStatement);

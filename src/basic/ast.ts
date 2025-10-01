@@ -98,6 +98,14 @@ export interface ForStatement extends Statement {
 }
 
 /**
+ * NEXT 반복 종료문
+ */
+export interface NextStatement extends Statement {
+  type: 'NextStatement';
+  variable?: Identifier;
+}
+
+/**
  * WHILE 반복문
  */
 export interface WhileStatement extends Statement {

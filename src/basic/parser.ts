@@ -24,6 +24,7 @@ import type {
   InputStatement,
   IfStatement,
   ForStatement,
+  NextStatement,
   WhileStatement,
   GotoStatement,
   GosubStatement,
@@ -140,6 +141,8 @@ export class Parser {
         return this.parseIfStatement();
       case TokenType.FOR:
         return this.parseForStatement();
+      case TokenType.NEXT:
+        return this.parseNextStatement();
       case TokenType.WHILE:
         return this.parseWhileStatement();
       case TokenType.GOTO:
@@ -400,65 +403,56 @@ export class Parser {
   private parseForStatement(): ForStatement {
     const line = this.current.line;
     const column = this.current.column;
-    
+
     this.consume(TokenType.FOR);
     const variable = this.parseIdentifier();
     this.consume(TokenType.EQUALS);
     const start = this.parseExpression();
     this.consume(TokenType.TO);
     const end = this.parseExpression();
-    
+
     let step: Expression | undefined;
     if (this.current.type === TokenType.STEP) {
       this.advance();
       step = this.parseExpression();
     }
-    
-    this.consumeNewlineOrEOF();
-    
+
+    // 라인 단위 파싱: FOR 문은 body 없이 저장
+    // 실행 시점에 인터프리터가 NEXT를 찾아서 루프를 실행
     const body: Statement[] = [];
-    while (!this.isAtEnd() && 
-           this.current.type !== TokenType.EOF) {
-      
-      if (this.current.type === TokenType.NEWLINE) {
-        this.advance();
-        continue;
-      }
-      
-      // NEXT 토큰을 만나거나 라인 넘버 뒤에 NEXT가 오는지 확인
-      if (this.current.type === TokenType.NEXT || 
-          (this.current.type === TokenType.NUMBER && this.peek()?.type === TokenType.NEXT)) {
-        break;
-      }
-      
-      const stmt = this.parseStatement();
-      if (stmt) {
-        body.push(stmt);
-      }
-      
-      // 개행 처리
-      if (!this.isAtEnd() && 
-          !this.currentTokenIs(TokenType.NEWLINE) && 
-          !this.currentTokenIs(TokenType.EOF)) {
-        this.consumeNewlineOrEOF();
-      } else if (this.currentTokenIs(TokenType.NEWLINE)) {
-        this.advance();
-      }
-    }
-    
-    // NEXT 소비 (라인 넘버가 있을 수 있음)
-    if (this.current.type === TokenType.NUMBER) {
-      this.advance(); // 라인 넘버 건너뛰기
-    }
-    
-    if (this.currentTokenIs(TokenType.NEXT)) {
+
+    // 한 줄에 여러 명령이 있는 경우만 처리 (콜론 구분)
+    if (this.current.type === TokenType.COLON) {
       this.advance();
-      // 선택적으로 변수명 확인
-      if (this.currentTokenIs(TokenType.IDENTIFIER)) {
+
+      while (!this.isAtEnd() &&
+             this.current.type !== TokenType.EOF &&
+             this.current.type !== TokenType.NEWLINE) {
+
+        // NEXT를 만나면 종료
+        if (this.current.type === TokenType.NEXT) {
+          break;
+        }
+
+        const stmt = this.parseStatementInternal();
+        if (stmt) {
+          body.push(stmt);
+        }
+
+        if (this.current.type === TokenType.COLON) {
+          this.advance();
+        }
+      }
+
+      // NEXT 소비
+      if (this.currentTokenIs(TokenType.NEXT)) {
         this.advance();
+        if (this.currentTokenIs(TokenType.IDENTIFIER)) {
+          this.advance();
+        }
       }
     }
-    
+
     return {
       type: 'ForStatement',
       variable: variable,
@@ -469,6 +463,26 @@ export class Parser {
       line: line,
       column: column
     } as ForStatement;
+  }
+
+  private parseNextStatement(): Statement {
+    const line = this.current.line;
+    const column = this.current.column;
+
+    this.consume(TokenType.NEXT);
+
+    // NEXT 뒤에 변수명이 올 수 있음 (선택적)
+    let variable: Identifier | undefined;
+    if (this.currentTokenIs(TokenType.IDENTIFIER)) {
+      variable = this.parseIdentifier();
+    }
+
+    return {
+      type: 'NextStatement',
+      variable: variable,
+      line: line,
+      column: column
+    } as any;
   }
 
   private parseWhileStatement(): WhileStatement {
