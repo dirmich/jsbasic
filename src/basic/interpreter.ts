@@ -222,8 +222,7 @@ export class BasicInterpreter extends EventEmitter {
           await this.executeFor(statement as ForStatement);
           break;
         case 'NextStatement':
-          // NEXT는 FOR 루프 실행 시 자동으로 처리됨
-          // 여기서는 단순히 무시 (독립 실행되면 안됨)
+          await this.executeNext(statement as NextStatement);
           break;
         case 'WhileStatement':
           await this.executeWhile(statement as WhileStatement);
@@ -398,7 +397,7 @@ export class BasicInterpreter extends EventEmitter {
     const startValue = this.evaluator.evaluate(stmt.start);
     const endValue = this.evaluator.evaluate(stmt.end);
     const stepValue = stmt.step ? this.evaluator.evaluate(stmt.step) : 1;
-    
+
     if (typeof startValue !== 'number' || typeof endValue !== 'number' || typeof stepValue !== 'number') {
       throw new BasicError(
         'FOR loop values must be numeric',
@@ -409,32 +408,103 @@ export class BasicInterpreter extends EventEmitter {
 
     // 루프 변수 초기화
     this.variables.setVariable(variable, startValue);
-    
-    // FOR 루프 실행: BASIC에서 FOR 루프는 완전히 실행됩니다
-    let currentValue = startValue;
-    
-    while (true) {
-      // 루프 조건 확인
-      const shouldContinue = stepValue > 0 
-        ? currentValue <= endValue
-        : currentValue >= endValue;
 
-      if (!shouldContinue) {
+    // FOR 스택에 루프 정보 저장
+    const loopInfo: ForLoopInfo = {
+      variable: variable,
+      endValue: endValue,
+      stepValue: stepValue,
+      loopStart: this.context.programCounter
+    };
+    this.context.forLoopStack.push(loopInfo);
+
+    // 현재 위치부터 NEXT를 찾기
+    const forStartIndex = this.context.programCounter;
+    let nextIndex = -1;
+
+    for (let i = forStartIndex + 1; i < this.context.statements.length; i++) {
+      const s = this.context.statements[i];
+      if (s && s.type === 'NextStatement') {
+        nextIndex = i;
         break;
       }
+    }
 
-      // 루프 본체 실행
-      for (const bodyStmt of stmt.body) {
-        await this.executeStatement(bodyStmt);
-        if (this.state !== ExecutionState.RUNNING) return;
-      }
+    if (nextIndex === -1) {
+      throw new BasicError(
+        `FOR without NEXT for variable ${variable}`,
+        ERROR_CODES.RUNTIME_ERROR,
+        stmt.line
+      );
+    }
 
-      // 다음 반복을 위한 변수 증가
-      currentValue += stepValue;
-      this.variables.setVariable(variable, currentValue);
-      
-      // 무한루프 방지
-      await new Promise(resolve => setTimeout(resolve, 0));
+    // FOR 조건 확인
+    let currentValue = startValue;
+    const shouldContinue = stepValue > 0
+      ? currentValue <= endValue
+      : currentValue >= endValue;
+
+    if (!shouldContinue) {
+      // 조건이 맞지 않으면 NEXT 다음으로 점프
+      this.context.forLoopStack.pop();
+      this.context.programCounter = nextIndex;
+    }
+    // 조건이 맞으면 다음 명령으로 진행 (루프 본문 실행)
+  }
+
+  private async executeNext(stmt: NextStatement): Promise<void> {
+    // FOR 스택에서 가장 최근 루프 가져오기
+    if (this.context.forLoopStack.length === 0) {
+      throw new BasicError(
+        'NEXT without FOR',
+        ERROR_CODES.RUNTIME_ERROR,
+        stmt.line
+      );
+    }
+
+    const loopInfo = this.context.forLoopStack[this.context.forLoopStack.length - 1];
+    if (!loopInfo) {
+      throw new BasicError(
+        'NEXT without FOR',
+        ERROR_CODES.RUNTIME_ERROR,
+        stmt.line
+      );
+    }
+
+    // 변수명 확인 (선택적)
+    if (stmt.variable && stmt.variable.name !== loopInfo.variable) {
+      throw new BasicError(
+        `NEXT variable mismatch: expected ${loopInfo.variable}, got ${stmt.variable.name}`,
+        ERROR_CODES.RUNTIME_ERROR,
+        stmt.line
+      );
+    }
+
+    // 루프 변수 증가
+    const currentValue = this.variables.getVariable(loopInfo.variable);
+    if (typeof currentValue !== 'number') {
+      throw new BasicError(
+        'Loop variable must be numeric',
+        ERROR_CODES.TYPE_MISMATCH,
+        stmt.line
+      );
+    }
+
+    const newValue = currentValue + loopInfo.stepValue;
+    this.variables.setVariable(loopInfo.variable, newValue);
+
+    // 루프 조건 확인
+    const shouldContinue = loopInfo.stepValue > 0
+      ? newValue <= loopInfo.endValue
+      : newValue >= loopInfo.endValue;
+
+    if (shouldContinue) {
+      // 루프 시작점으로 돌아가기 (FOR 문 다음)
+      this.context.programCounter = loopInfo.loopStart;
+    } else {
+      // 루프 종료 - 스택에서 제거
+      this.context.forLoopStack.pop();
+      // 다음 명령으로 계속 (programCounter는 자동 증가됨)
     }
   }
 
