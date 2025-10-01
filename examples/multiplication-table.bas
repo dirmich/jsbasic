@@ -16,7 +16,8 @@
 
 300 REM 특정 단 출력
 310 INPUT "몇 단을 출력할까요? (1-9): "; DAN
-320 IF DAN < 1 OR DAN > 9 THEN PRINT "1부터 9까지만 입력하세요.": GOTO 310
+315 IF DAN < 1 OR DAN > 9 THEN PRINT "1부터 9까지만 입력하세요."
+320 IF DAN < 1 OR DAN > 9 THEN GOTO 310
 
 330 PRINT ""
 340 PRINT DAN; "단:"
