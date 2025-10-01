@@ -379,6 +379,13 @@ export class System6502 {
     if (stmt.type === 'RemStatement') {
       return `REM ${stmt.comment}`;
     }
+    if (stmt.type === 'ReturnStatement') {
+      return 'RETURN';
+    }
+    if (stmt.type === 'GosubStatement') {
+      const target = stmt.targetLine?.value || '';
+      return `GOSUB ${target}`;
+    }
     return JSON.stringify(stmt).substring(0, 50);
   }
 
