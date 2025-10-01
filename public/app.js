@@ -634,15 +634,17 @@ let startTime = Date.now();
 function setupEventHandlers() {
     const terminalInput = document.getElementById('terminal-input');
     const powerBtn = document.getElementById('power-btn');
+    const copyBtn = document.getElementById('copy-btn');
     const clearBtn = document.getElementById('clear-btn');
     const restartBtn = document.getElementById('restart-btn');
-    
+
     // 터미널 입력 처리
     terminalInput.addEventListener('keydown', handleKeyDown);
     terminalInput.addEventListener('keyup', updateCursor);
-    
+
     // 컨트롤 버튼들
     powerBtn.addEventListener('click', togglePower);
+    copyBtn.addEventListener('click', copyTerminalContent);
     clearBtn.addEventListener('click', clearTerminal);
     restartBtn.addEventListener('click', restartEmulator);
     
@@ -879,6 +881,47 @@ function togglePower() {
         appendToTerminal('', 'system');
         appendToTerminal('READY.', 'system');
         updateSystemStatus('실행중');
+    }
+}
+
+/**
+ * 터미널 내용 복사
+ */
+async function copyTerminalContent() {
+    const output = document.getElementById('terminal-output');
+    const text = output.innerText;
+
+    try {
+        // Clipboard API 사용 (최신 브라우저)
+        await navigator.clipboard.writeText(text);
+
+        // 복사 버튼 피드백
+        const copyBtn = document.getElementById('copy-btn');
+        const originalTitle = copyBtn.title;
+        copyBtn.title = '복사 완료!';
+        copyBtn.textContent = '✓';
+
+        setTimeout(() => {
+            copyBtn.title = originalTitle;
+            copyBtn.textContent = '📋';
+        }, 1500);
+    } catch (err) {
+        // 폴백: execCommand 사용 (구형 브라우저)
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-9999px';
+        document.body.appendChild(textArea);
+        textArea.select();
+
+        try {
+            document.execCommand('copy');
+            appendToTerminal('터미널 내용이 복사되었습니다', 'system');
+        } catch (e) {
+            appendToTerminal('복사 실패: ' + e.message, 'error');
+        }
+
+        document.body.removeChild(textArea);
     }
 }
 
