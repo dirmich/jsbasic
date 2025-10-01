@@ -22,7 +22,7 @@
 340 PRINT DAN; "단:"
 350 PRINT "----"
 360 FOR I = 1 TO 9
-370   PRINT DAN; " × "; I; " = "; DAN * I
+370 PRINT DAN; " × "; I; " = "; DAN * I
 380 NEXT I
 390 GOTO 620
 
@@ -31,12 +31,12 @@
 520 PRINT "전체 구구단:"
 530 PRINT "============"
 540 FOR DAN = 1 TO 9
-550   PRINT ""
-560   PRINT DAN; "단:"
-570   PRINT "----"
-580   FOR I = 1 TO 9
-590     PRINT "  "; DAN; " × "; I; " = "; DAN * I
-600   NEXT I
+550 PRINT ""
+560 PRINT DAN; "단:"
+570 PRINT "----"
+580 FOR I = 1 TO 9
+590 PRINT "  "; DAN; " × "; I; " = "; DAN * I
+600 NEXT I
 610 NEXT DAN
 
 620 REM 프로그램 종료

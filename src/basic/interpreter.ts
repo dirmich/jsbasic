@@ -748,6 +748,25 @@ export class BasicInterpreter extends EventEmitter {
   }
 
   /**
+   * 프로그램 지우기 (NEW 명령)
+   */
+  public clearProgram(): void {
+    this.context.statements = [];
+    this.context.lineNumberMap.clear();
+    this.context.programCounter = 0;
+    this.context.dataPointer = 0;
+    this.context.dataValues = [];
+    this.context.forLoopStack = [];
+    this.context.gosubStack = [];
+    this.context.userFunctions.clear();
+    this.variables.clear();
+    this.outputBuffer = [];
+    this.inputQueue = [];
+    this.pendingInput = null;
+    this.state = ExecutionState.READY;
+  }
+
+  /**
    * 프로그램 추가 (라인 병합)
    */
   public addProgram(program: Program): void {

@@ -267,8 +267,8 @@ export class Tokenizer {
       return this.readNewline();
     }
     
-    // 주석
-    if (this.current === "'" || (this.current === 'R' && this.peek() === 'E' && this.peek(2) === 'M')) {
+    // ' 주석 (REM은 키워드로 처리)
+    if (this.current === "'") {
       this.skipComment();
       return this.nextToken();
     }
