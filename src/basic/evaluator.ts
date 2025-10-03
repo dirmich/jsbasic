@@ -110,9 +110,17 @@ export class BuiltinFunctions {
  */
 export class ExpressionEvaluator {
   private variables: VariableManager;
+  private graphicsEngine: any = null;
 
   constructor(variableManager: VariableManager) {
     this.variables = variableManager;
+  }
+
+  /**
+   * GraphicsEngine 설정 (POINT 함수용)
+   */
+  setGraphicsEngine(engine: any): void {
+    this.graphicsEngine = engine;
   }
 
   /**
@@ -376,8 +384,31 @@ export class ExpressionEvaluator {
       const str = this.ensureString(arg0, node.line);
       const start = this.ensureNumber(arg1, node.line);
       const length = args.length > 2 && args[2] !== undefined ? this.ensureNumber(args[2], node.line) : undefined;
-      
+
       return BuiltinFunctions.string.MID(str, start, length);
+    }
+
+    // 그래픽 함수들
+    if (functionName === 'POINT') {
+      if (!this.graphicsEngine) {
+        throw new BasicError(
+          'Graphics engine not initialized',
+          ERROR_CODES.RUNTIME_ERROR,
+          node.line
+        );
+      }
+      if (args.length !== 2) {
+        throw new BasicError('POINT function requires exactly two arguments', ERROR_CODES.RUNTIME_ERROR, node.line);
+      }
+      const arg0 = args[0];
+      const arg1 = args[1];
+      if (arg0 === undefined || arg1 === undefined) {
+        throw new BasicError('POINT function missing arguments', ERROR_CODES.RUNTIME_ERROR, node.line);
+      }
+      const x = Math.floor(this.ensureNumber(arg0, node.line));
+      const y = Math.floor(this.ensureNumber(arg1, node.line));
+
+      return this.graphicsEngine.getPixel(x, y);
     }
 
     throw new BasicError(

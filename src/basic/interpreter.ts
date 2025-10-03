@@ -33,7 +33,8 @@ import type {
   LineStatement,
   CircleStatement,
   PaintStatement,
-  ColorStatement
+  ColorStatement,
+  ClsStatement
 } from './ast.js';
 
 import { VariableManager } from './variables.js';
@@ -291,6 +292,9 @@ export class BasicInterpreter extends EventEmitter {
           break;
         case 'ColorStatement':
           await this.executeColor(statement as ColorStatement);
+          break;
+        case 'ClsStatement':
+          await this.executeCls(statement as ClsStatement);
           break;
         default:
           throw new BasicError(
@@ -799,6 +803,7 @@ export class BasicInterpreter extends EventEmitter {
    */
   public setGraphicsEngine(engine: any): void {
     this.graphicsEngine = engine;
+    this.evaluator.setGraphicsEngine(engine);
   }
 
   /**
@@ -1286,5 +1291,34 @@ export class BasicInterpreter extends EventEmitter {
     }
 
     this.graphicsEngine.setColor(foreground, background, border);
+  }
+
+  /**
+   * CLS 명령어 실행
+   */
+  private async executeCls(stmt: ClsStatement): Promise<void> {
+    if (!this.graphicsEngine) {
+      throw new BasicError(
+        'Graphics engine not initialized',
+        ERROR_CODES.RUNTIME_ERROR,
+        stmt.line
+      );
+    }
+
+    let mode = 0; // 기본값: 전체 화면 지우기
+
+    if (stmt.mode) {
+      const modeValue = this.evaluator.evaluate(stmt.mode);
+      if (typeof modeValue !== 'number') {
+        throw new BasicError(
+          'CLS mode must be numeric',
+          ERROR_CODES.TYPE_MISMATCH,
+          stmt.line
+        );
+      }
+      mode = Math.floor(modeValue);
+    }
+
+    this.graphicsEngine.cls(mode);
   }
 }
