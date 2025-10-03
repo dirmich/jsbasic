@@ -169,6 +169,22 @@ export class Parser {
         return this.parseDefStatement();
       case TokenType.ON:
         return this.parseOnStatement();
+      case TokenType.SCREEN:
+        return this.parseScreenStatement();
+      case TokenType.PSET:
+        return this.parsePsetStatement();
+      case TokenType.PRESET:
+        return this.parsePresetStatement();
+      case TokenType.LINE:
+        return this.parseLineStatement();
+      case TokenType.CIRCLE:
+        return this.parseCircleStatement();
+      case TokenType.PAINT:
+        return this.parsePaintStatement();
+      case TokenType.COLOR:
+        return this.parseColorStatement();
+      case TokenType.CLS:
+        return this.parseClsStatement();
       case TokenType.IDENTIFIER:
         // 암시적 LET
         return this.parseImplicitLetStatement();
@@ -1211,6 +1227,362 @@ export class Parser {
     ];
     
     return functionTokens.includes(this.current.type);
+  }
+
+  // === 그래픽 명령어 파서들 ===
+
+  /**
+   * SCREEN 명령어 파싱
+   * SCREEN mode [, colorswitch] [, apage] [, vpage]
+   */
+  private parseScreenStatement(): import('./ast.js').ScreenStatement {
+    const line = this.current.line;
+    const column = this.current.column;
+
+    this.consume(TokenType.SCREEN);
+
+    const mode = this.parseExpression();
+
+    let colorSwitch: Expression | undefined;
+    let activePage: Expression | undefined;
+    let visualPage: Expression | undefined;
+
+    if (this.current.type === TokenType.COMMA) {
+      this.advance();
+      colorSwitch = this.parseExpression();
+
+      if (this.current.type === TokenType.COMMA) {
+        this.advance();
+        activePage = this.parseExpression();
+
+        if (this.current.type === TokenType.COMMA) {
+          this.advance();
+          visualPage = this.parseExpression();
+        }
+      }
+    }
+
+    return {
+      type: 'ScreenStatement',
+      mode,
+      colorSwitch,
+      activePage,
+      visualPage,
+      line,
+      column
+    };
+  }
+
+  /**
+   * PSET 명령어 파싱
+   * PSET (x, y) [, color]
+   */
+  private parsePsetStatement(): import('./ast.js').PsetStatement {
+    const line = this.current.line;
+    const column = this.current.column;
+
+    this.consume(TokenType.PSET);
+    this.consume(TokenType.LEFT_PAREN);
+
+    const x = this.parseExpression();
+    this.consume(TokenType.COMMA);
+    const y = this.parseExpression();
+
+    this.consume(TokenType.RIGHT_PAREN);
+
+    let color: Expression | undefined;
+    if (this.current.type === TokenType.COMMA) {
+      this.advance();
+      color = this.parseExpression();
+    }
+
+    return {
+      type: 'PsetStatement',
+      x,
+      y,
+      color,
+      line,
+      column
+    };
+  }
+
+  /**
+   * PRESET 명령어 파싱
+   * PRESET (x, y) [, color]
+   */
+  private parsePresetStatement(): import('./ast.js').PresetStatement {
+    const line = this.current.line;
+    const column = this.current.column;
+
+    this.consume(TokenType.PRESET);
+    this.consume(TokenType.LEFT_PAREN);
+
+    const x = this.parseExpression();
+    this.consume(TokenType.COMMA);
+    const y = this.parseExpression();
+
+    this.consume(TokenType.RIGHT_PAREN);
+
+    let color: Expression | undefined;
+    if (this.current.type === TokenType.COMMA) {
+      this.advance();
+      color = this.parseExpression();
+    }
+
+    return {
+      type: 'PresetStatement',
+      x,
+      y,
+      color,
+      line,
+      column
+    };
+  }
+
+  /**
+   * LINE 명령어 파싱
+   * LINE [(x1, y1)]-(x2, y2) [, color] [, B[F]]
+   */
+  private parseLineStatement(): import('./ast.js').LineStatement {
+    const line = this.current.line;
+    const column = this.current.column;
+
+    this.consume(TokenType.LINE);
+
+    let x1: Expression | undefined;
+    let y1: Expression | undefined;
+
+    // 시작점이 있는 경우
+    if (this.current.type === TokenType.LEFT_PAREN) {
+      this.advance();
+      x1 = this.parseExpression();
+      this.consume(TokenType.COMMA);
+      y1 = this.parseExpression();
+      this.consume(TokenType.RIGHT_PAREN);
+    }
+
+    // - 구분자
+    this.consume(TokenType.MINUS);
+
+    // 끝점
+    this.consume(TokenType.LEFT_PAREN);
+    const x2 = this.parseExpression();
+    this.consume(TokenType.COMMA);
+    const y2 = this.parseExpression();
+    this.consume(TokenType.RIGHT_PAREN);
+
+    let color: Expression | undefined;
+    let style: 'B' | 'BF' | undefined;
+
+    if (this.current.type === TokenType.COMMA) {
+      this.advance();
+      color = this.parseExpression();
+
+      if (this.current.type === TokenType.COMMA) {
+        this.advance();
+        // B 또는 BF 스타일
+        // @ts-expect-error - TypeScript cannot narrow types after advance()
+        if (this.current.type === TokenType.IDENTIFIER) {
+          const styleStr = this.current.value as string;
+          if (styleStr === 'B' || styleStr === 'BF') {
+            style = styleStr;
+            this.advance();
+          }
+        }
+      }
+    }
+
+    return {
+      type: 'LineStatement',
+      x1,
+      y1,
+      x2,
+      y2,
+      color,
+      style,
+      line,
+      column
+    };
+  }
+
+  /**
+   * CIRCLE 명령어 파싱
+   * CIRCLE (x, y), radius [, color] [, start] [, end] [, aspect]
+   */
+  private parseCircleStatement(): import('./ast.js').CircleStatement {
+    const line = this.current.line;
+    const column = this.current.column;
+
+    this.consume(TokenType.CIRCLE);
+
+    this.consume(TokenType.LEFT_PAREN);
+    const x = this.parseExpression();
+    this.consume(TokenType.COMMA);
+    const y = this.parseExpression();
+    this.consume(TokenType.RIGHT_PAREN);
+
+    this.consume(TokenType.COMMA);
+    const radius = this.parseExpression();
+
+    let color: Expression | undefined;
+    let startAngle: Expression | undefined;
+    let endAngle: Expression | undefined;
+    let aspect: Expression | undefined;
+
+    if (this.current.type === TokenType.COMMA) {
+      this.advance();
+      color = this.parseExpression();
+
+      if (this.current.type === TokenType.COMMA) {
+        this.advance();
+        startAngle = this.parseExpression();
+
+        if (this.current.type === TokenType.COMMA) {
+          this.advance();
+          endAngle = this.parseExpression();
+
+          if (this.current.type === TokenType.COMMA) {
+            this.advance();
+            aspect = this.parseExpression();
+          }
+        }
+      }
+    }
+
+    return {
+      type: 'CircleStatement',
+      x,
+      y,
+      radius,
+      color,
+      startAngle,
+      endAngle,
+      aspect,
+      line,
+      column
+    };
+  }
+
+  /**
+   * PAINT 명령어 파싱
+   * PAINT (x, y) [, paintColor] [, borderColor]
+   */
+  private parsePaintStatement(): import('./ast.js').PaintStatement {
+    const line = this.current.line;
+    const column = this.current.column;
+
+    this.consume(TokenType.PAINT);
+
+    this.consume(TokenType.LEFT_PAREN);
+    const x = this.parseExpression();
+    this.consume(TokenType.COMMA);
+    const y = this.parseExpression();
+    this.consume(TokenType.RIGHT_PAREN);
+
+    let paintColor: Expression | undefined;
+    let borderColor: Expression | undefined;
+
+    if (this.current.type === TokenType.COMMA) {
+      this.advance();
+      paintColor = this.parseExpression();
+
+      if (this.current.type === TokenType.COMMA) {
+        this.advance();
+        borderColor = this.parseExpression();
+      }
+    }
+
+    return {
+      type: 'PaintStatement',
+      x,
+      y,
+      paintColor,
+      borderColor,
+      line,
+      column
+    };
+  }
+
+  /**
+   * COLOR 명령어 파싱
+   * COLOR [foreground] [, background] [, border]
+   */
+  private parseColorStatement(): import('./ast.js').ColorStatement {
+    const line = this.current.line;
+    const column = this.current.column;
+
+    this.consume(TokenType.COLOR);
+
+    let foreground: Expression | undefined;
+    let background: Expression | undefined;
+    let border: Expression | undefined;
+
+    // 전경색 (선택적)
+    if (this.current.type !== TokenType.COMMA &&
+        this.current.type !== TokenType.NEWLINE &&
+        this.current.type !== TokenType.EOF &&
+        this.current.type !== TokenType.COLON) {
+      foreground = this.parseExpression();
+    }
+
+    if (this.current.type === TokenType.COMMA) {
+      this.advance();
+      const type1 = this.current.type;
+      if (type1 !== TokenType.COMMA &&
+          type1 !== TokenType.NEWLINE &&
+          type1 !== TokenType.EOF &&
+          type1 !== TokenType.COLON) {
+        background = this.parseExpression();
+      }
+
+      if (this.current.type === TokenType.COMMA) {
+        this.advance();
+        const type2 = this.current.type;
+        // @ts-expect-error - TypeScript cannot narrow types after advance()
+        const notNewline = type2 !== TokenType.NEWLINE;
+        // @ts-expect-error - TypeScript cannot narrow types after advance()
+        const notEOF = type2 !== TokenType.EOF;
+        // @ts-expect-error - TypeScript cannot narrow types after advance()
+        const notColon = type2 !== TokenType.COLON;
+        if (notNewline && notEOF && notColon) {
+          border = this.parseExpression();
+        }
+      }
+    }
+
+    return {
+      type: 'ColorStatement',
+      foreground,
+      background,
+      border,
+      line,
+      column
+    };
+  }
+
+  /**
+   * CLS 명령어 파싱
+   * CLS [mode]
+   */
+  private parseClsStatement(): import('./ast.js').ClsStatement {
+    const line = this.current.line;
+    const column = this.current.column;
+
+    this.consume(TokenType.CLS);
+
+    let mode: Expression | undefined;
+    if (this.current.type !== TokenType.NEWLINE &&
+        this.current.type !== TokenType.EOF &&
+        this.current.type !== TokenType.COLON) {
+      mode = this.parseExpression();
+    }
+
+    return {
+      type: 'ClsStatement',
+      mode,
+      line,
+      column
+    };
   }
 
   private error(message: string): never {

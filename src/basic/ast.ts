@@ -1,10 +1,8 @@
 /**
  * BASIC AST (Abstract Syntax Tree) 노드 정의
- * 
+ *
  * BASIC 언어의 구문 구조를 표현하는 AST 노드들을 정의합니다.
  */
-
-import { TokenType } from './tokenizer.js';
 
 /**
  * 기본 AST 노드 인터페이스
@@ -217,9 +215,9 @@ export interface RemStatement extends Statement {
 export interface ScreenStatement extends Statement {
   type: 'ScreenStatement';
   mode: Expression;
-  colorSwitch?: Expression;
-  activePage?: Expression;
-  visualPage?: Expression;
+  colorSwitch?: Expression | undefined;
+  activePage?: Expression | undefined;
+  visualPage?: Expression | undefined;
 }
 
 /**
@@ -229,7 +227,7 @@ export interface PsetStatement extends Statement {
   type: 'PsetStatement';
   x: Expression;
   y: Expression;
-  color?: Expression;
+  color?: Expression | undefined;
 }
 
 /**
@@ -239,7 +237,7 @@ export interface PresetStatement extends Statement {
   type: 'PresetStatement';
   x: Expression;
   y: Expression;
-  color?: Expression;
+  color?: Expression | undefined;
 }
 
 /**
@@ -247,12 +245,12 @@ export interface PresetStatement extends Statement {
  */
 export interface LineStatement extends Statement {
   type: 'LineStatement';
-  x1?: Expression;
-  y1?: Expression;
+  x1?: Expression | undefined;
+  y1?: Expression | undefined;
   x2: Expression;
   y2: Expression;
-  color?: Expression;
-  style?: 'B' | 'BF'; // B=Box, BF=Box Filled
+  color?: Expression | undefined;
+  style?: 'B' | 'BF' | undefined; // B=Box, BF=Box Filled
 }
 
 /**
@@ -263,10 +261,10 @@ export interface CircleStatement extends Statement {
   x: Expression;
   y: Expression;
   radius: Expression;
-  color?: Expression;
-  startAngle?: Expression;
-  endAngle?: Expression;
-  aspect?: Expression;
+  color?: Expression | undefined;
+  startAngle?: Expression | undefined;
+  endAngle?: Expression | undefined;
+  aspect?: Expression | undefined;
 }
 
 /**
@@ -276,8 +274,8 @@ export interface PaintStatement extends Statement {
   type: 'PaintStatement';
   x: Expression;
   y: Expression;
-  paintColor?: Expression;
-  borderColor?: Expression;
+  paintColor?: Expression | undefined;
+  borderColor?: Expression | undefined;
 }
 
 /**
@@ -285,9 +283,9 @@ export interface PaintStatement extends Statement {
  */
 export interface ColorStatement extends Statement {
   type: 'ColorStatement';
-  foreground?: Expression;
-  background?: Expression;
-  border?: Expression;
+  foreground?: Expression | undefined;
+  background?: Expression | undefined;
+  border?: Expression | undefined;
 }
 
 /**
@@ -295,7 +293,7 @@ export interface ColorStatement extends Statement {
  */
 export interface ClsStatement extends Statement {
   type: 'ClsStatement';
-  mode?: Expression;
+  mode?: Expression | undefined;
 }
 
 // === 표현식 타입들 ===
