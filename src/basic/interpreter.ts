@@ -26,7 +26,14 @@ import type {
   StopStatement,
   DefStatement,
   OnStatement,
-  RemStatement
+  RemStatement,
+  ScreenStatement,
+  PsetStatement,
+  PresetStatement,
+  LineStatement,
+  CircleStatement,
+  PaintStatement,
+  ColorStatement
 } from './ast.js';
 
 import { VariableManager } from './variables.js';
@@ -88,10 +95,11 @@ export class BasicInterpreter extends EventEmitter {
   private outputBuffer: string[];
   private inputQueue: string[];
   private pendingInput: string[] | null = null;
+  private graphicsEngine: any | null = null; // GraphicsEngineInterface
 
   constructor() {
     super();
-    
+
     this.variables = new VariableManager();
     this.evaluator = new ExpressionEvaluator(this.variables);
     this.state = ExecutionState.READY;
@@ -262,6 +270,27 @@ export class BasicInterpreter extends EventEmitter {
           break;
         case 'RemStatement':
           // 주석은 무시
+          break;
+        case 'ScreenStatement':
+          await this.executeScreen(statement as ScreenStatement);
+          break;
+        case 'PsetStatement':
+          await this.executePset(statement as PsetStatement);
+          break;
+        case 'PresetStatement':
+          await this.executePreset(statement as PresetStatement);
+          break;
+        case 'LineStatement':
+          await this.executeLine(statement as LineStatement);
+          break;
+        case 'CircleStatement':
+          await this.executeCircle(statement as CircleStatement);
+          break;
+        case 'PaintStatement':
+          await this.executePaint(statement as PaintStatement);
+          break;
+        case 'ColorStatement':
+          await this.executeColor(statement as ColorStatement);
           break;
         default:
           throw new BasicError(
@@ -766,6 +795,20 @@ export class BasicInterpreter extends EventEmitter {
   }
 
   /**
+   * GraphicsEngine 설정
+   */
+  public setGraphicsEngine(engine: any): void {
+    this.graphicsEngine = engine;
+  }
+
+  /**
+   * GraphicsEngine 가져오기
+   */
+  public getGraphicsEngine(): any | null {
+    return this.graphicsEngine;
+  }
+
+  /**
    * 현재 실행 위치
    */
   public getCurrentLine(): number | undefined {
@@ -885,5 +928,363 @@ export class BasicInterpreter extends EventEmitter {
         this.context.lineNumberMap.set(stmt.lineNumber, i);
       }
     }
+  }
+
+  // ===================================================================
+  // 그래픽 명령어 실행 메서드들
+  // ===================================================================
+
+  /**
+   * SCREEN 명령어 실행
+   */
+  private async executeScreen(stmt: ScreenStatement): Promise<void> {
+    if (!this.graphicsEngine) {
+      throw new BasicError(
+        'Graphics engine not initialized',
+        ERROR_CODES.RUNTIME_ERROR,
+        stmt.line
+      );
+    }
+
+    const mode = this.evaluator.evaluate(stmt.mode);
+    if (typeof mode !== 'number') {
+      throw new BasicError(
+        'Screen mode must be numeric',
+        ERROR_CODES.TYPE_MISMATCH,
+        stmt.line
+      );
+    }
+
+    this.graphicsEngine.setScreenMode(Math.floor(mode));
+  }
+
+  /**
+   * PSET 명령어 실행
+   */
+  private async executePset(stmt: PsetStatement): Promise<void> {
+    if (!this.graphicsEngine) {
+      throw new BasicError(
+        'Graphics engine not initialized',
+        ERROR_CODES.RUNTIME_ERROR,
+        stmt.line
+      );
+    }
+
+    const x = this.evaluator.evaluate(stmt.x);
+    const y = this.evaluator.evaluate(stmt.y);
+
+    if (typeof x !== 'number' || typeof y !== 'number') {
+      throw new BasicError(
+        'Coordinates must be numeric',
+        ERROR_CODES.TYPE_MISMATCH,
+        stmt.line
+      );
+    }
+
+    let color: number | undefined = undefined;
+    if (stmt.color) {
+      const colorValue = this.evaluator.evaluate(stmt.color);
+      if (typeof colorValue !== 'number') {
+        throw new BasicError(
+          'Color must be numeric',
+          ERROR_CODES.TYPE_MISMATCH,
+          stmt.line
+        );
+      }
+      color = Math.floor(colorValue);
+    }
+
+    this.graphicsEngine.pset(x, y, color);
+  }
+
+  /**
+   * PRESET 명령어 실행
+   */
+  private async executePreset(stmt: PresetStatement): Promise<void> {
+    if (!this.graphicsEngine) {
+      throw new BasicError(
+        'Graphics engine not initialized',
+        ERROR_CODES.RUNTIME_ERROR,
+        stmt.line
+      );
+    }
+
+    const x = this.evaluator.evaluate(stmt.x);
+    const y = this.evaluator.evaluate(stmt.y);
+
+    if (typeof x !== 'number' || typeof y !== 'number') {
+      throw new BasicError(
+        'Coordinates must be numeric',
+        ERROR_CODES.TYPE_MISMATCH,
+        stmt.line
+      );
+    }
+
+    let color: number | undefined = undefined;
+    if (stmt.color) {
+      const colorValue = this.evaluator.evaluate(stmt.color);
+      if (typeof colorValue !== 'number') {
+        throw new BasicError(
+          'Color must be numeric',
+          ERROR_CODES.TYPE_MISMATCH,
+          stmt.line
+        );
+      }
+      color = Math.floor(colorValue);
+    }
+
+    this.graphicsEngine.preset(x, y, color);
+  }
+
+  /**
+   * LINE 명령어 실행
+   */
+  private async executeLine(stmt: LineStatement): Promise<void> {
+    if (!this.graphicsEngine) {
+      throw new BasicError(
+        'Graphics engine not initialized',
+        ERROR_CODES.RUNTIME_ERROR,
+        stmt.line
+      );
+    }
+
+    // x1, y1이 없으면 마지막 위치 사용
+    const state = this.graphicsEngine.getState();
+    let x1: number, y1: number;
+
+    if (stmt.x1 && stmt.y1) {
+      const x1Val = this.evaluator.evaluate(stmt.x1);
+      const y1Val = this.evaluator.evaluate(stmt.y1);
+      if (typeof x1Val !== 'number' || typeof y1Val !== 'number') {
+        throw new BasicError(
+          'Coordinates must be numeric',
+          ERROR_CODES.TYPE_MISMATCH,
+          stmt.line
+        );
+      }
+      x1 = x1Val;
+      y1 = y1Val;
+    } else {
+      x1 = state.lastX;
+      y1 = state.lastY;
+    }
+
+    const x2 = this.evaluator.evaluate(stmt.x2);
+    const y2 = this.evaluator.evaluate(stmt.y2);
+
+    if (typeof x2 !== 'number' || typeof y2 !== 'number') {
+      throw new BasicError(
+        'Coordinates must be numeric',
+        ERROR_CODES.TYPE_MISMATCH,
+        stmt.line
+      );
+    }
+
+    let color: number | undefined = undefined;
+    if (stmt.color) {
+      const colorValue = this.evaluator.evaluate(stmt.color);
+      if (typeof colorValue !== 'number') {
+        throw new BasicError(
+          'Color must be numeric',
+          ERROR_CODES.TYPE_MISMATCH,
+          stmt.line
+        );
+      }
+      color = Math.floor(colorValue);
+    }
+
+    const options: any = {};
+    if (stmt.style) {
+      options.style = stmt.style;
+    }
+    if (color !== undefined) {
+      options.color = color;
+    }
+
+    this.graphicsEngine.line(x1, y1, x2, y2, options);
+  }
+
+  /**
+   * CIRCLE 명령어 실행
+   */
+  private async executeCircle(stmt: CircleStatement): Promise<void> {
+    if (!this.graphicsEngine) {
+      throw new BasicError(
+        'Graphics engine not initialized',
+        ERROR_CODES.RUNTIME_ERROR,
+        stmt.line
+      );
+    }
+
+    const x = this.evaluator.evaluate(stmt.x);
+    const y = this.evaluator.evaluate(stmt.y);
+    const radius = this.evaluator.evaluate(stmt.radius);
+
+    if (typeof x !== 'number' || typeof y !== 'number' || typeof radius !== 'number') {
+      throw new BasicError(
+        'Coordinates and radius must be numeric',
+        ERROR_CODES.TYPE_MISMATCH,
+        stmt.line
+      );
+    }
+
+    const options: any = {};
+
+    if (stmt.color) {
+      const colorValue = this.evaluator.evaluate(stmt.color);
+      if (typeof colorValue !== 'number') {
+        throw new BasicError(
+          'Color must be numeric',
+          ERROR_CODES.TYPE_MISMATCH,
+          stmt.line
+        );
+      }
+      options.color = Math.floor(colorValue);
+    }
+
+    if (stmt.startAngle) {
+      const startValue = this.evaluator.evaluate(stmt.startAngle);
+      if (typeof startValue !== 'number') {
+        throw new BasicError(
+          'Start angle must be numeric',
+          ERROR_CODES.TYPE_MISMATCH,
+          stmt.line
+        );
+      }
+      options.startAngle = startValue;
+    }
+
+    if (stmt.endAngle) {
+      const endValue = this.evaluator.evaluate(stmt.endAngle);
+      if (typeof endValue !== 'number') {
+        throw new BasicError(
+          'End angle must be numeric',
+          ERROR_CODES.TYPE_MISMATCH,
+          stmt.line
+        );
+      }
+      options.endAngle = endValue;
+    }
+
+    if (stmt.aspect) {
+      const aspectValue = this.evaluator.evaluate(stmt.aspect);
+      if (typeof aspectValue !== 'number') {
+        throw new BasicError(
+          'Aspect must be numeric',
+          ERROR_CODES.TYPE_MISMATCH,
+          stmt.line
+        );
+      }
+      options.aspect = aspectValue;
+    }
+
+    this.graphicsEngine.circle(x, y, radius, options);
+  }
+
+  /**
+   * PAINT 명령어 실행
+   */
+  private async executePaint(stmt: PaintStatement): Promise<void> {
+    if (!this.graphicsEngine) {
+      throw new BasicError(
+        'Graphics engine not initialized',
+        ERROR_CODES.RUNTIME_ERROR,
+        stmt.line
+      );
+    }
+
+    const x = this.evaluator.evaluate(stmt.x);
+    const y = this.evaluator.evaluate(stmt.y);
+
+    if (typeof x !== 'number' || typeof y !== 'number') {
+      throw new BasicError(
+        'Coordinates must be numeric',
+        ERROR_CODES.TYPE_MISMATCH,
+        stmt.line
+      );
+    }
+
+    const options: any = {};
+
+    if (stmt.paintColor) {
+      const paintColorValue = this.evaluator.evaluate(stmt.paintColor);
+      if (typeof paintColorValue !== 'number') {
+        throw new BasicError(
+          'Paint color must be numeric',
+          ERROR_CODES.TYPE_MISMATCH,
+          stmt.line
+        );
+      }
+      options.paintColor = Math.floor(paintColorValue);
+    }
+
+    if (stmt.borderColor) {
+      const borderColorValue = this.evaluator.evaluate(stmt.borderColor);
+      if (typeof borderColorValue !== 'number') {
+        throw new BasicError(
+          'Border color must be numeric',
+          ERROR_CODES.TYPE_MISMATCH,
+          stmt.line
+        );
+      }
+      options.borderColor = Math.floor(borderColorValue);
+    }
+
+    this.graphicsEngine.paint(x, y, options);
+  }
+
+  /**
+   * COLOR 명령어 실행
+   */
+  private async executeColor(stmt: ColorStatement): Promise<void> {
+    if (!this.graphicsEngine) {
+      throw new BasicError(
+        'Graphics engine not initialized',
+        ERROR_CODES.RUNTIME_ERROR,
+        stmt.line
+      );
+    }
+
+    let foreground: number | undefined = undefined;
+    let background: number | undefined = undefined;
+    let border: number | undefined = undefined;
+
+    if (stmt.foreground) {
+      const fgValue = this.evaluator.evaluate(stmt.foreground);
+      if (typeof fgValue !== 'number') {
+        throw new BasicError(
+          'Foreground color must be numeric',
+          ERROR_CODES.TYPE_MISMATCH,
+          stmt.line
+        );
+      }
+      foreground = Math.floor(fgValue);
+    }
+
+    if (stmt.background) {
+      const bgValue = this.evaluator.evaluate(stmt.background);
+      if (typeof bgValue !== 'number') {
+        throw new BasicError(
+          'Background color must be numeric',
+          ERROR_CODES.TYPE_MISMATCH,
+          stmt.line
+        );
+      }
+      background = Math.floor(bgValue);
+    }
+
+    if (stmt.border) {
+      const borderValue = this.evaluator.evaluate(stmt.border);
+      if (typeof borderValue !== 'number') {
+        throw new BasicError(
+          'Border color must be numeric',
+          ERROR_CODES.TYPE_MISMATCH,
+          stmt.line
+        );
+      }
+      border = Math.floor(borderValue);
+    }
+
+    this.graphicsEngine.setColor(foreground, background, border);
   }
 }

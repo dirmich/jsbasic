@@ -9,6 +9,9 @@ import { Parser } from '../basic/parser.js';
 import { MemoryManager } from '../memory/manager.js';
 import { Terminal, TerminalState } from '../io/terminal.js';
 import { EventEmitter } from '../utils/events.js';
+import { GraphicsEngine } from '../graphics/graphics-engine.js';
+import { PixelBuffer } from '../graphics/pixel-buffer.js';
+import { ColorManager } from '../graphics/color-manager.js';
 
 export interface EmulatorConfig {
   cpuFrequency: number;
@@ -44,7 +47,10 @@ export class BasicEmulator extends EventEmitter {
   private memoryManager!: MemoryManager;
   private terminal!: Terminal;
   private parser!: Parser;
-  
+  private graphicsEngine!: GraphicsEngine;
+  private pixelBuffer!: PixelBuffer;
+  private colorManager!: ColorManager;
+
   private state: EmulatorState = EmulatorState.STOPPED;
   private config!: EmulatorConfig;
   private stats!: EmulatorStats;
@@ -79,16 +85,24 @@ export class BasicEmulator extends EventEmitter {
       enableBanking: true,
       trackAccess: true
     });
-    
+
     // CPU 초기화
     this.cpu = new CPU6502(this.memoryManager);
-    
+
     // BASIC 인터프리터 초기화
     this.basicInterpreter = new BasicInterpreter();
-    
+
+    // 그래픽 시스템 초기화
+    this.pixelBuffer = new PixelBuffer(320, 200); // 기본 SCREEN 1 모드
+    this.colorManager = new ColorManager();
+    this.graphicsEngine = new GraphicsEngine(this.pixelBuffer, this.colorManager);
+
+    // 인터프리터에 그래픽 엔진 연결
+    this.basicInterpreter.setGraphicsEngine(this.graphicsEngine);
+
     // 터미널 초기화
     this.terminal = new Terminal(this.config.terminal);
-    
+
     // 파서 초기화
     this.parser = new Parser('');
   }
@@ -570,6 +584,27 @@ export class BasicEmulator extends EventEmitter {
   
   getConfig(): EmulatorConfig {
     return { ...this.config };
+  }
+
+  /**
+   * GraphicsEngine 반환
+   */
+  getGraphicsEngine(): GraphicsEngine {
+    return this.graphicsEngine;
+  }
+
+  /**
+   * PixelBuffer 반환
+   */
+  getPixelBuffer(): PixelBuffer {
+    return this.pixelBuffer;
+  }
+
+  /**
+   * ColorManager 반환
+   */
+  getColorManager(): ColorManager {
+    return this.colorManager;
   }
 
   /**
