@@ -577,6 +577,384 @@ console.log(`3.14159 * 2.0 = ${jsResult}`);
 
 ## 📺 I/O 시스템 API
 
+### `Keyboard` 클래스
+
+키보드 입력을 관리하는 EventEmitter 기반 클래스입니다.
+
+#### 생성자
+
+```typescript
+constructor(config?: KeyboardConfig)
+```
+
+**매개변수:**
+- `config?` - 키보드 설정 (선택적)
+
+```typescript
+interface KeyboardConfig {
+  enableRepeat?: boolean;        // 키 반복 활성화 (기본: true)
+  repeatDelay?: number;          // 반복 시작 지연 (ms, 기본: 500)
+  repeatInterval?: number;       // 반복 간격 (ms, 기본: 50)
+  captureSpecialKeys?: boolean;  // 특수 키 캡처 (기본: true)
+}
+```
+
+**예제:**
+```typescript
+const keyboard = new Keyboard({
+  enableRepeat: true,
+  repeatDelay: 500,
+  repeatInterval: 50,
+  captureSpecialKeys: true
+});
+```
+
+#### 활성화 메서드
+
+##### `activate(): void`
+
+키보드 입력을 활성화합니다.
+
+```typescript
+keyboard.activate();
+console.log(keyboard.isKeyboardActive()); // true
+```
+
+##### `deactivate(): void`
+
+키보드 입력을 비활성화합니다.
+
+```typescript
+keyboard.deactivate();
+// 'deactivated' 이벤트 발생
+```
+
+##### `isKeyboardActive(): boolean`
+
+현재 활성화 상태를 반환합니다.
+
+```typescript
+if (keyboard.isKeyboardActive()) {
+  console.log('키보드 활성화됨');
+}
+```
+
+#### 키 상태 추적
+
+##### `isKeyPressed(code: string): boolean`
+
+특정 키가 눌려있는지 확인합니다.
+
+```typescript
+if (keyboard.isKeyPressed('KeyA')) {
+  console.log('A키가 눌려있음');
+}
+
+if (keyboard.isKeyPressed('Space')) {
+  console.log('스페이스바가 눌려있음');
+}
+```
+
+##### `getPressedKeys(): string[]`
+
+현재 눌려있는 모든 키의 코드를 반환합니다.
+
+```typescript
+const pressedKeys = keyboard.getPressedKeys();
+console.log('눌린 키들:', pressedKeys); // ['KeyA', 'ShiftLeft']
+```
+
+#### 이벤트
+
+```typescript
+export interface KeyEvent {
+  key: string;        // 키 문자 (예: 'a', 'A', 'Enter')
+  code: string;       // 키 코드 (예: 'KeyA', 'Enter')
+  shiftKey: boolean;  // Shift 키 상태
+  ctrlKey: boolean;   // Ctrl 키 상태
+  altKey: boolean;    // Alt 키 상태
+  metaKey: boolean;   // Meta(Command/Windows) 키 상태
+  timestamp: number;  // 이벤트 발생 시각
+  repeat?: boolean;   // 키 반복 여부
+}
+```
+
+##### 이벤트 리스너 등록
+
+```typescript
+// keydown: 키를 누를 때
+keyboard.on('keydown', (event: KeyEvent) => {
+  console.log(`키 다운: ${event.key} (${event.code})`);
+});
+
+// keyup: 키를 뗄 때
+keyboard.on('keyup', (event: KeyEvent) => {
+  console.log(`키 업: ${event.key}`);
+});
+
+// keypress: 문자 키를 누를 때
+keyboard.on('keypress', (event: KeyEvent) => {
+  console.log(`문자 입력: ${event.key}`);
+});
+
+// keyrepeat: 키 반복이 발생할 때
+keyboard.on('keyrepeat', (event: KeyEvent) => {
+  console.log(`키 반복: ${event.key}`);
+});
+
+// deactivated: 키보드 비활성화 시
+keyboard.on('deactivated', () => {
+  console.log('키보드 비활성화됨');
+});
+```
+
+#### 리소스 정리
+
+##### `dispose(): void`
+
+키보드 리소스를 정리합니다.
+
+```typescript
+keyboard.dispose();
+// 모든 이벤트 리스너 제거 및 키 상태 초기화
+```
+
+#### 특수 키 지원
+
+다음 특수 키들이 자동으로 캡처됩니다 (`captureSpecialKeys: true` 시):
+
+- **기능 키**: F1-F12
+- **화살표 키**: ArrowUp, ArrowDown, ArrowLeft, ArrowRight
+- **편집 키**: Home, End, PageUp, PageDown, Insert, Delete
+- **수정 키**: Shift, Control, Alt, Meta
+- **기타**: Tab, Escape, Enter, Backspace, Space
+
+### `Storage` 클래스
+
+localStorage/메모리 기반 데이터 저장소를 관리하는 EventEmitter 기반 클래스입니다.
+
+#### 생성자
+
+```typescript
+constructor(config?: StorageConfig)
+```
+
+**매개변수:**
+- `config?` - 저장소 설정 (선택적)
+
+```typescript
+interface StorageConfig {
+  prefix?: string;           // 키 접두사 (기본: 'basic_')
+  useLocalStorage?: boolean; // localStorage 사용 여부 (기본: true)
+  maxEntries?: number;       // 최대 항목 수 (기본: 1000)
+}
+```
+
+**예제:**
+```typescript
+const storage = new Storage({
+  prefix: 'myapp_',
+  useLocalStorage: true,
+  maxEntries: 500
+});
+```
+
+#### CRUD 연산
+
+##### `set<T>(key: string, value: T): boolean`
+
+데이터를 저장합니다.
+
+```typescript
+// 문자열 저장
+storage.set('username', 'Alice');
+
+// 숫자 저장
+storage.set('score', 9999);
+
+// 객체 저장
+storage.set('user', { name: 'Alice', age: 30 });
+
+// 배열 저장
+storage.set('scores', [100, 200, 300]);
+```
+
+**반환값:** `boolean` - 저장 성공 여부
+
+##### `get<T>(key: string, defaultValue?: T): T | undefined`
+
+데이터를 조회합니다.
+
+```typescript
+const username = storage.get('username');
+console.log(username); // 'Alice'
+
+// 기본값 제공
+const level = storage.get('level', 1);
+console.log(level); // 키가 없으면 1 반환
+```
+
+##### `has(key: string): boolean`
+
+키의 존재 여부를 확인합니다.
+
+```typescript
+if (storage.has('username')) {
+  console.log('사용자명이 저장되어 있음');
+}
+```
+
+##### `remove(key: string): boolean`
+
+데이터를 삭제합니다.
+
+```typescript
+const removed = storage.remove('username');
+if (removed) {
+  console.log('사용자명 삭제됨');
+}
+```
+
+##### `clear(): boolean`
+
+모든 데이터를 삭제합니다.
+
+```typescript
+storage.clear();
+console.log(storage.keys().length); // 0
+```
+
+#### 키 관리
+
+##### `keys(): string[]`
+
+모든 키를 반환합니다 (prefix 제외).
+
+```typescript
+storage.set('key1', 'value1');
+storage.set('key2', 'value2');
+
+const keys = storage.keys();
+console.log(keys); // ['key1', 'key2']
+```
+
+##### `search(pattern: string | RegExp): string[]`
+
+패턴에 매칭되는 키를 검색합니다.
+
+```typescript
+storage.set('user_1', 'Alice');
+storage.set('user_2', 'Bob');
+storage.set('admin_1', 'Charlie');
+
+// 와일드카드 검색
+const userKeys = storage.search('user_*');
+console.log(userKeys); // ['user_1', 'user_2']
+
+// 정규식 검색
+const allUsers = storage.search(/^user_/);
+console.log(allUsers); // ['user_1', 'user_2']
+```
+
+#### 일괄 연산
+
+##### `setMultiple(data: Record<string, any>): boolean`
+
+여러 키-값 쌍을 한 번에 저장합니다.
+
+```typescript
+const success = storage.setMultiple({
+  username: 'Alice',
+  score: 9999,
+  level: 10
+});
+```
+
+##### `getMultiple<T = any>(keys: string[]): Record<string, T>`
+
+여러 키의 값을 한 번에 조회합니다.
+
+```typescript
+const data = storage.getMultiple(['username', 'score', 'level']);
+console.log(data);
+// { username: 'Alice', score: 9999, level: 10 }
+```
+
+#### 통계
+
+##### `getStats(): StorageStats`
+
+저장소 통계 정보를 반환합니다.
+
+```typescript
+interface StorageStats {
+  totalEntries: number;           // 총 항목 수
+  totalSize: number;              // 총 크기 (bytes)
+  isLocalStorageAvailable: boolean; // localStorage 사용 가능 여부
+  prefix: string;                 // 현재 접두사
+  maxEntries: number;             // 최대 항목 수
+}
+
+const stats = storage.getStats();
+console.log(`저장된 항목: ${stats.totalEntries}`);
+console.log(`사용 중인 용량: ${stats.totalSize} bytes`);
+```
+
+#### 이벤트
+
+```typescript
+// set 이벤트: 데이터 저장 시
+storage.on('set', (event) => {
+  console.log(`저장: ${event.key} = ${event.value}`);
+});
+
+// get 이벤트: 데이터 조회 시
+storage.on('get', (event) => {
+  console.log(`조회: ${event.key}`);
+});
+
+// remove 이벤트: 데이터 삭제 시
+storage.on('remove', (event) => {
+  console.log(`삭제: ${event.key}`);
+});
+
+// clear 이벤트: 전체 삭제 시
+storage.on('clear', (event) => {
+  console.log('전체 삭제됨');
+});
+
+// error 이벤트: 에러 발생 시
+storage.on('error', (event) => {
+  console.error(`에러: ${event.operation} - ${event.error.message}`);
+});
+```
+
+#### 리소스 정리
+
+##### `dispose(): void`
+
+저장소 리소스를 정리합니다.
+
+```typescript
+storage.dispose();
+// 모든 이벤트 리스너 제거
+```
+
+#### Prefix 격리
+
+여러 Storage 인스턴스가 서로 다른 prefix를 사용하면 데이터가 격리됩니다:
+
+```typescript
+const storage1 = new Storage({ prefix: 'app1_' });
+const storage2 = new Storage({ prefix: 'app2_' });
+
+storage1.set('key', 'value1');
+storage2.set('key', 'value2');
+
+console.log(storage1.get('key')); // 'value1'
+console.log(storage2.get('key')); // 'value2'
+```
+
 ### `Terminal` 클래스
 
 터미널 인터페이스를 관리합니다.
@@ -635,9 +1013,9 @@ getCursor(): {x: number, y: number}     // 현재 커서 위치
 showCursor(show: boolean): void         // 커서 표시/숨김
 ```
 
-### `Storage` 클래스
+### `FileStorage` 클래스
 
-파일 저장/로드 기능을 제공합니다.
+BASIC 프로그램 파일 저장/로드 기능을 제공합니다.
 
 #### 파일 작업
 
@@ -646,7 +1024,8 @@ showCursor(show: boolean): void         // 커서 표시/숨김
 프로그램을 파일로 저장합니다.
 
 ```typescript
-const success = await storage.save('HELLO.BAS', program);
+const fileStorage = new FileStorage();
+const success = await fileStorage.save('HELLO.BAS', program);
 if (success) {
   console.log('저장 완료');
 }
@@ -657,7 +1036,7 @@ if (success) {
 파일에서 프로그램을 로드합니다.
 
 ```typescript
-const content = await storage.load('HELLO.BAS');
+const content = await fileStorage.load('HELLO.BAS');
 if (content) {
   interpreter.loadProgram(content.split('\n'));
 }
@@ -668,7 +1047,7 @@ if (content) {
 파일을 삭제합니다.
 
 ```typescript
-const deleted = await storage.delete('OLD.BAS');
+const deleted = await fileStorage.delete('OLD.BAS');
 ```
 
 ##### `list(): Promise<FileInfo[]>`
@@ -682,7 +1061,7 @@ interface FileInfo {
   modified: Date;
 }
 
-const files = await storage.list();
+const files = await fileStorage.list();
 files.forEach(file => {
   console.log(`${file.name} (${file.size} bytes)`);
 });

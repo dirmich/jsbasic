@@ -5,6 +5,83 @@
 이 형식은 [Keep a Changelog](https://keepachangelog.com/ko/1.0.0/) 기준을 따르며,
 이 프로젝트는 [Semantic Versioning](https://semver.org/spec/v2.0.0.html)을 준수합니다.
 
+## [2.2.0] - 2025-10-03 - I/O 시스템 확장 및 테스트 강화
+
+### 추가됨 (Added)
+- **Keyboard 모듈**: EventEmitter 기반 키보드 입력 관리 시스템 구현
+  - 키 상태 추적 (isKeyPressed, getPressedKeys)
+  - 키 반복 기능 (enableRepeat, repeatDelay, repeatInterval)
+  - 특수 키 캡처 (F1-F12, 화살표 키, 편집 키)
+  - 이벤트 시스템 (keydown, keyup, keypress, keyrepeat, deactivated)
+  - 리소스 정리 (dispose)
+- **Storage 모듈**: localStorage/메모리 기반 데이터 저장소 구현
+  - CRUD 연산 (set, get, has, remove, clear)
+  - 키 관리 (keys, search with wildcard/regex)
+  - 일괄 연산 (setMultiple, getMultiple)
+  - 통계 기능 (getStats)
+  - prefix 기반 격리 (다중 인스턴스 지원)
+  - 이벤트 시스템 (set, get, remove, clear, error)
+- **CPU OpcodeDecoder 통합**: CPU 실행 추적에 디스어셈블리 기능 통합
+  - traceExecution()에서 실제 명령어 표시
+  - disassemble() 및 disassembleRange() 메서드 활용
+- **MemoryInterface 확장**: getData() 메서드 추가
+  - 디스어셈블러가 메모리 배열에 접근 가능
+
+### 수정됨 (Fixed)
+- **TypeScript 타입 오류**: 6개 타입 오류 모두 해결
+  - ui/components.ts: HTMLElement 타입 캐스팅 (HTMLInputElement, HTMLTableElement, HTMLLabelElement)
+  - parser.ts: Token undefined 처리 (nullish coalescing)
+  - debugger.ts: lastInstruction undefined 처리
+- **CPU opcodes.ts 버그**: disassembleRange() 주소 계산 오류 수정
+  - 기존: `address += info.bytes` (operands만 더함)
+  - 수정: `address += 1 + info.bytes` (opcode + operands)
+  - 이로 인해 연속 명령어 디스어셈블리가 정상 작동
+
+### 테스트 (Testing)
+- **Keyboard 모듈 테스트**: 18개 테스트 100% 통과 (278ms)
+  - 초기화 (2개)
+  - 활성화/비활성화 (4개)
+  - 키 상태 추적 (2개)
+  - 이벤트 발생 (3개)
+  - 특수 키 감지 (2개)
+  - 리소스 정리 (2개)
+  - 키 반복 기능 (2개)
+  - 에러 처리 (1개)
+- **Storage 모듈 테스트**: 29개 테스트 100% 통과 (262ms)
+  - 초기화 (2개)
+  - CRUD 연산 (7개)
+  - 다양한 데이터 타입 (6개)
+  - 키 관리 (3개)
+  - 일괄 연산 (2개)
+  - 통계 (2개)
+  - 이벤트 (4개)
+  - 에러 처리 (1개)
+  - prefix 격리 (1개)
+  - 리소스 정리 (1개)
+- **CPU 디스어셈블러 통합 테스트**: 27개 테스트 100% 통과 (237ms)
+  - 기본 명령어 디스어셈블리 (4개)
+  - 다양한 주소 지정 모드 (10개)
+  - 범위 디스어셈블리 (2개)
+  - 유효하지 않은 명령어 (2개)
+  - 명령어 정보 (3개)
+  - 명령어 분류 (2개)
+  - 실제 프로그램 (2개)
+  - 엣지 케이스 (2개)
+
+### 문서화 (Documentation)
+- **API 문서 업데이트**: Keyboard 및 Storage 모듈 상세 문서 추가
+  - Keyboard 클래스: 생성자, 활성화 메서드, 키 상태 추적, 이벤트, 리소스 정리
+  - Storage 클래스: 생성자, CRUD 연산, 키 관리, 일괄 연산, 통계, 이벤트, prefix 격리
+  - FileStorage 클래스: 기존 Storage와 구분하여 파일 저장/로드 기능 명시
+- **README 업데이트**: Phase 11 작업 내용 반영
+  - 테스트 커버리지 124+ 케이스로 업데이트
+  - I/O 시스템 확장 내용 추가
+
+### 통계
+- **총 테스트**: 74개 (Keyboard 18 + Storage 29 + Disassembler 27) 100% 통과
+- **실행 시간**: ~780ms (평균)
+- **코드 품질**: TypeScript 엄격 모드 완전 호환 (타입 오류 0개)
+
 ## [2.1.0] - 2024-12-09 - BASIC LIST 명령어 및 INPUT 기능 완전 구현
 
 ### 추가됨 (Added)
