@@ -31,6 +31,8 @@ import type {
   ListStatement,
   NewStatement,
   ClearStatement,
+  SaveStatement,
+  LoadStatement,
   ScreenStatement,
   PsetStatement,
   PresetStatement,
@@ -47,6 +49,7 @@ import { VariableManager } from './variables.js';
 import { ExpressionEvaluator } from './evaluator.js';
 import { BasicError, ERROR_CODES } from '../utils/errors.js';
 import { EventEmitter } from '../utils/events.js';
+import { fileStorage } from '../utils/file-storage.js';
 
 /**
  * 프로그램 실행 상태
@@ -289,6 +292,12 @@ export class BasicInterpreter extends EventEmitter {
           break;
         case 'ClearStatement':
           await this.executeClear(statement as ClearStatement);
+          break;
+        case 'SaveStatement':
+          await this.executeSave(statement as SaveStatement);
+          break;
+        case 'LoadStatement':
+          await this.executeLoad(statement as LoadStatement);
           break;
         case 'ScreenStatement':
           await this.executeScreen(statement as ScreenStatement);
@@ -1516,5 +1525,62 @@ export class BasicInterpreter extends EventEmitter {
     this.context.userFunctions.clear();
 
     this.emit('output', 'Ok\n');
+  }
+
+  /**
+   * SAVE 명령어 실행: 프로그램 파일 저장
+   */
+  private async executeSave(stmt: SaveStatement): Promise<void> {
+    try {
+      const filename = stmt.filename.value;
+      const statements = this.context.statements;
+
+      fileStorage.save(filename, statements);
+      this.emit('output', `Saved: ${filename}\n`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      throw new BasicError(
+        `Save failed: ${message}`,
+        ERROR_CODES.RUNTIME_ERROR,
+        stmt.line
+      );
+    }
+  }
+
+  /**
+   * LOAD 명령어 실행: 프로그램 파일 로드
+   */
+  private async executeLoad(stmt: LoadStatement): Promise<void> {
+    try {
+      const filename = stmt.filename.value;
+      const statements = fileStorage.load(filename);
+
+      // 현재 프로그램을 로드된 프로그램으로 대체
+      this.context.statements = statements;
+
+      // 라인 번호 맵 재구성
+      this.updateLineNumberMap();
+
+      // 변수 및 실행 상태 초기화
+      this.variables.clear();
+      this.context.dataPointer = 0;
+      this.context.gosubStack = [];
+      this.context.forLoopStack = [];
+      this.context.userFunctions.clear();
+      this.state = ExecutionState.STOPPED;
+      this.context.programCounter = 0;
+
+      // DATA 문 수집
+      this.collectDataStatements();
+
+      this.emit('output', `Loaded: ${filename}\n`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      throw new BasicError(
+        `Load failed: ${message}`,
+        ERROR_CODES.RUNTIME_ERROR,
+        stmt.line
+      );
+    }
   }
 }

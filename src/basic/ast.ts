@@ -240,6 +240,22 @@ export interface ClearStatement extends Statement {
 }
 
 /**
+ * SAVE 파일 저장
+ */
+export interface SaveStatement extends Statement {
+  type: 'SaveStatement';
+  filename: StringLiteral;
+}
+
+/**
+ * LOAD 파일 로드
+ */
+export interface LoadStatement extends Statement {
+  type: 'LoadStatement';
+  filename: StringLiteral;
+}
+
+/**
  * SCREEN 화면 모드 설정
  */
 export interface ScreenStatement extends Statement {
@@ -472,6 +488,8 @@ export type ASTNodeTypes =
   | ListStatement
   | NewStatement
   | ClearStatement
+  | SaveStatement
+  | LoadStatement
   | ScreenStatement
   | PsetStatement
   | PresetStatement

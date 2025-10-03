@@ -42,6 +42,8 @@ import type {
   ListStatement,
   NewStatement,
   ClearStatement,
+  SaveStatement,
+  LoadStatement,
   GetStatement,
   PutStatement,
   BinaryExpression,
@@ -179,6 +181,10 @@ export class Parser {
         return this.parseNewStatement();
       case TokenType.CLEAR:
         return this.parseClearStatement();
+      case TokenType.SAVE:
+        return this.parseSaveStatement();
+      case TokenType.LOAD:
+        return this.parseLoadStatement();
       case TokenType.DEF:
         return this.parseDefStatement();
       case TokenType.ON:
@@ -1243,6 +1249,58 @@ export class Parser {
 
     return {
       type: 'ClearStatement',
+      line: line,
+      column: column
+    };
+  }
+
+  private parseSaveStatement(): SaveStatement {
+    const line = this.current.line;
+    const column = this.current.column;
+    this.consume(TokenType.SAVE);
+
+    // SAVE "filename"
+    if (this.current.type !== TokenType.STRING) {
+      throw new Error(`Expected string filename at line ${line}`);
+    }
+
+    const filename: StringLiteral = {
+      type: 'StringLiteral',
+      value: this.current.value as string,
+      line: this.current.line,
+      column: this.current.column
+    };
+    this.advance();
+
+    return {
+      type: 'SaveStatement',
+      filename: filename,
+      line: line,
+      column: column
+    };
+  }
+
+  private parseLoadStatement(): LoadStatement {
+    const line = this.current.line;
+    const column = this.current.column;
+    this.consume(TokenType.LOAD);
+
+    // LOAD "filename"
+    if (this.current.type !== TokenType.STRING) {
+      throw new Error(`Expected string filename at line ${line}`);
+    }
+
+    const filename: StringLiteral = {
+      type: 'StringLiteral',
+      value: this.current.value as string,
+      line: this.current.line,
+      column: this.current.column
+    };
+    this.advance();
+
+    return {
+      type: 'LoadStatement',
+      filename: filename,
       line: line,
       column: column
     };
