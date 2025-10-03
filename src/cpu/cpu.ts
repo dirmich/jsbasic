@@ -130,10 +130,12 @@ export class CPU6502 extends EventEmitter<CPUEvents> implements CPUInterface {
   
   /**
    * 레지스터 읽기 전용 접근
+   * P 레지스터는 호환성을 위해 숫자로 변환되어 반환됩니다.
    */
   public get registers(): Readonly<CPURegisters> {
     return {
-      ...this._registers
+      ...this._registers,
+      P: this.statusFlagsToNumber(this._registers.P) as any
     } as Readonly<CPURegisters>;
   }
   

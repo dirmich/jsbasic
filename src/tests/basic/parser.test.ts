@@ -222,17 +222,21 @@ describe('BASIC Parser', () => {
           PRINT I
         NEXT I
       `;
-      
+
       const parser = new Parser(source);
       const program = parser.parseProgram();
-      
-      const stmt = program.statements[0] as ForStatement;
-      expect(stmt.type).toBe('ForStatement');
-      expect(stmt.variable.name).toBe('I');
-      expect((stmt.start as NumberLiteral).value).toBe(1);
-      expect((stmt.end as NumberLiteral).value).toBe(10);
-      expect(stmt.step).toBeUndefined();
-      expect(stmt.body).toHaveLength(1);
+
+      // FOR, PRINT, NEXT가 개별 명령문으로 파싱됨
+      expect(program.statements).toHaveLength(3);
+
+      const forStmt = program.statements[0] as ForStatement;
+      expect(forStmt.type).toBe('ForStatement');
+      expect(forStmt.variable.name).toBe('I');
+      expect((forStmt.start as NumberLiteral).value).toBe(1);
+      expect((forStmt.end as NumberLiteral).value).toBe(10);
+      expect(forStmt.step).toBeUndefined();
+      // 전통적인 BASIC 방식: body는 빈 배열 (런타임에 NEXT 찾음)
+      expect(forStmt.body).toHaveLength(0);
     });
 
     test('STEP이 있는 FOR 반복문', () => {
@@ -380,17 +384,24 @@ describe('BASIC Parser', () => {
     test('REM 주석', () => {
       const parser = new Parser('10 REM THIS IS A COMMENT\n20 PRINT "HELLO"');
       const program = parser.parseProgram();
-      
-      expect(program.statements).toHaveLength(1);
-      expect(program.statements[0].lineNumber).toBe(20);
+
+      // REM도 명령문으로 파싱됨 (실행 시 인터프리터가 무시)
+      expect(program.statements).toHaveLength(2);
+      expect(program.statements[0]?.type).toBe('RemStatement');
+      expect(program.statements[0]?.lineNumber).toBe(10);
+      expect(program.statements[1]?.type).toBe('PrintStatement');
+      expect(program.statements[1]?.lineNumber).toBe(20);
     });
 
     test('작은따옴표 주석', () => {
-      const parser = new Parser("10 ' THIS IS ALSO A COMMENT\n20 PRINT 'HELLO'");
+      const parser = new Parser('10 \' THIS IS ALSO A COMMENT\n20 PRINT "HELLO"');
       const program = parser.parseProgram();
-      
+
+      // 작은따옴표는 주석 시작을 의미 (Tokenizer에서 skip)
+      // 따라서 라인 10은 건너뛰어지고 라인 20만 파싱됨
       expect(program.statements).toHaveLength(1);
-      expect(program.statements[0].lineNumber).toBe(20);
+      expect(program.statements[0]?.type).toBe('PrintStatement');
+      expect(program.statements[0]?.lineNumber).toBe(20);
     });
   });
 
@@ -444,24 +455,23 @@ describe('BASIC Parser', () => {
         80 PRINT "DONE"
         90 END
       `;
-      
+
       const parser = new Parser(source);
       const program = parser.parseProgram();
-      
-      console.log('파싱된 명령문 수:', program.statements.length);
-      program.statements.forEach((stmt, i) => {
-        console.log(`${i}: ${stmt.type} (라인 ${stmt.lineNumber})`);
-      });
-      
-      expect(program.statements).toHaveLength(6); // REM은 제외
-      
+
+      // 모든 라인이 명령문으로 파싱됨 (REM 포함)
+      expect(program.statements).toHaveLength(9);
+
       // 각 명령문의 타입 검증
-      expect(program.statements[0].type).toBe('PrintStatement');
-      expect(program.statements[1].type).toBe('InputStatement');
-      expect(program.statements[2].type).toBe('IfStatement');
-      expect(program.statements[3].type).toBe('ForStatement');
-      expect(program.statements[4].type).toBe('PrintStatement');
-      expect(program.statements[5].type).toBe('EndStatement');
+      expect(program.statements[0]?.type).toBe('RemStatement');     // 10
+      expect(program.statements[1]?.type).toBe('PrintStatement');   // 20
+      expect(program.statements[2]?.type).toBe('InputStatement');   // 30
+      expect(program.statements[3]?.type).toBe('IfStatement');      // 40
+      expect(program.statements[4]?.type).toBe('ForStatement');     // 50
+      expect(program.statements[5]?.type).toBe('PrintStatement');   // 60
+      expect(program.statements[6]?.type).toBe('NextStatement');    // 70
+      expect(program.statements[7]?.type).toBe('PrintStatement');   // 80
+      expect(program.statements[8]?.type).toBe('EndStatement');     // 90
     });
   });
 });
