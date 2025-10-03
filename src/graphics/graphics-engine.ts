@@ -430,4 +430,109 @@ export class GraphicsEngine implements GraphicsEngineInterface {
     return x >= 0 && x < this.currentMode.width &&
            y >= 0 && y < this.currentMode.height;
   }
+
+  /**
+   * GET 명령어: 화면 영역을 Uint8Array로 저장
+   */
+  getSprite(x1: number, y1: number, x2: number, y2: number): Uint8Array {
+    const width = Math.abs(x2 - x1) + 1;
+    const height = Math.abs(y2 - y1) + 1;
+    const startX = Math.min(x1, x2);
+    const startY = Math.min(y1, y2);
+
+    // 헤더 정보 포함: width(2바이트) + height(2바이트) + 픽셀 데이터
+    const dataSize = 4 + (width * height);
+    const spriteData = new Uint8Array(dataSize);
+
+    // 헤더 작성
+    spriteData[0] = width & 0xFF;
+    spriteData[1] = (width >> 8) & 0xFF;
+    spriteData[2] = height & 0xFF;
+    spriteData[3] = (height >> 8) & 0xFF;
+
+    // 픽셀 데이터 복사
+    let offset = 4;
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const pixelX = startX + x;
+        const pixelY = startY + y;
+        if (this.isValidCoordinate(pixelX, pixelY)) {
+          spriteData[offset] = this.buffer.getPixel(pixelX, pixelY);
+        } else {
+          spriteData[offset] = 0; // 범위 밖은 0으로
+        }
+        offset++;
+      }
+    }
+
+    return spriteData;
+  }
+
+  /**
+   * PUT 명령어: Uint8Array 스프라이트를 화면에 표시
+   */
+  putSprite(x: number, y: number, spriteData: Uint8Array, action: 'PSET' | 'PRESET' | 'AND' | 'OR' | 'XOR'): void {
+    if (spriteData.length < 4) {
+      throw new BasicError(
+        'Invalid sprite data',
+        ERROR_CODES.ILLEGAL_FUNCTION_CALL
+      );
+    }
+
+    // 헤더 파싱
+    const width = spriteData[0]! | (spriteData[1]! << 8);
+    const height = spriteData[2]! | (spriteData[3]! << 8);
+
+    if (spriteData.length < 4 + (width * height)) {
+      throw new BasicError(
+        'Sprite data size mismatch',
+        ERROR_CODES.ILLEGAL_FUNCTION_CALL
+      );
+    }
+
+    // 픽셀 데이터 복사
+    let offset = 4;
+    for (let dy = 0; dy < height; dy++) {
+      for (let dx = 0; dx < width; dx++) {
+        const pixelX = x + dx;
+        const pixelY = y + dy;
+
+        if (!this.isValidCoordinate(pixelX, pixelY)) {
+          offset++;
+          continue;
+        }
+
+        const spritePixel = spriteData[offset]!;
+        offset++;
+
+        // 액션에 따른 픽셀 처리
+        switch (action) {
+          case 'PSET':
+            this.buffer.setPixel(pixelX, pixelY, spritePixel);
+            break;
+          case 'PRESET':
+            this.buffer.setPixel(pixelX, pixelY, spritePixel ^ 0xFF); // 반전
+            break;
+          case 'AND':
+            {
+              const currentPixel = this.buffer.getPixel(pixelX, pixelY);
+              this.buffer.setPixel(pixelX, pixelY, currentPixel & spritePixel);
+            }
+            break;
+          case 'OR':
+            {
+              const currentPixel = this.buffer.getPixel(pixelX, pixelY);
+              this.buffer.setPixel(pixelX, pixelY, currentPixel | spritePixel);
+            }
+            break;
+          case 'XOR':
+            {
+              const currentPixel = this.buffer.getPixel(pixelX, pixelY);
+              this.buffer.setPixel(pixelX, pixelY, currentPixel ^ spritePixel);
+            }
+            break;
+        }
+      }
+    }
+  }
 }
