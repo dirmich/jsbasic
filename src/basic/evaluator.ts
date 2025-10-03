@@ -121,9 +121,9 @@ export class ExpressionEvaluator {
   private graphicsEngine: any = null;
   private userFunctions: Map<string, UserDefinedFunction>;
 
-  constructor(variableManager: VariableManager, userFunctions: Map<string, UserDefinedFunction>) {
+  constructor(variableManager: VariableManager, userFunctions?: Map<string, UserDefinedFunction>) {
     this.variables = variableManager;
-    this.userFunctions = userFunctions;
+    this.userFunctions = userFunctions ?? new Map();
   }
 
   /**
@@ -273,56 +273,7 @@ export class ExpressionEvaluator {
       return this.variables.getArrayElement(functionName, indices);
     }
 
-    // 사용자 정의 함수 확인 (DEF FN)
-    const userFunc = this.userFunctions.get(functionName);
-    if (userFunc) {
-      if (node.arguments.length !== 1) {
-        throw new BasicError(
-          `Function ${functionName} requires exactly one argument`,
-          ERROR_CODES.RUNTIME_ERROR,
-          node.line
-        );
-      }
-
-      // 인자 평가
-      const arg = node.arguments[0];
-      if (arg === undefined) {
-        throw new BasicError(
-          `Function ${functionName} missing argument`,
-          ERROR_CODES.RUNTIME_ERROR,
-          node.line
-        );
-      }
-      const argValue = this.evaluate(arg);
-
-      // 파라미터 이름
-      const paramName = userFunc.parameter.toUpperCase();
-
-      // 기존 변수 값 저장 (재귀 호출 대비)
-      const oldValue = this.variables.hasVariable(paramName)
-        ? this.variables.getVariable(paramName)
-        : undefined;
-
-      try {
-        // 파라미터에 인자 값 할당
-        this.variables.setVariable(paramName, argValue);
-
-        // 함수 표현식 평가
-        const result = this.evaluate(userFunc.expression);
-
-        return result;
-      } finally {
-        // 파라미터 원래 값으로 복원
-        if (oldValue !== undefined) {
-          this.variables.setVariable(paramName, oldValue);
-        } else {
-          // 원래 없었던 변수면 삭제
-          // VariableManager에 deleteVariable이 없으므로 undefined 할당
-          // (또는 그냥 남겨두기)
-        }
-      }
-    }
-
+    // 인자를 먼저 평가 (내장 함수와 사용자 정의 함수 모두에서 사용)
     const args = node.arguments.map(arg => this.evaluate(arg));
 
     // 수학 함수들
@@ -469,6 +420,53 @@ export class ExpressionEvaluator {
       const y = Math.floor(this.ensureNumber(arg1, node.line));
 
       return this.graphicsEngine.getPixel(x, y);
+    }
+
+    // 사용자 정의 함수 확인 (DEF FN) - 내장 함수 체크 후
+    const userFunc = this.userFunctions.get(functionName);
+    if (userFunc) {
+      if (node.arguments.length !== 1) {
+        throw new BasicError(
+          `Function ${functionName} requires exactly one argument`,
+          ERROR_CODES.RUNTIME_ERROR,
+          node.line
+        );
+      }
+
+      // 인자 평가 (이미 args에 평가되어 있음)
+      const arg = args[0];
+      if (arg === undefined) {
+        throw new BasicError(
+          `Function ${functionName} missing argument`,
+          ERROR_CODES.RUNTIME_ERROR,
+          node.line
+        );
+      }
+
+      // 파라미터 이름
+      const paramName = userFunc.parameter.toUpperCase();
+
+      // 기존 변수 값 저장 (재귀 호출 대비)
+      const oldValue = this.variables.hasVariable(paramName)
+        ? this.variables.getVariable(paramName)
+        : undefined;
+
+      try {
+        // 파라미터에 인자 값 할당
+        this.variables.setVariable(paramName, arg);
+
+        // 함수 표현식 평가
+        const result = this.evaluate(userFunc.expression);
+
+        return result;
+      } finally {
+        // 파라미터 원래 값으로 복원
+        if (oldValue !== undefined) {
+          this.variables.setVariable(paramName, oldValue);
+        } else {
+          // 원래 없었던 변수면 그냥 남겨두기
+        }
+      }
     }
 
     throw new BasicError(
