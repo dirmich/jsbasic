@@ -111,6 +111,7 @@ export interface MemoryInterface {
   readWord(address: number): number;
   writeWord(address: number, value: number): void;
   reset(): void;
+  getData(): Uint8Array;
 }
 
 // Memory bank information

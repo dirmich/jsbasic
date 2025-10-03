@@ -338,15 +338,16 @@ export class CPUDebugger extends EventEmitter<DebuggerEvents> {
     profile: any;
     traceLength: number;
   } {
+    const cpuDebugInfo = this.cpu.getDebugInfo();
     return {
       cpu: {
-        registers: this.cpu.registers,
-        flags: this.cpu.registers.P,
-        cycleCount: this.cpu.cycles,
-        instructionCount: 0, // TODO: CPU에서 제공되어야 함
-        isHalted: false, // TODO: CPU에서 제공되어야 함
-        pendingInterrupts: { nmi: false, irq: false }, // TODO: CPU에서 제공되어야 함
-        lastInstruction: 'N/A' // TODO: 디스어셈블러와 연동
+        registers: cpuDebugInfo.registers,
+        flags: cpuDebugInfo.flags,
+        cycleCount: cpuDebugInfo.cycleCount,
+        instructionCount: cpuDebugInfo.instructionCount,
+        isHalted: cpuDebugInfo.isHalted,
+        pendingInterrupts: cpuDebugInfo.pendingInterrupts,
+        lastInstruction: cpuDebugInfo.lastInstruction ?? 'N/A'
       },
       breakpoints: Array.from(this.breakpoints.values()),
       watchpoints: Array.from(this.watchpoints.values()),

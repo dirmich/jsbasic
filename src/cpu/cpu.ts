@@ -18,6 +18,7 @@ import { CPUError } from '@/utils/errors';
 import { formatHex } from '@/utils/format';
 import { InstructionSet } from './instructions';
 import { AddressingModes } from './addressing';
+import { OpcodeDecoder } from './opcodes';
 
 /**
  * 6502 마이크로프로세서 완전 에뮬레이션
@@ -130,11 +131,10 @@ export class CPU6502 extends EventEmitter<CPUEvents> implements CPUInterface {
   /**
    * 레지스터 읽기 전용 접근
    */
-  public get registers(): Readonly<CPURegisters & { P: number }> {
+  public get registers(): Readonly<CPURegisters> {
     return {
-      ...this._registers,
-      P: this.getRegisterP() // P를 숫자로도 제공
-    };
+      ...this._registers
+    } as Readonly<CPURegisters>;
   }
   
   /**
@@ -616,7 +616,8 @@ export class CPU6502 extends EventEmitter<CPUEvents> implements CPUInterface {
   }
   
   private traceExecution(pc: number, opcode: number, cycles: number): void {
-    const instruction = `???`; // TODO: 디스어셈블러 구현
+    const disasm = OpcodeDecoder.disassemble(this.memory.getData(), pc);
+    const instruction = disasm.fullInstruction;
     console.log(`[CPU] ${formatHex(pc, 4)}: ${instruction} [${cycles} cycles] A=${formatHex(this._registers.A)} X=${formatHex(this._registers.X)} Y=${formatHex(this._registers.Y)} SP=${formatHex(this._registers.SP)} P=${formatHex(this.statusFlagsToNumber(this._registers.P))}`);
   }
   
@@ -631,6 +632,7 @@ export class CPU6502 extends EventEmitter<CPUEvents> implements CPUInterface {
    * 디버그 정보 반환
    */
   public getDebugInfo() {
+    const disasm = OpcodeDecoder.disassemble(this.memory.getData(), this._registers.PC);
     return {
       registers: { ...this._registers },
       flags: this._registers.P,
@@ -641,7 +643,7 @@ export class CPU6502 extends EventEmitter<CPUEvents> implements CPUInterface {
         nmi: this.nmiPending,
         irq: this.irqPending
       },
-      lastInstruction: `???` // TODO: 디스어셈블러 구현
+      lastInstruction: disasm.fullInstruction
     };
   }
 

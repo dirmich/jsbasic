@@ -816,4 +816,11 @@ export class MemoryManager extends EventEmitter<MemoryEvents> implements MemoryI
     this.switchBank('main');
     console.log('🔄 메모리 관리자 리셋 완료');
   }
+
+  /**
+   * 내부 메모리 배열 반환 (디스어셈블러 등에서 사용)
+   */
+  public getData(): Uint8Array {
+    return this.memory;
+  }
 }
