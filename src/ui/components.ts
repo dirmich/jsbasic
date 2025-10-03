@@ -166,7 +166,7 @@ export class TerminalComponent extends BaseComponent {
     this.promptElement.textContent = 'READY\n>';
 
     // 입력 필드
-    this.inputElement = safeCreateElement('input');
+    this.inputElement = safeCreateElement('input') as HTMLInputElement;
     this.inputElement.type = 'text';
     this.inputElement.className = 'terminal-input';
     this.inputElement.id = `${this.id}-input`;
@@ -286,7 +286,7 @@ export class MemoryViewerComponent extends BaseComponent {
     const addressLabel = safeCreateElement('label');
     addressLabel.textContent = 'Address: $';
 
-    this.addressInput = safeCreateElement('input');
+    this.addressInput = safeCreateElement('input') as HTMLInputElement;
     this.addressInput.type = 'text';
     this.addressInput.value = '0000';
     this.addressInput.maxLength = 4;
@@ -301,7 +301,7 @@ export class MemoryViewerComponent extends BaseComponent {
     controls.appendChild(refreshButton);
 
     // 메모리 테이블
-    this.tableElement = safeCreateElement('table');
+    this.tableElement = safeCreateElement('table') as HTMLTableElement;
     this.tableElement.className = 'memory-table';
 
     this._element.appendChild(controls);
@@ -468,12 +468,12 @@ export class CPUStatusComponent extends BaseComponent {
       const flagDiv = safeCreateElement('div');
       flagDiv.className = 'flag';
       
-      const checkbox = safeCreateElement('input');
+      const checkbox = safeCreateElement('input') as HTMLInputElement;
       checkbox.type = 'checkbox';
       checkbox.disabled = true;
       checkbox.id = `${this.id}-flag-${flag.name}`;
-      
-      const label = safeCreateElement('label');
+
+      const label = safeCreateElement('label') as HTMLLabelElement;
       label.htmlFor = checkbox.id;
       label.textContent = `${flag.name} (${flag.description})`;
       

@@ -142,6 +142,7 @@ export class CPUDebugger extends EventEmitter<DebuggerEvents> {
     const debugInfo = this.cpu.getDebugInfo();
     return {
       ...debugInfo,
+      lastInstruction: debugInfo.lastInstruction ?? 'N/A',
       breakpoints: this.getBreakpoints()
     };
   }

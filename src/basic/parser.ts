@@ -70,7 +70,7 @@ export class Parser {
     if (!firstToken && source.trim() !== '') {
       throw new Error('No tokens found in source');
     }
-    this.current = firstToken;
+    this.current = firstToken ?? { type: TokenType.EOF, value: '', line: 1, column: 1 };
   }
 
   /**

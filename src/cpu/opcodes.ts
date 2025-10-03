@@ -112,8 +112,8 @@ export class OpcodeDecoder {
    * @returns 디스어셈블리 정보 배열
    */
   public static disassembleRange(
-    memory: Uint8Array, 
-    startAddress: number, 
+    memory: Uint8Array,
+    startAddress: number,
     count: number
   ): DisassemblyInfo[] {
     const result: DisassemblyInfo[] = [];
@@ -122,7 +122,8 @@ export class OpcodeDecoder {
     for (let i = 0; i < count && address < memory.length; i++) {
       const info = this.disassemble(memory, address);
       result.push(info);
-      address += info.bytes;
+      // opcode(1) + operands(info.bytes) 만큼 증가
+      address += 1 + info.bytes;
     }
 
     return result;
