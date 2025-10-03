@@ -23,6 +23,20 @@
 
         <!-- 메인 컨텐츠 -->
         <main class="main-content">
+            <!-- 그래픽 화면 -->
+            <div class="graphics-container" id="graphics-container" style="display: none;">
+                <div class="graphics-header">
+                    <div class="graphics-title">그래픽 화면</div>
+                    <div class="graphics-controls">
+                        <button class="control-btn" id="save-screenshot-btn" title="스크린샷 저장">📷</button>
+                        <button class="control-btn" id="toggle-graphics-btn" title="그래픽/텍스트 전환">🖼️</button>
+                    </div>
+                </div>
+                <div class="graphics-screen">
+                    <canvas id="graphics-canvas" width="640" height="400"></canvas>
+                </div>
+            </div>
+
             <!-- 터미널 영역 -->
             <div class="terminal-container">
                 <div class="terminal-header">

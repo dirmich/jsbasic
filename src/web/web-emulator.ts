@@ -40,10 +40,15 @@ export class WebEmulator extends EventEmitter<WebEmulatorEvents> {
   private terminalOutput: HTMLElement | null = null;
   private terminalInput: HTMLInputElement | null = null;
   private systemInfoElements: Map<string, HTMLElement> = new Map();
-  
+  private graphicsCanvas: HTMLCanvasElement | null = null;
+  private graphicsContext: CanvasRenderingContext2D | null = null;
+  private graphicsContainer: HTMLElement | null = null;
+
   // 상태 관리
   private isInitialized = false;
   private updateInterval: number | null = null;
+  private graphicsUpdateInterval: number | null = null;
+  private graphicsVisible = false;
 
   constructor(config: WebEmulatorConfig, callbacks: WebEmulatorCallbacks = {}) {
     super();
@@ -98,13 +103,24 @@ export class WebEmulator extends EventEmitter<WebEmulatorEvents> {
   private findDOMElements(): void {
     this.terminalOutput = document.getElementById('terminal-output');
     this.terminalInput = document.getElementById('terminal-input') as HTMLInputElement;
-    
+
+    // 그래픽 요소들
+    this.graphicsCanvas = document.getElementById('graphics-canvas') as HTMLCanvasElement;
+    this.graphicsContainer = document.getElementById('graphics-container');
+
+    if (this.graphicsCanvas) {
+      this.graphicsContext = this.graphicsCanvas.getContext('2d', {
+        alpha: false,
+        desynchronized: true // 성능 향상
+      });
+    }
+
     // 시스템 정보 요소들
     const systemInfoSelectors = [
       'cpu-status', 'memory-status', 'uptime',
       'reg-a', 'reg-x', 'reg-y', 'reg-pc', 'reg-sp', 'reg-p'
     ];
-    
+
     systemInfoSelectors.forEach(id => {
       const element = document.getElementById(id);
       if (element) {
@@ -282,10 +298,126 @@ export class WebEmulator extends EventEmitter<WebEmulatorEvents> {
     if (this.updateInterval) {
       clearInterval(this.updateInterval);
     }
-    
+
     this.updateInterval = window.setInterval(() => {
       this.updateSystemInfo();
     }, 1000);
+
+    // 그래픽 업데이트 시작 (60 FPS 목표)
+    this.startGraphicsUpdate();
+  }
+
+  /**
+   * 그래픽 업데이트 시작
+   */
+  private startGraphicsUpdate(): void {
+    if (this.graphicsUpdateInterval) {
+      clearInterval(this.graphicsUpdateInterval);
+    }
+
+    // 60 FPS (~16.67ms)
+    this.graphicsUpdateInterval = window.setInterval(() => {
+      if (this.graphicsVisible) {
+        this.renderGraphics();
+      }
+    }, 16);
+  }
+
+  /**
+   * 그래픽 렌더링
+   */
+  private renderGraphics(): void {
+    if (!this.graphicsContext || !this.graphicsCanvas) {
+      return;
+    }
+
+    const pixelBuffer = this.emulator.getPixelBuffer();
+    const colorManager = this.emulator.getColorManager();
+
+    const bufferWidth = pixelBuffer.getWidth();
+    const bufferHeight = pixelBuffer.getHeight();
+
+    // Canvas 크기 조정 (필요한 경우)
+    if (this.graphicsCanvas.width !== bufferWidth * 2 ||
+        this.graphicsCanvas.height !== bufferHeight * 2) {
+      this.graphicsCanvas.width = bufferWidth * 2; // 2배 스케일링
+      this.graphicsCanvas.height = bufferHeight * 2;
+    }
+
+    // ImageData 생성
+    const imageData = this.graphicsContext.createImageData(bufferWidth, bufferHeight);
+    const data = imageData.data;
+
+    // PixelBuffer 데이터를 ImageData로 변환
+    for (let y = 0; y < bufferHeight; y++) {
+      for (let x = 0; x < bufferWidth; x++) {
+        const colorIndex = pixelBuffer.getPixel(x, y);
+        const rgb = colorManager.getRGB(colorIndex);
+
+        const index = (y * bufferWidth + x) * 4;
+        data[index] = rgb.r;
+        data[index + 1] = rgb.g;
+        data[index + 2] = rgb.b;
+        data[index + 3] = 255; // 알파 채널
+      }
+    }
+
+    // 임시 캔버스에 ImageData 그리기
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = bufferWidth;
+    tempCanvas.height = bufferHeight;
+    const tempCtx = tempCanvas.getContext('2d');
+    if (tempCtx) {
+      tempCtx.putImageData(imageData, 0, 0);
+
+      // 메인 캔버스에 2배 확대해서 그리기 (nearest-neighbor 스케일링)
+      this.graphicsContext.imageSmoothingEnabled = false;
+      this.graphicsContext.drawImage(
+        tempCanvas,
+        0, 0, bufferWidth, bufferHeight,
+        0, 0, this.graphicsCanvas.width, this.graphicsCanvas.height
+      );
+    }
+  }
+
+  /**
+   * 그래픽 화면 표시/숨기기
+   */
+  toggleGraphics(show?: boolean): void {
+    if (show !== undefined) {
+      this.graphicsVisible = show;
+    } else {
+      this.graphicsVisible = !this.graphicsVisible;
+    }
+
+    if (this.graphicsContainer) {
+      this.graphicsContainer.style.display = this.graphicsVisible ? 'block' : 'none';
+    }
+
+    // 첫 렌더링
+    if (this.graphicsVisible) {
+      this.renderGraphics();
+    }
+  }
+
+  /**
+   * 스크린샷 저장
+   */
+  saveScreenshot(): void {
+    if (!this.graphicsCanvas) {
+      return;
+    }
+
+    this.graphicsCanvas.toBlob((blob) => {
+      if (blob) {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `screenshot-${Date.now()}.png`;
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+    });
   }
 
   /**
@@ -346,7 +478,12 @@ export class WebEmulator extends EventEmitter<WebEmulatorEvents> {
       clearInterval(this.updateInterval);
       this.updateInterval = null;
     }
-    
+
+    if (this.graphicsUpdateInterval) {
+      clearInterval(this.graphicsUpdateInterval);
+      this.graphicsUpdateInterval = null;
+    }
+
     this.emulator.stop();
     this.removeAllListeners();
   }
