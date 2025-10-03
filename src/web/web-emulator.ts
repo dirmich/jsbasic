@@ -47,7 +47,7 @@ export class WebEmulator extends EventEmitter<WebEmulatorEvents> {
   // 상태 관리
   private isInitialized = false;
   private updateInterval: number | null = null;
-  private graphicsUpdateInterval: number | null = null;
+  private animationFrameId: number | null = null;
   private graphicsVisible = false;
 
   constructor(config: WebEmulatorConfig, callbacks: WebEmulatorCallbacks = {}) {
@@ -308,19 +308,35 @@ export class WebEmulator extends EventEmitter<WebEmulatorEvents> {
   }
 
   /**
-   * 그래픽 업데이트 시작
+   * 그래픽 업데이트 시작 (requestAnimationFrame 사용)
    */
   private startGraphicsUpdate(): void {
-    if (this.graphicsUpdateInterval) {
-      clearInterval(this.graphicsUpdateInterval);
+    // 이전 애니메이션 프레임 취소
+    if (this.animationFrameId !== null) {
+      cancelAnimationFrame(this.animationFrameId);
     }
 
-    // 60 FPS (~16.67ms)
-    this.graphicsUpdateInterval = window.setInterval(() => {
+    // requestAnimationFrame을 사용한 렌더링 루프
+    const render = () => {
       if (this.graphicsVisible) {
         this.renderGraphics();
       }
-    }, 16);
+      // 다음 프레임 예약 (브라우저가 최적화)
+      this.animationFrameId = requestAnimationFrame(render);
+    };
+
+    // 첫 프레임 시작
+    this.animationFrameId = requestAnimationFrame(render);
+  }
+
+  /**
+   * 그래픽 업데이트 중지
+   */
+  private stopGraphicsUpdate(): void {
+    if (this.animationFrameId !== null) {
+      cancelAnimationFrame(this.animationFrameId);
+      this.animationFrameId = null;
+    }
   }
 
   /**
@@ -479,10 +495,8 @@ export class WebEmulator extends EventEmitter<WebEmulatorEvents> {
       this.updateInterval = null;
     }
 
-    if (this.graphicsUpdateInterval) {
-      clearInterval(this.graphicsUpdateInterval);
-      this.graphicsUpdateInterval = null;
-    }
+    // requestAnimationFrame 정리
+    this.stopGraphicsUpdate();
 
     this.emulator.stop();
     this.removeAllListeners();
