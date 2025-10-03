@@ -113,6 +113,17 @@ export interface WhileStatement extends Statement {
 }
 
 /**
+ * DO...LOOP UNTIL 반복문
+ */
+export interface DoLoopStatement extends Statement {
+  type: 'DoLoopStatement';
+  condition: Expression;
+  conditionType: 'UNTIL' | 'WHILE';
+  conditionPosition: 'pre' | 'post'; // DO UNTIL/WHILE vs LOOP UNTIL/WHILE
+  body: Statement[];
+}
+
+/**
  * GOTO 점프문
  */
 export interface GotoStatement extends Statement {
@@ -472,6 +483,7 @@ export type ASTNodeTypes =
   | IfStatement
   | ForStatement
   | WhileStatement
+  | DoLoopStatement
   | GotoStatement
   | GosubStatement
   | ReturnStatement
@@ -521,6 +533,7 @@ export interface ASTVisitor<T> {
   visitIfStatement(node: IfStatement): T;
   visitForStatement(node: ForStatement): T;
   visitWhileStatement(node: WhileStatement): T;
+  visitDoLoopStatement(node: DoLoopStatement): T;
   visitGotoStatement(node: GotoStatement): T;
   visitGosubStatement(node: GosubStatement): T;
   visitReturnStatement(node: ReturnStatement): T;

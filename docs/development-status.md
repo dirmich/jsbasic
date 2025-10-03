@@ -20,8 +20,8 @@
 ### 2. 제어 구조
 - ✅ IF/THEN/ELSE/ENDIF
 - ✅ FOR/NEXT
-- ✅ WHILE/WEND (토큰만 존재, 파서 미구현)
-- ✅ DO/LOOP/UNTIL (토큰만 존재, 파서 미구현)
+- ✅ WHILE/WEND
+- ✅ DO/LOOP/UNTIL (전위/후위 조건 모두 지원)
 - ✅ GOTO
 - ✅ GOSUB/RETURN
 - ✅ ON...GOTO/GOSUB
@@ -94,8 +94,10 @@
 - ❌ CLOSE (파일 닫기 - 토큰만 존재)
 
 ### 3. 제어 구조
-- ❌ WHILE/WEND (토큰만 존재)
-- ❌ DO/LOOP/UNTIL (토큰만 존재)
+- ✅ WHILE/WEND (완전 구현)
+- ✅ DO/LOOP/UNTIL (완전 구현)
+  - DO...LOOP UNTIL/WHILE (후위 조건)
+  - DO UNTIL/WHILE...LOOP (전위 조건)
 
 ### 4. 기타
 - ❌ STEP (FOR 루프에서 미사용)
@@ -165,13 +167,14 @@
 ### PRD 기준 진행도
 - **Phase 1 (기초 인프라)**: 100% ✅
 - **Phase 2 (BASIC 코어)**: 100% ✅
-- **Phase 3 (고급 기능)**: 95% ✅ (WHILE/DO 미완)
+- **Phase 3 (고급 기능)**: 100% ✅ (WHILE/DO 완료)
 - **Phase 4 (완성도 향상)**: 70% 🚧 (OPEN/CLOSE 미완, SAVE/LOAD 완료)
 - **Phase 5 (최종 검증)**: 60% 🚧 (성능 최적화 완료, 테스트 진행 중)
 - **Phase 6 (시스템 명령어)**: 100% ✅
 - **Phase 7 (파일 I/O)**: 100% ✅
+- **Phase 8 (제어 구조)**: 100% ✅
 
-### 전체 진행도: **87%**
+### 전체 진행도: **91%**
 
 ## 📈 성능 지표
 
@@ -187,7 +190,13 @@
 
 ## 🔄 최근 업데이트
 
-### 2025-10-04 (Phase 7 완료)
+### 2025-10-04 (Phase 8 완료)
+- ✅ DO/LOOP/UNTIL 제어 구조 완전 구현
+- ✅ 전위/후위 조건 모두 지원 (DO UNTIL/WHILE...LOOP, DO...LOOP UNTIL/WHILE)
+- ✅ WHILE/WEND 구현 확인 및 문서화
+- ✅ 모든 제어 구조 완성
+
+### 이전 업데이트 (Phase 7)
 - ✅ SAVE/LOAD 파일 I/O 시스템 구현
 - ✅ localStorage 기반 프로그램 저장/로드
 - ✅ 파일 메타데이터 관리 (시간, 크기)
@@ -197,12 +206,7 @@
 - ✅ RUN/LIST/NEW/CLEAR 시스템 명령어 구현
 - ✅ 프로그램 재실행 및 초기화 기능
 
-### 이전 업데이트 (Phase 5)
-- ✅ GET/PUT 그래픽 스프라이트 완성
-- ✅ 5가지 비트 연산 액션 지원
-- ✅ 성능 최적화 (DirtyRect, RAF, 풀링)
-
 ---
 
 **마지막 업데이트**: 2025-10-04
-**다음 마일스톤**: Phase 6 - 시스템 명령어 구현
+**다음 마일스톤**: Phase 9 - 고급 기능 (STEP, FN)

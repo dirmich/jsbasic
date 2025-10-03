@@ -26,6 +26,7 @@ import type {
   ForStatement,
   NextStatement,
   WhileStatement,
+  DoLoopStatement,
   GotoStatement,
   GosubStatement,
   ReturnStatement,
@@ -153,6 +154,8 @@ export class Parser {
         return this.parseNextStatement();
       case TokenType.WHILE:
         return this.parseWhileStatement();
+      case TokenType.DO:
+        return this.parseDoLoopStatement();
       case TokenType.GOTO:
         return this.parseGotoStatement();
       case TokenType.GOSUB:
@@ -566,6 +569,86 @@ export class Parser {
     return {
       type: 'WhileStatement',
       condition: condition,
+      body: body,
+      line: line,
+      column: column
+    };
+  }
+
+  private parseDoLoopStatement(): DoLoopStatement {
+    const line = this.current.line;
+    const column = this.current.column;
+
+    this.consume(TokenType.DO);
+
+    // DO UNTIL/WHILE condition (전위 조건) 확인
+    let condition: Expression | null = null;
+    let conditionType: 'UNTIL' | 'WHILE' = 'UNTIL';
+    let conditionPosition: 'pre' | 'post' = 'post';
+
+    if (this.currentTokenIs(TokenType.UNTIL)) {
+      this.advance();
+      condition = this.parseExpression();
+      conditionType = 'UNTIL';
+      conditionPosition = 'pre';
+    } else if (this.currentTokenIs(TokenType.WHILE)) {
+      this.advance();
+      condition = this.parseExpression();
+      conditionType = 'WHILE';
+      conditionPosition = 'pre';
+    }
+
+    this.consumeNewlineOrEOF();
+
+    // 루프 본문 파싱
+    const body: Statement[] = [];
+    while (!this.isAtEnd() &&
+           this.current.type !== TokenType.LOOP &&
+           this.current.type !== TokenType.EOF) {
+
+      if (this.current.type === TokenType.NEWLINE) {
+        this.advance();
+        continue;
+      }
+
+      const stmt = this.parseStatement();
+      if (stmt) {
+        body.push(stmt);
+      }
+
+      if (!this.isAtEnd() && !this.currentTokenIs(TokenType.NEWLINE)) {
+        this.consumeNewlineOrEOF();
+      }
+    }
+
+    // LOOP 소비
+    if (this.current.type !== TokenType.LOOP) {
+      throw new Error(`Expected LOOP at line ${line}`);
+    }
+    this.consume(TokenType.LOOP);
+
+    // LOOP UNTIL/WHILE condition (후위 조건) 확인
+    if (condition === null) {
+      if (this.currentTokenIs(TokenType.UNTIL)) {
+        this.advance();
+        condition = this.parseExpression();
+        conditionType = 'UNTIL';
+        conditionPosition = 'post';
+      } else if (this.currentTokenIs(TokenType.WHILE)) {
+        this.advance();
+        condition = this.parseExpression();
+        conditionType = 'WHILE';
+        conditionPosition = 'post';
+      } else {
+        throw new Error(`Expected UNTIL or WHILE after LOOP at line ${line}`);
+      }
+    }
+
+    return {
+      type: 'DoLoopStatement',
+      condition: condition,
+      conditionType: conditionType,
+      conditionPosition: conditionPosition,
       body: body,
       line: line,
       column: column

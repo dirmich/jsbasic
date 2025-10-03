@@ -15,6 +15,7 @@ import type {
   ForStatement,
   NextStatement,
   WhileStatement,
+  DoLoopStatement,
   GotoStatement,
   GosubStatement,
   ReturnStatement,
@@ -244,6 +245,9 @@ export class BasicInterpreter extends EventEmitter {
           break;
         case 'WhileStatement':
           await this.executeWhile(statement as WhileStatement);
+          break;
+        case 'DoLoopStatement':
+          await this.executeDoLoop(statement as DoLoopStatement);
           break;
         case 'GotoStatement':
           await this.executeGoto(statement as GotoStatement);
@@ -590,6 +594,57 @@ export class BasicInterpreter extends EventEmitter {
       
       // 무한루프 방지
       await new Promise(resolve => setTimeout(resolve, 0));
+    }
+  }
+
+  private async executeDoLoop(stmt: DoLoopStatement): Promise<void> {
+    // 전위 조건 (DO UNTIL/WHILE condition)
+    if (stmt.conditionPosition === 'pre') {
+      while (true) {
+        const conditionValue = this.evaluator.evaluate(stmt.condition);
+        const conditionMet = this.evaluator.toBooleanValue(conditionValue);
+
+        // UNTIL: 조건이 참이면 종료
+        // WHILE: 조건이 거짓이면 종료
+        if (stmt.conditionType === 'UNTIL') {
+          if (conditionMet) break;
+        } else {
+          if (!conditionMet) break;
+        }
+
+        // 루프 본문 실행
+        for (const bodyStmt of stmt.body) {
+          await this.executeStatement(bodyStmt);
+          if (this.state !== ExecutionState.RUNNING) return;
+        }
+
+        // 무한루프 방지
+        await new Promise(resolve => setTimeout(resolve, 0));
+      }
+    }
+    // 후위 조건 (LOOP UNTIL/WHILE condition)
+    else {
+      while (true) {
+        // 루프 본문 먼저 실행 (최소 1회)
+        for (const bodyStmt of stmt.body) {
+          await this.executeStatement(bodyStmt);
+          if (this.state !== ExecutionState.RUNNING) return;
+        }
+
+        const conditionValue = this.evaluator.evaluate(stmt.condition);
+        const conditionMet = this.evaluator.toBooleanValue(conditionValue);
+
+        // UNTIL: 조건이 참이면 종료
+        // WHILE: 조건이 거짓이면 종료
+        if (stmt.conditionType === 'UNTIL') {
+          if (conditionMet) break;
+        } else {
+          if (!conditionMet) break;
+        }
+
+        // 무한루프 방지
+        await new Promise(resolve => setTimeout(resolve, 0));
+      }
     }
   }
 
