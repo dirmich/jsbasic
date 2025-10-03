@@ -212,3 +212,16 @@ export interface DirtyRectTrackerInterface {
   clear(): void;
   isEmpty(): boolean;
 }
+
+// ImageData pooling
+export interface ImageDataPoolInterface {
+  acquire(width: number, height: number, ctx: CanvasRenderingContext2D): ImageData;
+  release(imageData: ImageData): void;
+  clear(): void;
+  getStats(): {
+    poolSize: number;
+    totalAcquired: number;
+    totalReleased: number;
+    totalCreated: number;
+  };
+}

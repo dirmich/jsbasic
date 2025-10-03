@@ -10,9 +10,11 @@ import type {
   ColorManagerInterface,
   DirtyRect,
   DirtyRectTrackerInterface,
+  ImageDataPoolInterface,
   ScreenMode
 } from '@/types/graphics';
 import { DirtyRectTracker } from './dirty-rect-tracker.js';
+import { ImageDataPool } from './image-data-pool.js';
 
 export class DisplayManager implements DisplayManagerInterface {
   private canvas: HTMLCanvasElement;
@@ -21,6 +23,7 @@ export class DisplayManager implements DisplayManagerInterface {
   private colorManager: ColorManagerInterface;
   private currentMode: ScreenMode;
   private dirtyTracker: DirtyRectTrackerInterface;
+  private imageDataPool: ImageDataPoolInterface;
   private isDirty: boolean = false;
 
   constructor(
@@ -46,6 +49,7 @@ export class DisplayManager implements DisplayManagerInterface {
 
     this.ctx = context;
     this.dirtyTracker = new DirtyRectTracker();
+    this.imageDataPool = new ImageDataPool(10); // 최대 10개 ImageData 캐싱
     this.initializeCanvas();
   }
 
@@ -89,8 +93,8 @@ export class DisplayManager implements DisplayManagerInterface {
     const width = this.currentMode.width;
     const height = this.currentMode.height;
 
-    // ImageData 생성
-    const imageData = this.ctx.createImageData(width, height);
+    // ImageDataPool에서 재사용 가능한 ImageData 가져오기
+    const imageData = this.imageDataPool.acquire(width, height, this.ctx);
     const data = imageData.data;
 
     // 픽셀 버퍼를 ImageData로 변환
@@ -109,6 +113,10 @@ export class DisplayManager implements DisplayManagerInterface {
 
     // Canvas에 그리기
     this.ctx.putImageData(imageData, 0, 0);
+
+    // ImageData 풀로 반환
+    this.imageDataPool.release(imageData);
+
     this.isDirty = false;
   }
 
@@ -153,8 +161,8 @@ export class DisplayManager implements DisplayManagerInterface {
 
     if (w <= 0 || h <= 0) return;
 
-    // ImageData 생성
-    const imageData = this.ctx.createImageData(w, h);
+    // ImageDataPool에서 재사용 가능한 ImageData 가져오기
+    const imageData = this.imageDataPool.acquire(w, h, this.ctx);
     const data = imageData.data;
 
     // 픽셀 버퍼에서 해당 영역 복사
@@ -173,6 +181,9 @@ export class DisplayManager implements DisplayManagerInterface {
 
     // Canvas의 해당 영역에 그리기
     this.ctx.putImageData(imageData, x1, y1);
+
+    // ImageData 풀로 반환
+    this.imageDataPool.release(imageData);
   }
 
   /**
@@ -255,6 +266,12 @@ export class DisplayManager implements DisplayManagerInterface {
     canvasSize: { width: number; height: number };
     dirtyRegions: number;
     isDirty: boolean;
+    poolStats?: {
+      poolSize: number;
+      totalAcquired: number;
+      totalReleased: number;
+      totalCreated: number;
+    };
   } {
     return {
       bufferSize: this.buffer.getWidth() * this.buffer.getHeight(),
@@ -263,7 +280,8 @@ export class DisplayManager implements DisplayManagerInterface {
         height: this.canvas.height
       },
       dirtyRegions: this.dirtyTracker.getDirtyRegions().length,
-      isDirty: this.isDirty
+      isDirty: this.isDirty,
+      poolStats: this.imageDataPool.getStats()
     };
   }
 }
