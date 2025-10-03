@@ -125,6 +125,8 @@ export enum TokenType {
   COLOR = 'COLOR',
   CLS = 'CLS',
   POINT = 'POINT',
+  GET = 'GET',
+  PUT = 'PUT',
 
   // 특수 토큰
   NEWLINE = 'NEWLINE',
@@ -233,7 +235,9 @@ export const KEYWORDS: Record<string, TokenType> = {
   'PAINT': TokenType.PAINT,
   'COLOR': TokenType.COLOR,
   'CLS': TokenType.CLS,
-  'POINT': TokenType.POINT
+  'POINT': TokenType.POINT,
+  'GET': TokenType.GET,
+  'PUT': TokenType.PUT
 };
 
 /**
