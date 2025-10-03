@@ -47,7 +47,7 @@ import type {
 } from './ast.js';
 
 import { VariableManager } from './variables.js';
-import { ExpressionEvaluator } from './evaluator.js';
+import { ExpressionEvaluator, type UserDefinedFunction } from './evaluator.js';
 import { BasicError, ERROR_CODES } from '../utils/errors.js';
 import { EventEmitter } from '../utils/events.js';
 import { fileStorage } from '../utils/file-storage.js';
@@ -71,14 +71,6 @@ interface ForLoopInfo {
   endValue: number;
   stepValue: number;
   loopStart: number; // 명령문 인덱스
-}
-
-/**
- * 사용자 정의 함수 정보
- */
-interface UserDefinedFunction {
-  parameter: string;
-  expression: any; // Expression AST 노드
 }
 
 /**
@@ -112,14 +104,11 @@ export class BasicInterpreter extends EventEmitter {
     super();
 
     this.variables = new VariableManager();
-    this.evaluator = new ExpressionEvaluator(this.variables);
-    this.state = ExecutionState.READY;
-    this.outputBuffer = [];
-    this.inputQueue = [];
-    
+
+    // ExecutionContext 먼저 초기화
     this.context = {
-      programCounter: 0,
       statements: [],
+      programCounter: 0,
       lineNumberMap: new Map(),
       dataPointer: 0,
       dataValues: [],
@@ -127,6 +116,12 @@ export class BasicInterpreter extends EventEmitter {
       gosubStack: [],
       userFunctions: new Map()
     };
+
+    // userFunctions를 evaluator에 전달
+    this.evaluator = new ExpressionEvaluator(this.variables, this.context.userFunctions);
+    this.state = ExecutionState.READY;
+    this.outputBuffer = [];
+    this.inputQueue = [];
   }
 
   /**
