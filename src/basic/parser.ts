@@ -38,6 +38,8 @@ import type {
   DefStatement,
   OnStatement,
   RemStatement,
+  GetStatement,
+  PutStatement,
   BinaryExpression,
   UnaryExpression,
   FunctionCall,
@@ -185,6 +187,10 @@ export class Parser {
         return this.parseColorStatement();
       case TokenType.CLS:
         return this.parseClsStatement();
+      case TokenType.GET:
+        return this.parseGetStatement();
+      case TokenType.PUT:
+        return this.parsePutStatement();
       case TokenType.IDENTIFIER:
         // 암시적 LET
         return this.parseImplicitLetStatement();
@@ -1581,6 +1587,106 @@ export class Parser {
     return {
       type: 'ClsStatement',
       mode,
+      line,
+      column
+    };
+  }
+
+  /**
+   * GET 문 파싱: GET (x1, y1)-(x2, y2), arrayName
+   */
+  private parseGetStatement(): GetStatement {
+    const line = this.current.line;
+    const column = this.current.column;
+
+    this.consume(TokenType.GET);
+
+    // 좌표 파싱: (x1, y1)-(x2, y2)
+    this.consume(TokenType.LEFT_PAREN);
+    const x1 = this.parseExpression();
+    this.consume(TokenType.COMMA);
+    const y1 = this.parseExpression();
+    this.consume(TokenType.RIGHT_PAREN);
+
+    this.consume(TokenType.MINUS);
+
+    this.consume(TokenType.LEFT_PAREN);
+    const x2 = this.parseExpression();
+    this.consume(TokenType.COMMA);
+    const y2 = this.parseExpression();
+    this.consume(TokenType.RIGHT_PAREN);
+
+    this.consume(TokenType.COMMA);
+
+    // 배열 이름
+    if (this.current.type !== TokenType.IDENTIFIER) {
+      this.error('Expected array name after GET coordinates');
+    }
+    const arrayName = this.current.value as string;
+    this.advance();
+
+    return {
+      type: 'GetStatement',
+      x1,
+      y1,
+      x2,
+      y2,
+      arrayName,
+      line,
+      column
+    };
+  }
+
+  /**
+   * PUT 문 파싱: PUT (x, y), arrayName [, action]
+   */
+  private parsePutStatement(): PutStatement {
+    const line = this.current.line;
+    const column = this.current.column;
+
+    this.consume(TokenType.PUT);
+
+    // 좌표 파싱: (x, y)
+    this.consume(TokenType.LEFT_PAREN);
+    const x = this.parseExpression();
+    this.consume(TokenType.COMMA);
+    const y = this.parseExpression();
+    this.consume(TokenType.RIGHT_PAREN);
+
+    this.consume(TokenType.COMMA);
+
+    // 배열 이름
+    if (this.current.type !== TokenType.IDENTIFIER) {
+      this.error('Expected array name after PUT coordinates');
+    }
+    const arrayName = this.current.value as string;
+    this.advance();
+
+    // 선택적 액션 파라미터
+    let action: 'PSET' | 'PRESET' | 'AND' | 'OR' | 'XOR' | undefined = undefined;
+    if (this.currentTokenIs(TokenType.COMMA)) {
+      this.advance();
+      if (this.currentTokenIs(TokenType.PSET)) {
+        action = 'PSET';
+        this.advance();
+      } else if (this.currentTokenIs(TokenType.PRESET)) {
+        action = 'PRESET';
+        this.advance();
+      } else if (this.currentTokenIs(TokenType.IDENTIFIER)) {
+        const actionStr = (this.current.value as string).toUpperCase();
+        if (actionStr === 'AND' || actionStr === 'OR' || actionStr === 'XOR') {
+          action = actionStr as 'AND' | 'OR' | 'XOR';
+          this.advance();
+        }
+      }
+    }
+
+    return {
+      type: 'PutStatement',
+      x,
+      y,
+      arrayName,
+      action,
       line,
       column
     };

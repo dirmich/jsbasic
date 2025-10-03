@@ -296,6 +296,29 @@ export interface ClsStatement extends Statement {
   mode?: Expression | undefined;
 }
 
+/**
+ * GET 그래픽 스프라이트 저장
+ */
+export interface GetStatement extends Statement {
+  type: 'GetStatement';
+  x1: Expression;
+  y1: Expression;
+  x2: Expression;
+  y2: Expression;
+  arrayName: string;
+}
+
+/**
+ * PUT 그래픽 스프라이트 표시
+ */
+export interface PutStatement extends Statement {
+  type: 'PutStatement';
+  x: Expression;
+  y: Expression;
+  arrayName: string;
+  action?: 'PSET' | 'PRESET' | 'AND' | 'OR' | 'XOR' | undefined;
+}
+
 // === 표현식 타입들 ===
 
 /**
@@ -423,6 +446,8 @@ export type ASTNodeTypes =
   | PaintStatement
   | ColorStatement
   | ClsStatement
+  | GetStatement
+  | PutStatement
   | BinaryExpression
   | UnaryExpression
   | FunctionCall
@@ -464,6 +489,8 @@ export interface ASTVisitor<T> {
   visitPaintStatement(node: PaintStatement): T;
   visitColorStatement(node: ColorStatement): T;
   visitClsStatement(node: ClsStatement): T;
+  visitGetStatement(node: GetStatement): T;
+  visitPutStatement(node: PutStatement): T;
   visitBinaryExpression(node: BinaryExpression): T;
   visitUnaryExpression(node: UnaryExpression): T;
   visitFunctionCall(node: FunctionCall): T;
