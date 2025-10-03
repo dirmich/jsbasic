@@ -9,8 +9,10 @@ import type {
   PixelBufferInterface,
   ColorManagerInterface,
   DirtyRect,
+  DirtyRectTrackerInterface,
   ScreenMode
 } from '@/types/graphics';
+import { DirtyRectTracker } from './dirty-rect-tracker.js';
 
 export class DisplayManager implements DisplayManagerInterface {
   private canvas: HTMLCanvasElement;
@@ -18,7 +20,7 @@ export class DisplayManager implements DisplayManagerInterface {
   private buffer: PixelBufferInterface;
   private colorManager: ColorManagerInterface;
   private currentMode: ScreenMode;
-  private dirtyRegions: DirtyRect[] = [];
+  private dirtyTracker: DirtyRectTrackerInterface;
   private isDirty: boolean = false;
 
   constructor(
@@ -43,6 +45,7 @@ export class DisplayManager implements DisplayManagerInterface {
     }
 
     this.ctx = context;
+    this.dirtyTracker = new DirtyRectTracker();
     this.initializeCanvas();
   }
 
@@ -113,27 +116,25 @@ export class DisplayManager implements DisplayManagerInterface {
    * 더티 영역만 렌더링 (성능 최적화)
    */
   renderDirty(): void {
-    if (!this.isDirty || this.dirtyRegions.length === 0) {
+    if (!this.isDirty) {
       return;
     }
 
-    // 더티 영역들을 병합하여 최소 영역만 렌더링
-    const mergedRegion = this.mergeDirtyRegions();
+    // DirtyRectTracker에서 병합된 영역 가져오기
+    const dirtyRects = this.dirtyTracker.getDirtyRegions();
 
-    if (!mergedRegion) {
+    if (dirtyRects.length === 0) {
+      this.isDirty = false;
       return;
     }
 
-    // 병합된 영역만 렌더링
-    this.renderRegion(
-      mergedRegion.x,
-      mergedRegion.y,
-      mergedRegion.width,
-      mergedRegion.height
-    );
+    // 각 더티 영역 렌더링
+    for (const rect of dirtyRects) {
+      this.renderRegion(rect.x, rect.y, rect.width, rect.height);
+    }
 
-    // 더티 플래그 초기화
-    this.dirtyRegions = [];
+    // 더티 트래커 및 플래그 초기화
+    this.dirtyTracker.clear();
     this.isDirty = false;
   }
 
@@ -186,37 +187,8 @@ export class DisplayManager implements DisplayManagerInterface {
    * 더티 영역 표시
    */
   markDirty(x: number, y: number, width: number, height: number): void {
-    this.dirtyRegions.push({ x, y, width, height });
+    this.dirtyTracker.markDirty(x, y, width, height);
     this.isDirty = true;
-  }
-
-  /**
-   * 더티 영역 병합
-   */
-  private mergeDirtyRegions(): DirtyRect | null {
-    if (this.dirtyRegions.length === 0) {
-      return null;
-    }
-
-    // 모든 더티 영역을 포함하는 최소 사각형 계산
-    let minX = this.currentMode.width;
-    let minY = this.currentMode.height;
-    let maxX = 0;
-    let maxY = 0;
-
-    for (const region of this.dirtyRegions) {
-      minX = Math.min(minX, region.x);
-      minY = Math.min(minY, region.y);
-      maxX = Math.max(maxX, region.x + region.width);
-      maxY = Math.max(maxY, region.y + region.height);
-    }
-
-    return {
-      x: minX,
-      y: minY,
-      width: maxX - minX,
-      height: maxY - minY
-    };
   }
 
   /**
@@ -290,7 +262,7 @@ export class DisplayManager implements DisplayManagerInterface {
         width: this.canvas.width,
         height: this.canvas.height
       },
-      dirtyRegions: this.dirtyRegions.length,
+      dirtyRegions: this.dirtyTracker.getDirtyRegions().length,
       isDirty: this.isDirty
     };
   }
