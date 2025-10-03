@@ -114,7 +114,18 @@ export enum TokenType {
   SAVE = 'SAVE',
   LOAD = 'LOAD',
   REM = 'REM',
-  
+
+  // 그래픽 명령어
+  SCREEN = 'SCREEN',
+  PSET = 'PSET',
+  PRESET = 'PRESET',
+  LINE = 'LINE',
+  CIRCLE = 'CIRCLE',
+  PAINT = 'PAINT',
+  COLOR = 'COLOR',
+  CLS = 'CLS',
+  POINT = 'POINT',
+
   // 특수 토큰
   NEWLINE = 'NEWLINE',
   EOF = 'EOF',
@@ -211,7 +222,18 @@ export const KEYWORDS: Record<string, TokenType> = {
   'LIST': TokenType.LIST,
   'SAVE': TokenType.SAVE,
   'LOAD': TokenType.LOAD,
-  'REM': TokenType.REM
+  'REM': TokenType.REM,
+
+  // 그래픽 명령어
+  'SCREEN': TokenType.SCREEN,
+  'PSET': TokenType.PSET,
+  'PRESET': TokenType.PRESET,
+  'LINE': TokenType.LINE,
+  'CIRCLE': TokenType.CIRCLE,
+  'PAINT': TokenType.PAINT,
+  'COLOR': TokenType.COLOR,
+  'CLS': TokenType.CLS,
+  'POINT': TokenType.POINT
 };
 
 /**

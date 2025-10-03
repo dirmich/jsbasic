@@ -211,6 +211,93 @@ export interface RemStatement extends Statement {
   comment: string;
 }
 
+/**
+ * SCREEN 화면 모드 설정
+ */
+export interface ScreenStatement extends Statement {
+  type: 'ScreenStatement';
+  mode: Expression;
+  colorSwitch?: Expression;
+  activePage?: Expression;
+  visualPage?: Expression;
+}
+
+/**
+ * PSET 픽셀 설정
+ */
+export interface PsetStatement extends Statement {
+  type: 'PsetStatement';
+  x: Expression;
+  y: Expression;
+  color?: Expression;
+}
+
+/**
+ * PRESET 픽셀 지우기
+ */
+export interface PresetStatement extends Statement {
+  type: 'PresetStatement';
+  x: Expression;
+  y: Expression;
+  color?: Expression;
+}
+
+/**
+ * LINE 선 그리기
+ */
+export interface LineStatement extends Statement {
+  type: 'LineStatement';
+  x1?: Expression;
+  y1?: Expression;
+  x2: Expression;
+  y2: Expression;
+  color?: Expression;
+  style?: 'B' | 'BF'; // B=Box, BF=Box Filled
+}
+
+/**
+ * CIRCLE 원 그리기
+ */
+export interface CircleStatement extends Statement {
+  type: 'CircleStatement';
+  x: Expression;
+  y: Expression;
+  radius: Expression;
+  color?: Expression;
+  startAngle?: Expression;
+  endAngle?: Expression;
+  aspect?: Expression;
+}
+
+/**
+ * PAINT 영역 채우기
+ */
+export interface PaintStatement extends Statement {
+  type: 'PaintStatement';
+  x: Expression;
+  y: Expression;
+  paintColor?: Expression;
+  borderColor?: Expression;
+}
+
+/**
+ * COLOR 색상 설정
+ */
+export interface ColorStatement extends Statement {
+  type: 'ColorStatement';
+  foreground?: Expression;
+  background?: Expression;
+  border?: Expression;
+}
+
+/**
+ * CLS 화면 지우기
+ */
+export interface ClsStatement extends Statement {
+  type: 'ClsStatement';
+  mode?: Expression;
+}
+
 // === 표현식 타입들 ===
 
 /**
@@ -309,7 +396,7 @@ export interface ArrayDeclaration {
 /**
  * AST 노드 타입 유니온
  */
-export type ASTNodeTypes = 
+export type ASTNodeTypes =
   | Program
   | LetStatement
   | ArrayAssignmentStatement
@@ -330,6 +417,14 @@ export type ASTNodeTypes =
   | DefStatement
   | OnStatement
   | RemStatement
+  | ScreenStatement
+  | PsetStatement
+  | PresetStatement
+  | LineStatement
+  | CircleStatement
+  | PaintStatement
+  | ColorStatement
+  | ClsStatement
   | BinaryExpression
   | UnaryExpression
   | FunctionCall
@@ -363,6 +458,14 @@ export interface ASTVisitor<T> {
   visitDefStatement(node: DefStatement): T;
   visitOnStatement(node: OnStatement): T;
   visitRemStatement(node: RemStatement): T;
+  visitScreenStatement(node: ScreenStatement): T;
+  visitPsetStatement(node: PsetStatement): T;
+  visitPresetStatement(node: PresetStatement): T;
+  visitLineStatement(node: LineStatement): T;
+  visitCircleStatement(node: CircleStatement): T;
+  visitPaintStatement(node: PaintStatement): T;
+  visitColorStatement(node: ColorStatement): T;
+  visitClsStatement(node: ClsStatement): T;
   visitBinaryExpression(node: BinaryExpression): T;
   visitUnaryExpression(node: UnaryExpression): T;
   visitFunctionCall(node: FunctionCall): T;
