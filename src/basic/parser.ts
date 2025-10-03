@@ -70,7 +70,7 @@ export class Parser {
     if (!firstToken && source.trim() !== '') {
       throw new Error('No tokens found in source');
     }
-    this.current = firstToken ?? { type: TokenType.EOF, value: '', line: 1, column: 1 };
+    this.current = firstToken ?? { type: TokenType.EOF, value: '', line: 1, column: 1, position: 0 };
   }
 
   /**
@@ -425,12 +425,17 @@ export class Parser {
     if (this.current.type === TokenType.COLON) {
       this.advance();
 
-      while (!this.isAtEnd() &&
-             this.current.type !== TokenType.EOF &&
-             this.current.type !== TokenType.NEWLINE) {
+      // while 루프 내에서 this.current가 계속 변경되므로, 매 반복마다 체크
+      while (!this.isAtEnd()) {
+        // 타입 좁히기를 방지하기 위해 TokenType으로 타입 단언
+        const currentType = this.current.type as TokenType;
+
+        if (currentType === TokenType.EOF || currentType === TokenType.NEWLINE) {
+          break;
+        }
 
         // NEXT를 만나면 종료
-        if (this.current.type === TokenType.NEXT) {
+        if (currentType === TokenType.NEXT) {
           break;
         }
 
