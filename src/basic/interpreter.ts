@@ -34,7 +34,9 @@ import type {
   CircleStatement,
   PaintStatement,
   ColorStatement,
-  ClsStatement
+  ClsStatement,
+  GetStatement,
+  PutStatement
 } from './ast.js';
 
 import { VariableManager } from './variables.js';
@@ -295,6 +297,12 @@ export class BasicInterpreter extends EventEmitter {
           break;
         case 'ClsStatement':
           await this.executeCls(statement as ClsStatement);
+          break;
+        case 'GetStatement':
+          await this.executeGet(statement as GetStatement);
+          break;
+        case 'PutStatement':
+          await this.executePut(statement as PutStatement);
           break;
         default:
           throw new BasicError(
@@ -1320,5 +1328,101 @@ export class BasicInterpreter extends EventEmitter {
     }
 
     this.graphicsEngine.cls(mode);
+  }
+
+  /**
+   * GET 명령어 실행: 화면 영역을 배열에 저장
+   * GET (x1, y1)-(x2, y2), arrayName
+   */
+  private async executeGet(stmt: GetStatement): Promise<void> {
+    if (!this.graphicsEngine) {
+      throw new BasicError(
+        'Graphics engine not initialized',
+        ERROR_CODES.RUNTIME_ERROR,
+        stmt.line
+      );
+    }
+
+    // 좌표 계산
+    const x1Val = this.evaluator.evaluate(stmt.x1);
+    const y1Val = this.evaluator.evaluate(stmt.y1);
+    const x2Val = this.evaluator.evaluate(stmt.x2);
+    const y2Val = this.evaluator.evaluate(stmt.y2);
+
+    if (typeof x1Val !== 'number' || typeof y1Val !== 'number' ||
+        typeof x2Val !== 'number' || typeof y2Val !== 'number') {
+      throw new BasicError(
+        'GET coordinates must be numeric',
+        ERROR_CODES.TYPE_MISMATCH,
+        stmt.line
+      );
+    }
+
+    const x1 = Math.floor(x1Val);
+    const y1 = Math.floor(y1Val);
+    const x2 = Math.floor(x2Val);
+    const y2 = Math.floor(y2Val);
+
+    // 그래픽 엔진에서 스프라이트 데이터 가져오기
+    const spriteData = this.graphicsEngine.getSprite(x1, y1, x2, y2);
+
+    // 변수에 저장 (스프라이트 데이터는 Uint8Array)
+    this.variables.setVariable(stmt.arrayName, spriteData);
+  }
+
+  /**
+   * PUT 명령어 실행: 배열에서 화면으로 스프라이트 표시
+   * PUT (x, y), arrayName [, action]
+   */
+  private async executePut(stmt: PutStatement): Promise<void> {
+    if (!this.graphicsEngine) {
+      throw new BasicError(
+        'Graphics engine not initialized',
+        ERROR_CODES.RUNTIME_ERROR,
+        stmt.line
+      );
+    }
+
+    // 좌표 계산
+    const xVal = this.evaluator.evaluate(stmt.x);
+    const yVal = this.evaluator.evaluate(stmt.y);
+
+    if (typeof xVal !== 'number' || typeof yVal !== 'number') {
+      throw new BasicError(
+        'PUT coordinates must be numeric',
+        ERROR_CODES.TYPE_MISMATCH,
+        stmt.line
+      );
+    }
+
+    const x = Math.floor(xVal);
+    const y = Math.floor(yVal);
+
+    // 변수에서 스프라이트 데이터 가져오기
+    const spriteData = this.variables.getVariable(stmt.arrayName);
+
+    // 타입 체크: object이고 null이 아닌지 먼저 확인
+    if (typeof spriteData !== 'object' || spriteData === null) {
+      throw new BasicError(
+        `Variable ${stmt.arrayName} does not contain sprite data`,
+        ERROR_CODES.TYPE_MISMATCH,
+        stmt.line
+      );
+    }
+
+    // 이제 spriteData는 object이므로 instanceof 체크 가능
+    if (!(spriteData instanceof Uint8Array)) {
+      throw new BasicError(
+        `Variable ${stmt.arrayName} does not contain sprite data`,
+        ERROR_CODES.TYPE_MISMATCH,
+        stmt.line
+      );
+    }
+
+    // 액션 타입 결정 (기본값: PSET)
+    const action = stmt.action || 'PSET';
+
+    // 그래픽 엔진에 스프라이트 표시
+    this.graphicsEngine.putSprite(x, y, spriteData, action);
   }
 }

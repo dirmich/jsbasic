@@ -15,7 +15,7 @@ export type VariableType = 'numeric' | 'string' | 'integer';
 /**
  * 변수 값 타입
  */
-export type VariableValue = number | string;
+export type VariableValue = number | string | Uint8Array;
 
 /**
  * 배열 정보
