@@ -1221,11 +1221,12 @@ export class Parser {
       TokenType.ABS, TokenType.INT, TokenType.RND,
       TokenType.SIN, TokenType.COS, TokenType.TAN, TokenType.ATN,
       TokenType.EXP, TokenType.LOG, TokenType.SQR,
-      TokenType.LEN, TokenType.VAL, TokenType.STR, 
+      TokenType.LEN, TokenType.VAL, TokenType.STR,
       TokenType.CHR, TokenType.ASC,
-      TokenType.MID, TokenType.LEFT, TokenType.RIGHT
+      TokenType.MID, TokenType.LEFT, TokenType.RIGHT,
+      TokenType.POINT // 그래픽 함수
     ];
-    
+
     return functionTokens.includes(this.current.type);
   }
 

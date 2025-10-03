@@ -256,7 +256,7 @@ export class Tokenizer {
    */
   public tokenize(): Token[] {
     const tokens: Token[] = [];
-    
+
     while (this.position < this.source.length) {
       const token = this.nextToken();
       if (token) {
@@ -266,7 +266,12 @@ export class Tokenizer {
         }
       }
     }
-    
+
+    // EOF 토큰이 없으면 추가
+    if (tokens.length === 0 || tokens[tokens.length - 1]?.type !== TokenType.EOF) {
+      tokens.push(this.createToken(TokenType.EOF, ''));
+    }
+
     return tokens;
   }
 
