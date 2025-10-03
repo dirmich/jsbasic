@@ -27,6 +27,10 @@ import type {
   DefStatement,
   OnStatement,
   RemStatement,
+  RunStatement,
+  ListStatement,
+  NewStatement,
+  ClearStatement,
   ScreenStatement,
   PsetStatement,
   PresetStatement,
@@ -273,6 +277,18 @@ export class BasicInterpreter extends EventEmitter {
           break;
         case 'RemStatement':
           // 주석은 무시
+          break;
+        case 'RunStatement':
+          await this.executeRun(statement as RunStatement);
+          break;
+        case 'ListStatement':
+          await this.executeList(statement as ListStatement);
+          break;
+        case 'NewStatement':
+          await this.executeNew(statement as NewStatement);
+          break;
+        case 'ClearStatement':
+          await this.executeClear(statement as ClearStatement);
           break;
         case 'ScreenStatement':
           await this.executeScreen(statement as ScreenStatement);
@@ -1424,5 +1440,81 @@ export class BasicInterpreter extends EventEmitter {
 
     // 그래픽 엔진에 스프라이트 표시
     this.graphicsEngine.putSprite(x, y, spriteData, action);
+  }
+
+  // === 시스템 명령어 실행 ===
+
+  /**
+   * RUN 명령어 실행: 프로그램 처음부터 재실행
+   */
+  private async executeRun(_stmt: RunStatement): Promise<void> {
+    // 변수와 상태 초기화
+    this.variables.clear();
+    this.context.dataPointer = 0;
+    this.context.gosubStack = [];
+    this.context.forLoopStack = [];
+    this.context.userFunctions.clear();
+
+    // 프로그램 처음부터 실행
+    this.context.programCounter = 0;
+    this.state = ExecutionState.RUNNING;
+  }
+
+  /**
+   * LIST 명령어 실행: 프로그램 목록 출력
+   */
+  private async executeList(stmt: ListStatement): Promise<void> {
+    const lineNumbers = Array.from(this.context.lineNumberMap.keys()).sort((a, b) => a - b);
+
+    const startLine = stmt.startLine ?? lineNumbers[0];
+    const endLine = stmt.endLine ?? lineNumbers[lineNumbers.length - 1];
+
+    for (const lineNum of lineNumbers) {
+      if (startLine !== undefined && lineNum < startLine) continue;
+      if (endLine !== undefined && lineNum > endLine) break;
+
+      const statementIndex = this.context.lineNumberMap.get(lineNum);
+      if (statementIndex !== undefined) {
+        const statement = this.context.statements[statementIndex];
+        if (statement) {
+          // TODO: 각 statement를 BASIC 구문으로 변환하여 출력
+          this.emit('output', `${lineNum} [${statement.type}]\n`);
+        }
+      }
+    }
+  }
+
+  /**
+   * NEW 명령어 실행: 프로그램과 변수 모두 초기화
+   */
+  private async executeNew(_stmt: NewStatement): Promise<void> {
+    // 프로그램 컨텍스트 초기화
+    this.context.statements = [];
+    this.context.lineNumberMap.clear();
+    this.context.dataValues = [];
+
+    // 변수와 실행 상태 초기화
+    this.variables.clear();
+    this.context.dataPointer = 0;
+    this.context.gosubStack = [];
+    this.context.forLoopStack = [];
+    this.context.userFunctions.clear();
+    this.state = ExecutionState.STOPPED;
+    this.context.programCounter = 0;
+
+    this.emit('output', 'Ok\n');
+  }
+
+  /**
+   * CLEAR 명령어 실행: 변수만 초기화
+   */
+  private async executeClear(_stmt: ClearStatement): Promise<void> {
+    this.variables.clear();
+    this.context.dataPointer = 0;
+    this.context.gosubStack = [];
+    this.context.forLoopStack = [];
+    this.context.userFunctions.clear();
+
+    this.emit('output', 'Ok\n');
   }
 }

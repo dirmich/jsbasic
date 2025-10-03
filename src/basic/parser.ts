@@ -38,6 +38,10 @@ import type {
   DefStatement,
   OnStatement,
   RemStatement,
+  RunStatement,
+  ListStatement,
+  NewStatement,
+  ClearStatement,
   GetStatement,
   PutStatement,
   BinaryExpression,
@@ -167,6 +171,14 @@ export class Parser {
         return this.parseStopStatement();
       case TokenType.REM:
         return this.parseRemStatement();
+      case TokenType.RUN:
+        return this.parseRunStatement();
+      case TokenType.LIST:
+        return this.parseListStatement();
+      case TokenType.NEW:
+        return this.parseNewStatement();
+      case TokenType.CLEAR:
+        return this.parseClearStatement();
       case TokenType.DEF:
         return this.parseDefStatement();
       case TokenType.ON:
@@ -1167,8 +1179,77 @@ export class Parser {
     };
   }
 
+  // === 시스템 명령문 파서 ===
+
+  private parseRunStatement(): RunStatement {
+    const line = this.current.line;
+    const column = this.current.column;
+    this.consume(TokenType.RUN);
+
+    return {
+      type: 'RunStatement',
+      line: line,
+      column: column
+    };
+  }
+
+  private parseListStatement(): ListStatement {
+    const line = this.current.line;
+    const column = this.current.column;
+    this.consume(TokenType.LIST);
+
+    let startLine: number | undefined;
+    let endLine: number | undefined;
+
+    // LIST [start[-end]]
+    if (this.current.type === TokenType.NUMBER) {
+      startLine = this.current.value as number;
+      this.advance();
+
+      if (this.currentTokenIs(TokenType.MINUS)) {
+        this.advance();
+        if (this.currentTokenIs(TokenType.NUMBER)) {
+          endLine = this.current.value as number;
+          this.advance();
+        }
+      }
+    }
+
+    return {
+      type: 'ListStatement',
+      startLine: startLine,
+      endLine: endLine,
+      line: line,
+      column: column
+    };
+  }
+
+  private parseNewStatement(): NewStatement {
+    const line = this.current.line;
+    const column = this.current.column;
+    this.consume(TokenType.NEW);
+
+    return {
+      type: 'NewStatement',
+      line: line,
+      column: column
+    };
+  }
+
+  private parseClearStatement(): ClearStatement {
+    const line = this.current.line;
+    const column = this.current.column;
+    this.consume(TokenType.CLEAR);
+
+    return {
+      type: 'ClearStatement',
+      line: line,
+      column: column
+    };
+  }
+
   // === 유틸리티 메서드들 ===
-  
+
   private currentTokenIs(type: TokenType): boolean {
     return (this.current.type as any) === type;
   }

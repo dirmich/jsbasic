@@ -210,6 +210,36 @@ export interface RemStatement extends Statement {
 }
 
 /**
+ * RUN 명령문
+ */
+export interface RunStatement extends Statement {
+  type: 'RunStatement';
+}
+
+/**
+ * LIST 명령문
+ */
+export interface ListStatement extends Statement {
+  type: 'ListStatement';
+  startLine?: number | undefined;
+  endLine?: number | undefined;
+}
+
+/**
+ * NEW 명령문
+ */
+export interface NewStatement extends Statement {
+  type: 'NewStatement';
+}
+
+/**
+ * CLEAR 명령문
+ */
+export interface ClearStatement extends Statement {
+  type: 'ClearStatement';
+}
+
+/**
  * SCREEN 화면 모드 설정
  */
 export interface ScreenStatement extends Statement {
@@ -438,6 +468,10 @@ export type ASTNodeTypes =
   | DefStatement
   | OnStatement
   | RemStatement
+  | RunStatement
+  | ListStatement
+  | NewStatement
+  | ClearStatement
   | ScreenStatement
   | PsetStatement
   | PresetStatement
