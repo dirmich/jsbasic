@@ -15,7 +15,7 @@ import { AudioEngine } from '../audio/audio-engine.js';
 import { PixelBuffer } from '../graphics/pixel-buffer.js';
 import { ColorManager } from '../graphics/color-manager.js';
 import { DisplayManager } from '../graphics/display-manager.js';
-import { SCREEN_MODES } from '@/types/graphics.js';
+import { SCREEN_MODES } from '../types/graphics.js';
 
 export interface WebEmulatorConfig {
   containerId: string;
