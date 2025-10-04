@@ -575,6 +575,256 @@ const jsResult = floatMath.toNumber(result);
 console.log(`3.14159 * 2.0 = ${jsResult}`);
 ```
 
+## 🎵 오디오 엔진 API
+
+### `AudioEngine` 클래스
+
+다중 채널 오디오 재생 및 고급 MML(Music Macro Language) 파싱을 제공합니다.
+
+#### 생성자
+
+```typescript
+constructor(config?: AudioConfig)
+```
+
+**매개변수:**
+- `config?` - 오디오 설정 (선택적)
+
+```typescript
+interface AudioConfig {
+  sampleRate?: number;        // 샘플링 레이트 (기본: 44100Hz)
+  channels?: number;          // 채널 수 (기본: 3)
+  masterVolume?: number;      // 마스터 볼륨 0-1 (기본: 0.8)
+  enableReverb?: boolean;     // 리버브 활성화 (기본: false)
+}
+```
+
+**예제:**
+```typescript
+const audio = new AudioEngine({
+  sampleRate: 44100,
+  channels: 3,
+  masterVolume: 0.8
+});
+```
+
+#### 다중 채널 재생
+
+##### `playMMLOnChannel(channel: number, mml: string): Promise<void>`
+
+특정 채널에서 MML을 재생합니다.
+
+```typescript
+// 채널 0에서 멜로디 재생
+await audio.playMMLOnChannel(0, 'T120 O4 CDEFGAB');
+
+// 채널 1에서 베이스라인 재생
+await audio.playMMLOnChannel(1, 'T120 O2 C4C4C4C4');
+
+// 채널 2에서 화음 재생
+await audio.playMMLOnChannel(2, 'T120 O4 [CEG]2');
+```
+
+**매개변수:**
+- `channel` - 채널 번호 (0-2)
+- `mml` - MML 문자열
+
+##### `stopChannel(channel: number): void`
+
+특정 채널의 재생을 중지합니다.
+
+```typescript
+audio.stopChannel(0); // 채널 0 중지
+```
+
+##### `stopAllChannels(): void`
+
+모든 채널의 재생을 중지합니다.
+
+```typescript
+audio.stopAllChannels();
+```
+
+##### `getChannelStatus(channel: number): ChannelStatus`
+
+채널의 현재 상태를 반환합니다.
+
+```typescript
+interface ChannelStatus {
+  isPlaying: boolean;
+  currentNote?: string;
+  position: number;
+  volume: number;
+}
+
+const status = audio.getChannelStatus(0);
+console.log(`재생 중: ${status.isPlaying}`);
+```
+
+#### 화음 재생
+
+##### `playChord(notes: string[], duration: number): Promise<void>`
+
+여러 음을 동시에 재생합니다.
+
+```typescript
+// C 메이저 코드 재생 (1초)
+await audio.playChord(['C4', 'E4', 'G4'], 1000);
+
+// A 마이너 코드 재생 (500ms)
+await audio.playChord(['A3', 'C4', 'E4'], 500);
+```
+
+**매개변수:**
+- `notes` - 음표 배열 (예: ['C4', 'E4', 'G4'])
+- `duration` - 지속 시간 (밀리초)
+
+#### 오디오 이펙트
+
+##### `fadeIn(duration: number): void`
+
+페이드 인 효과를 적용합니다.
+
+```typescript
+audio.fadeIn(1000); // 1초에 걸쳐 페이드 인
+await audio.playMMLOnChannel(0, 'T120 O4 CDEFGAB');
+```
+
+##### `fadeOut(duration: number): void`
+
+페이드 아웃 효과를 적용합니다.
+
+```typescript
+audio.fadeOut(2000); // 2초에 걸쳐 페이드 아웃
+```
+
+##### `setMasterVolume(volume: number): void`
+
+마스터 볼륨을 설정합니다.
+
+```typescript
+audio.setMasterVolume(0.5); // 50% 볼륨
+```
+
+#### 고급 MML 명령어
+
+##### 볼륨 제어 (V0-V15)
+
+```typescript
+// V0 = 무음, V15 = 최대 볼륨
+await audio.playMMLOnChannel(0, 'V15 C V10 D V5 E V0 F');
+```
+
+##### 파형 선택 (W0-W3)
+
+```typescript
+// W0 = 사인파, W1 = 사각파, W2 = 톱니파, W3 = 삼각파
+await audio.playMMLOnChannel(0, 'W0 C W1 D W2 E W3 F');
+```
+
+##### 아티큘레이션 (ML/MN/MS)
+
+```typescript
+// ML = Legato (연결), MN = Normal, MS = Staccato (끊어서)
+await audio.playMMLOnChannel(0, 'ML CDEF MN CDEF MS CDEF');
+```
+
+##### 반복 ([...]n)
+
+```typescript
+// [...]n: 괄호 안 패턴을 n회 반복 (최대 100회)
+await audio.playMMLOnChannel(0, '[CDEFG]4'); // CDEFG를 4번 반복
+await audio.playMMLOnChannel(0, '[CD]8 [EF]4'); // 중첩 반복
+```
+
+##### 타이 (&)
+
+```typescript
+// &: 음표를 연결
+await audio.playMMLOnChannel(0, 'C4&C4'); // 반음표 C (4분음표 2개 연결)
+await audio.playMMLOnChannel(0, 'C&D&E&F'); // 부드러운 글리산도
+```
+
+#### ADSR 엔벨로프
+
+##### `setADSR(attack: number, decay: number, sustain: number, release: number): void`
+
+ADSR 엔벨로프를 설정합니다.
+
+```typescript
+audio.setADSR(
+  0.1,  // Attack: 0.1초
+  0.2,  // Decay: 0.2초
+  0.7,  // Sustain: 70% 볼륨
+  0.5   // Release: 0.5초
+);
+```
+
+**매개변수:**
+- `attack` - 어택 타임 (초)
+- `decay` - 디케이 타임 (초)
+- `sustain` - 서스테인 레벨 (0-1)
+- `release` - 릴리스 타임 (초)
+
+#### 이벤트
+
+```typescript
+// noteStart: 음표 재생 시작
+audio.on('noteStart', (event) => {
+  console.log(`채널 ${event.channel}: ${event.note} 시작`);
+});
+
+// noteEnd: 음표 재생 종료
+audio.on('noteEnd', (event) => {
+  console.log(`채널 ${event.channel}: ${event.note} 종료`);
+});
+
+// channelStop: 채널 중지
+audio.on('channelStop', (event) => {
+  console.log(`채널 ${event.channel} 중지됨`);
+});
+
+// error: 오디오 에러
+audio.on('error', (event) => {
+  console.error(`오디오 에러: ${event.error.message}`);
+});
+```
+
+#### 리소스 정리
+
+##### `dispose(): void`
+
+오디오 리소스를 정리합니다.
+
+```typescript
+audio.dispose();
+// AudioContext 정리 및 모든 채널 중지
+```
+
+#### MML 예제
+
+```typescript
+// 간단한 멜로디
+await audio.playMMLOnChannel(0, 'T120 O4 CDEFGAB>C');
+
+// 복잡한 곡
+const melody = `
+  T144 O4
+  V15 W0 ML          // 볼륨 최대, 사인파, 레가토
+  [CDEFG]2           // 스케일 2번 반복
+  V10 MN             // 볼륨 낮추고 노말
+  A4&A4 B2           // 타이와 다양한 음길이
+  MS V5              // 스타카토, 작은 볼륨
+  >CCCC<             // 옥타브 변경
+`;
+await audio.playMMLOnChannel(0, melody);
+
+// 3채널 화음 진행
+await audio.playMMLOnChannel(0, 'T120 O4 [CEG]4');  // 멜로디
+await audio.playMMLOnChannel(1, 'T120 O3 [CCC]4');  // 베이스
+await audio.playMMLOnChannel(2, 'T120 O4 [EEE]4');  // 화음
+```
+
 ## 📺 I/O 시스템 API
 
 ### `Keyboard` 클래스
@@ -1067,7 +1317,448 @@ files.forEach(file => {
 });
 ```
 
+## 📱 모바일 최적화 API
+
+### `VirtualKeyboard` 클래스
+
+모바일 환경을 위한 가상 키보드를 제공합니다.
+
+#### 생성자
+
+```typescript
+constructor(config?: VirtualKeyboardConfig)
+```
+
+**매개변수:**
+- `config?` - 가상 키보드 설정
+
+```typescript
+interface VirtualKeyboardConfig {
+  theme?: 'light' | 'dark';
+  layout?: 'default' | 'basic' | 'numeric' | 'symbols';
+  hapticFeedback?: boolean;
+  soundFeedback?: boolean;
+}
+```
+
+#### 키보드 제어
+
+##### `show(): void`
+
+가상 키보드를 표시합니다.
+
+```typescript
+keyboard.show();
+```
+
+##### `hide(): void`
+
+가상 키보드를 숨깁니다.
+
+```typescript
+keyboard.hide();
+```
+
+##### `toggle(): void`
+
+가상 키보드 표시 상태를 토글합니다.
+
+```typescript
+keyboard.toggle();
+```
+
+##### `isVisible(): boolean`
+
+가상 키보드 표시 상태를 반환합니다.
+
+```typescript
+if (keyboard.isVisible()) {
+  console.log('키보드가 표시되어 있습니다');
+}
+```
+
+#### 레이아웃 관리
+
+##### `setLayout(layout: KeyboardLayout): void`
+
+키보드 레이아웃을 변경합니다.
+
+```typescript
+keyboard.setLayout('basic');   // BASIC 명령어 최적화
+keyboard.setLayout('numeric'); // 숫자 입력
+keyboard.setLayout('symbols'); // 특수 문자
+keyboard.setLayout('default'); // 기본 QWERTY
+```
+
+**레이아웃 타입:**
+- `default`: QWERTY 레이아웃
+- `basic`: BASIC 키워드 (PRINT, FOR, IF 등)
+- `numeric`: 숫자 패드 (0-9, +, -, *, /)
+- `symbols`: 특수 문자 (괄호, 따옴표 등)
+
+##### `getLayout(): KeyboardLayout`
+
+현재 레이아웃을 반환합니다.
+
+```typescript
+const currentLayout = keyboard.getLayout();
+```
+
+#### 커스텀 키 추가
+
+##### `addCustomKey(key: CustomKey): void`
+
+사용자 정의 키를 추가합니다.
+
+```typescript
+interface CustomKey {
+  key: string;           // 키 값
+  label: string;         // 표시 텍스트
+  position?: { row: number, col: number };
+  width?: number;        // 1-4 (키 너비)
+  action?: () => void;   // 커스텀 액션
+}
+
+keyboard.addCustomKey({
+  key: 'PRINT',
+  label: 'PRINT',
+  position: { row: 0, col: 0 },
+  width: 2
+});
+```
+
+##### `removeCustomKey(key: string): void`
+
+사용자 정의 키를 제거합니다.
+
+```typescript
+keyboard.removeCustomKey('PRINT');
+```
+
+#### 이벤트
+
+```typescript
+// keyPress: 키 입력
+keyboard.onKeyPress((key) => {
+  console.log(`입력: ${key}`);
+});
+
+// layoutChange: 레이아웃 변경
+keyboard.on('layoutChange', (layout) => {
+  console.log(`레이아웃: ${layout}`);
+});
+
+// show/hide: 표시 상태 변경
+keyboard.on('show', () => console.log('키보드 표시'));
+keyboard.on('hide', () => console.log('키보드 숨김'));
+```
+
+### `MobilePerformanceMonitor` 클래스
+
+모바일 환경의 성능을 모니터링합니다.
+
+#### 성능 모니터링
+
+##### `startMonitoring(): void`
+
+성능 모니터링을 시작합니다.
+
+```typescript
+const monitor = new MobilePerformanceMonitor();
+monitor.startMonitoring();
+```
+
+##### `stopMonitoring(): void`
+
+성능 모니터링을 중지합니다.
+
+```typescript
+monitor.stopMonitoring();
+```
+
+##### `getMetrics(): PerformanceMetrics`
+
+현재 성능 메트릭을 반환합니다.
+
+```typescript
+interface PerformanceMetrics {
+  fps: number;              // 초당 프레임 수
+  memory: number;           // 메모리 사용량 (MB)
+  battery: number;          // 배터리 레벨 (0-1)
+  network: string;          // 네트워크 타입
+  touchLatency: number;     // 터치 지연 (ms)
+  renderTime: number;       // 렌더링 시간 (ms)
+}
+
+const metrics = monitor.getMetrics();
+console.log(`FPS: ${metrics.fps}`);
+console.log(`메모리: ${metrics.memory}MB`);
+console.log(`배터리: ${metrics.battery * 100}%`);
+```
+
+#### 경고 및 알림
+
+##### `onWarning(callback: (warning: PerformanceWarning) => void): void`
+
+성능 경고 발생 시 콜백을 호출합니다.
+
+```typescript
+monitor.onWarning((warning) => {
+  console.warn(`성능 경고: ${warning.type}`);
+  console.warn(`메시지: ${warning.message}`);
+  console.warn(`제안: ${warning.suggestion}`);
+});
+
+interface PerformanceWarning {
+  type: 'fps' | 'memory' | 'battery' | 'network';
+  severity: 'low' | 'medium' | 'high';
+  message: string;
+  suggestion: string;
+}
+```
+
+##### 경고 임계값
+
+```typescript
+// FPS < 30: 프레임 드롭 경고
+// 메모리 > 100MB: 메모리 과다 사용 경고
+// 배터리 < 20%: 배터리 절약 모드 권장
+// 네트워크 = slow-2g: 오프라인 모드 권장
+```
+
+### `ResponsiveLayout` 클래스
+
+반응형 레이아웃을 관리합니다.
+
+#### 레이아웃 감지
+
+##### `getDeviceType(): DeviceType`
+
+현재 디바이스 타입을 반환합니다.
+
+```typescript
+type DeviceType = 'mobile' | 'tablet' | 'desktop';
+
+const layout = new ResponsiveLayout();
+const deviceType = layout.getDeviceType();
+
+if (deviceType === 'mobile') {
+  // 모바일 최적화 UI
+} else if (deviceType === 'tablet') {
+  // 태블릿 최적화 UI
+} else {
+  // 데스크톱 UI
+}
+```
+
+##### `getOrientation(): Orientation`
+
+화면 방향을 반환합니다.
+
+```typescript
+type Orientation = 'portrait' | 'landscape';
+
+const orientation = layout.getOrientation();
+if (orientation === 'landscape') {
+  // 가로 모드 레이아웃
+}
+```
+
+#### 이벤트
+
+```typescript
+// orientationChange: 화면 방향 변경
+layout.on('orientationChange', (orientation) => {
+  console.log(`방향: ${orientation}`);
+  adjustLayout(orientation);
+});
+
+// resize: 화면 크기 변경
+layout.on('resize', ({ width, height }) => {
+  console.log(`크기: ${width}x${height}`);
+});
+```
+
+### `GestureHandler` 클래스
+
+터치 제스처를 처리합니다.
+
+#### 제스처 인식
+
+```typescript
+const gestures = new GestureHandler();
+
+// 탭
+gestures.on('tap', (event) => {
+  console.log(`탭: ${event.x}, ${event.y}`);
+});
+
+// 더블 탭
+gestures.on('doubletap', (event) => {
+  console.log('더블 탭');
+});
+
+// 스와이프
+gestures.on('swipe', (event) => {
+  console.log(`스와이프: ${event.direction}`); // left, right, up, down
+});
+
+// 핀치 (확대/축소)
+gestures.on('pinch', (event) => {
+  console.log(`핀치: ${event.scale}`);
+});
+
+// 롱 프레스
+gestures.on('longpress', (event) => {
+  console.log('롱 프레스');
+});
+```
+
 ## 🎨 UI 컴포넌트 API
+
+### `ThemeManager` 클래스
+
+에디터 테마를 관리합니다.
+
+#### 테마 제어
+
+##### `setTheme(name: string): void`
+
+테마를 설정합니다.
+
+```typescript
+const themeManager = new ThemeManager();
+
+themeManager.setTheme('dark');   // 다크 테마
+themeManager.setTheme('light');  // 라이트 테마
+themeManager.setTheme('custom'); // 커스텀 테마
+```
+
+##### `getCurrentTheme(): Theme`
+
+현재 테마를 반환합니다.
+
+```typescript
+interface Theme {
+  name: string;
+  colors: {
+    background: string;
+    foreground: string;
+    comment: string;
+    keyword: string;
+    string: string;
+    number: string;
+    operator: string;
+    function: string;
+    variable: string;
+    error: string;
+  };
+  fontFamily: string;
+  fontSize: number;
+  lineHeight: number;
+}
+
+const theme = themeManager.getCurrentTheme();
+console.log(`테마: ${theme.name}`);
+```
+
+##### `getAvailableThemes(): string[]`
+
+사용 가능한 테마 목록을 반환합니다.
+
+```typescript
+const themes = themeManager.getAvailableThemes();
+console.log(themes); // ['dark', 'light', 'monokai', 'solarized']
+```
+
+##### `createCustomTheme(config: Partial<Theme>): Theme`
+
+커스텀 테마를 생성합니다.
+
+```typescript
+const customTheme = themeManager.createCustomTheme({
+  name: 'myTheme',
+  colors: {
+    background: '#1e1e1e',
+    foreground: '#d4d4d4',
+    keyword: '#569cd6',
+    string: '#ce9178',
+    // ... 나머지 색상
+  }
+});
+
+themeManager.setTheme('myTheme');
+```
+
+### `SyntaxHighlighter` 클래스
+
+BASIC 코드 문법 하이라이팅을 제공합니다.
+
+#### 하이라이팅
+
+##### `highlightLine(code: string): Token[]`
+
+한 줄의 코드를 토큰화합니다.
+
+```typescript
+interface Token {
+  type: 'keyword' | 'string' | 'number' | 'operator' | 'comment' | 'identifier';
+  value: string;
+  start: number;
+  end: number;
+}
+
+const highlighter = new SyntaxHighlighter();
+const tokens = highlighter.highlightLine('10 PRINT "HELLO"');
+
+tokens.forEach(token => {
+  console.log(`${token.type}: ${token.value}`);
+});
+```
+
+##### `highlightCode(code: string): Token[][]`
+
+여러 줄의 코드를 토큰화합니다.
+
+```typescript
+const code = `
+10 PRINT "HELLO"
+20 FOR I = 1 TO 10
+30 PRINT I
+40 NEXT I
+`;
+
+const lines = highlighter.highlightCode(code);
+lines.forEach((tokens, lineNumber) => {
+  console.log(`Line ${lineNumber}:`, tokens);
+});
+```
+
+##### `toHTML(tokens: Token[], theme: Theme): string`
+
+토큰을 HTML로 변환합니다.
+
+```typescript
+const tokens = highlighter.highlightLine('10 PRINT "HELLO"');
+const html = highlighter.toHTML(tokens, theme);
+console.log(html);
+// <span class="line-number">10</span>
+// <span class="keyword">PRINT</span>
+// <span class="string">"HELLO"</span>
+```
+
+#### 설정
+
+```typescript
+// 키워드 추가
+highlighter.addKeyword('CUSTOM');
+
+// 함수 추가
+highlighter.addFunction('MYFUNC');
+
+// 색상 테마 적용
+highlighter.setTheme(theme);
+```
 
 ### `Editor` 클래스
 
