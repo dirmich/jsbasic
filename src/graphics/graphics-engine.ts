@@ -25,6 +25,22 @@ export class GraphicsEngine implements GraphicsEngineInterface {
   private lastX: number = 0;
   private lastY: number = 0;
 
+  // VIEW/WINDOW 확장 기능
+  private viewportX1: number = 0;
+  private viewportY1: number = 0;
+  private viewportX2: number = 0;
+  private viewportY2: number = 0;
+  private viewportEnabled: boolean = false;
+
+  private windowX1: number = 0;
+  private windowY1: number = 0;
+  private windowX2: number = 0;
+  private windowY2: number = 0;
+  private windowEnabled: boolean = false;
+
+  // PALETTE 확장 기능
+  private paletteMap: Map<number, number> = new Map();
+
   private readonly buffer: PixelBufferInterface;
   private readonly colorManager: ColorManagerInterface;
 
@@ -32,6 +48,8 @@ export class GraphicsEngine implements GraphicsEngineInterface {
     this.buffer = buffer;
     this.colorManager = colorManager;
     this.currentMode = SCREEN_MODES[1]!; // 기본 모드: 320x200
+    this.resetViewport();
+    this.resetWindow();
   }
 
   /**
@@ -534,5 +552,330 @@ export class GraphicsEngine implements GraphicsEngineInterface {
         }
       }
     }
+  }
+
+  // ===================================================================
+  // VIEW/WINDOW/PALETTE/DRAW 확장 기능
+  // ===================================================================
+
+  /**
+   * VIEW 명령어: 그래픽 뷰포트 설정
+   * VIEW [[SCREEN] (x1, y1)-(x2, y2) [, fillColor [, borderColor]]]
+   */
+  setView(x1?: number, y1?: number, x2?: number, y2?: number, fillColor?: number, borderColor?: number): void {
+    if (x1 === undefined || y1 === undefined || x2 === undefined || y2 === undefined) {
+      // VIEW without parameters - reset viewport
+      this.resetViewport();
+      return;
+    }
+
+    // 좌표 검증
+    if (!this.isValidCoordinate(x1, y1) || !this.isValidCoordinate(x2, y2)) {
+      throw new BasicError(
+        'Illegal function call',
+        ERROR_CODES.ILLEGAL_FUNCTION_CALL
+      );
+    }
+
+    // 뷰포트 설정
+    this.viewportX1 = Math.min(x1, x2);
+    this.viewportY1 = Math.min(y1, y2);
+    this.viewportX2 = Math.max(x1, x2);
+    this.viewportY2 = Math.max(y1, y2);
+    this.viewportEnabled = true;
+
+    // 뷰포트 영역 채우기
+    if (fillColor !== undefined) {
+      const validFillColor = this.colorManager.validateColor(fillColor);
+      this.fillRect(this.viewportX1, this.viewportY1, this.viewportX2, this.viewportY2, validFillColor);
+    }
+
+    // 뷰포트 테두리 그리기
+    if (borderColor !== undefined) {
+      const validBorderColor = this.colorManager.validateColor(borderColor);
+      this.drawRect(this.viewportX1, this.viewportY1, this.viewportX2, this.viewportY2, validBorderColor);
+    }
+
+    // 원점을 뷰포트 좌상단으로 설정
+    this.lastX = 0;
+    this.lastY = 0;
+  }
+
+  /**
+   * WINDOW 명령어: 논리 좌표계 설정
+   * WINDOW [[SCREEN] (x1, y1)-(x2, y2)]
+   */
+  setWindow(x1?: number, y1?: number, x2?: number, y2?: number): void {
+    if (x1 === undefined || y1 === undefined || x2 === undefined || y2 === undefined) {
+      // WINDOW without parameters - reset window
+      this.resetWindow();
+      return;
+    }
+
+    // 논리 좌표계 설정
+    this.windowX1 = x1;
+    this.windowY1 = y1;
+    this.windowX2 = x2;
+    this.windowY2 = y2;
+    this.windowEnabled = true;
+
+    // 원점을 논리 좌표계 좌상단으로 설정
+    this.lastX = x1;
+    this.lastY = y1;
+  }
+
+  /**
+   * PALETTE 명령어: 색상 팔레트 재정의
+   * PALETTE attribute, color
+   */
+  setPalette(attribute: number, color: number): void {
+    // 속성과 색상 검증
+    if (attribute < 0 || attribute > 255) {
+      throw new BasicError(
+        'Illegal function call',
+        ERROR_CODES.ILLEGAL_FUNCTION_CALL
+      );
+    }
+
+    if (color < 0 || color > 255) {
+      throw new BasicError(
+        'Illegal function call',
+        ERROR_CODES.ILLEGAL_FUNCTION_CALL
+      );
+    }
+
+    // 팔레트 맵에 저장
+    this.paletteMap.set(attribute, color);
+  }
+
+  /**
+   * DRAW 명령어: 그래픽 문자열 실행
+   * DRAW commandString
+   */
+  draw(commandString: string): void {
+    let i = 0;
+    const str = commandString.toUpperCase();
+
+    // 현재 위치 (논리 좌표)
+    let currentX = this.lastX;
+    let currentY = this.lastY;
+
+    // 현재 각도와 스케일
+    let angle = 0;
+    let scale = 1;
+
+    while (i < str.length) {
+      const cmd = str[i];
+      if (!cmd) break;
+      i++;
+
+      // 공백 무시
+      if (cmd === ' ') continue;
+
+      // 숫자 파싱
+      const parseNumber = (): number => {
+        let numStr = '';
+        while (i < str.length && /[0-9\-\+\.]/.test(str[i]!)) {
+          numStr += str[i];
+          i++;
+        }
+        return numStr ? parseFloat(numStr) : 0;
+      };
+
+      switch (cmd) {
+        case 'U': // Up
+          {
+            const distance = parseNumber() || 1;
+            const newY = currentY - distance * scale;
+            this.drawLine(currentX, currentY, currentX, newY, this.foregroundColor);
+            currentY = newY;
+          }
+          break;
+
+        case 'D': // Down
+          {
+            const distance = parseNumber() || 1;
+            const newY = currentY + distance * scale;
+            this.drawLine(currentX, currentY, currentX, newY, this.foregroundColor);
+            currentY = newY;
+          }
+          break;
+
+        case 'L': // Left
+          {
+            const distance = parseNumber() || 1;
+            const newX = currentX - distance * scale;
+            this.drawLine(currentX, currentY, newX, currentY, this.foregroundColor);
+            currentX = newX;
+          }
+          break;
+
+        case 'R': // Right
+          {
+            const distance = parseNumber() || 1;
+            const newX = currentX + distance * scale;
+            this.drawLine(currentX, currentY, newX, currentY, this.foregroundColor);
+            currentX = newX;
+          }
+          break;
+
+        case 'E': // Up-Right diagonal
+          {
+            const distance = parseNumber() || 1;
+            const newX = currentX + distance * scale;
+            const newY = currentY - distance * scale;
+            this.drawLine(currentX, currentY, newX, newY, this.foregroundColor);
+            currentX = newX;
+            currentY = newY;
+          }
+          break;
+
+        case 'F': // Down-Right diagonal
+          {
+            const distance = parseNumber() || 1;
+            const newX = currentX + distance * scale;
+            const newY = currentY + distance * scale;
+            this.drawLine(currentX, currentY, newX, newY, this.foregroundColor);
+            currentX = newX;
+            currentY = newY;
+          }
+          break;
+
+        case 'G': // Down-Left diagonal
+          {
+            const distance = parseNumber() || 1;
+            const newX = currentX - distance * scale;
+            const newY = currentY + distance * scale;
+            this.drawLine(currentX, currentY, newX, newY, this.foregroundColor);
+            currentX = newX;
+            currentY = newY;
+          }
+          break;
+
+        case 'H': // Up-Left diagonal
+          {
+            const distance = parseNumber() || 1;
+            const newX = currentX - distance * scale;
+            const newY = currentY - distance * scale;
+            this.drawLine(currentX, currentY, newX, newY, this.foregroundColor);
+            currentX = newX;
+            currentY = newY;
+          }
+          break;
+
+        case 'M': // Move (absolute or relative)
+          {
+            const x = parseNumber();
+            i++; // skip comma
+            const y = parseNumber();
+
+            // B 접두사가 있으면 선 그리지 않고 이동만
+            const drawLine = str[i - 2] !== 'B';
+
+            if (drawLine) {
+              this.drawLine(currentX, currentY, x, y, this.foregroundColor);
+            }
+
+            currentX = x;
+            currentY = y;
+          }
+          break;
+
+        case 'A': // Angle (0-3: 0°, 90°, 180°, 270°)
+          {
+            const angleCode = parseNumber();
+            angle = (angleCode % 4) * 90;
+          }
+          break;
+
+        case 'S': // Scale
+          {
+            scale = parseNumber();
+            if (scale <= 0) scale = 1;
+          }
+          break;
+
+        case 'C': // Color
+          {
+            const color = parseNumber();
+            this.foregroundColor = this.colorManager.validateColor(color);
+          }
+          break;
+
+        case 'B': // Blank (move without drawing)
+          // B는 M 명령어와 함께 사용됨
+          break;
+
+        case 'N': // No update (return to starting point)
+          // 구현 스킵 (복잡함)
+          break;
+
+        default:
+          // 알 수 없는 명령어 무시
+          break;
+      }
+    }
+
+    // 마지막 위치 저장
+    this.lastX = currentX;
+    this.lastY = currentY;
+  }
+
+  /**
+   * 뷰포트 초기화
+   */
+  private resetViewport(): void {
+    this.viewportX1 = 0;
+    this.viewportY1 = 0;
+    this.viewportX2 = this.currentMode.width - 1;
+    this.viewportY2 = this.currentMode.height - 1;
+    this.viewportEnabled = false;
+  }
+
+  /**
+   * 논리 좌표계 초기화
+   */
+  private resetWindow(): void {
+    this.windowX1 = 0;
+    this.windowY1 = 0;
+    this.windowX2 = this.currentMode.width - 1;
+    this.windowY2 = this.currentMode.height - 1;
+    this.windowEnabled = false;
+  }
+
+  /**
+   * 논리 좌표를 물리 좌표로 변환
+   */
+  private transformCoordinate(logicalX: number, logicalY: number): { x: number; y: number } {
+    if (!this.windowEnabled) {
+      return { x: logicalX, y: logicalY };
+    }
+
+    // 논리 좌표계 범위
+    const logicalWidth = this.windowX2 - this.windowX1;
+    const logicalHeight = this.windowY2 - this.windowY1;
+
+    // 물리 좌표계 범위 (뷰포트 고려)
+    const physicalWidth = this.viewportEnabled
+      ? this.viewportX2 - this.viewportX1
+      : this.currentMode.width;
+    const physicalHeight = this.viewportEnabled
+      ? this.viewportY2 - this.viewportY1
+      : this.currentMode.height;
+
+    // 비례 변환
+    const x = ((logicalX - this.windowX1) / logicalWidth) * physicalWidth +
+              (this.viewportEnabled ? this.viewportX1 : 0);
+    const y = ((logicalY - this.windowY1) / logicalHeight) * physicalHeight +
+              (this.viewportEnabled ? this.viewportY1 : 0);
+
+    return { x, y };
+  }
+
+  /**
+   * 팔레트 색상 적용
+   */
+  private applyPalette(color: number): number {
+    return this.paletteMap.get(color) ?? color;
   }
 }

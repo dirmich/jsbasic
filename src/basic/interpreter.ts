@@ -109,6 +109,7 @@ export class BasicInterpreter extends EventEmitter {
   private inputQueue: string[];
   private pendingInput: string[] | null = null;
   private graphicsEngine: any | null = null; // GraphicsEngineInterface
+  private fileSystem: any | null = null; // FileSystem
 
   constructor() {
     super();
@@ -930,6 +931,13 @@ export class BasicInterpreter extends EventEmitter {
   }
 
   /**
+   * 파일 시스템 설정
+   */
+  public setFileSystem(fileSystem: any): void {
+    this.fileSystem = fileSystem;
+  }
+
+  /**
    * GraphicsEngine 가져오기
    */
   public getGraphicsEngine(): any | null {
@@ -1677,45 +1685,155 @@ export class BasicInterpreter extends EventEmitter {
   /**
    * VIEW 명령어 실행
    */
-  private async executeView(_stmt: ViewStatement): Promise<void> {
-    // VIEW 구현은 GraphicsEngine 확장 후 추가
-    throw new BasicError(
-      'VIEW command not yet implemented',
-      ERROR_CODES.RUNTIME_ERROR
+  private async executeView(stmt: ViewStatement): Promise<void> {
+    if (!this.graphicsEngine) {
+      throw new BasicError(
+        'Graphics engine not initialized',
+        ERROR_CODES.RUNTIME_ERROR,
+        stmt.line
+      );
+    }
+
+    // VIEW without parameters - reset viewport
+    if (!stmt.x1 || !stmt.y1 || !stmt.x2 || !stmt.y2) {
+      this.graphicsEngine.setView();
+      return;
+    }
+
+    const x1 = this.evaluator.evaluate(stmt.x1);
+    const y1 = this.evaluator.evaluate(stmt.y1);
+    const x2 = this.evaluator.evaluate(stmt.x2);
+    const y2 = this.evaluator.evaluate(stmt.y2);
+
+    if (typeof x1 !== 'number' || typeof y1 !== 'number' ||
+        typeof x2 !== 'number' || typeof y2 !== 'number') {
+      throw new BasicError(
+        'VIEW coordinates must be numeric',
+        ERROR_CODES.TYPE_MISMATCH,
+        stmt.line
+      );
+    }
+
+    let fillColor: number | undefined = undefined;
+    if (stmt.fillColor) {
+      const fillValue = this.evaluator.evaluate(stmt.fillColor);
+      if (typeof fillValue !== 'number') {
+        throw new BasicError(
+          'Fill color must be numeric',
+          ERROR_CODES.TYPE_MISMATCH,
+          stmt.line
+        );
+      }
+      fillColor = Math.floor(fillValue);
+    }
+
+    let borderColor: number | undefined = undefined;
+    if (stmt.borderColor) {
+      const borderValue = this.evaluator.evaluate(stmt.borderColor);
+      if (typeof borderValue !== 'number') {
+        throw new BasicError(
+          'Border color must be numeric',
+          ERROR_CODES.TYPE_MISMATCH,
+          stmt.line
+        );
+      }
+      borderColor = Math.floor(borderValue);
+    }
+
+    this.graphicsEngine.setView(
+      Math.floor(x1),
+      Math.floor(y1),
+      Math.floor(x2),
+      Math.floor(y2),
+      fillColor,
+      borderColor
     );
   }
 
   /**
    * WINDOW 명령어 실행
    */
-  private async executeWindow(_stmt: WindowStatement): Promise<void> {
-    // WINDOW 구현은 GraphicsEngine 확장 후 추가
-    throw new BasicError(
-      'WINDOW command not yet implemented',
-      ERROR_CODES.RUNTIME_ERROR
-    );
+  private async executeWindow(stmt: WindowStatement): Promise<void> {
+    if (!this.graphicsEngine) {
+      throw new BasicError(
+        'Graphics engine not initialized',
+        ERROR_CODES.RUNTIME_ERROR,
+        stmt.line
+      );
+    }
+
+    // WINDOW without parameters - reset window
+    if (!stmt.x1 || !stmt.y1 || !stmt.x2 || !stmt.y2) {
+      this.graphicsEngine.setWindow();
+      return;
+    }
+
+    const x1 = this.evaluator.evaluate(stmt.x1);
+    const y1 = this.evaluator.evaluate(stmt.y1);
+    const x2 = this.evaluator.evaluate(stmt.x2);
+    const y2 = this.evaluator.evaluate(stmt.y2);
+
+    if (typeof x1 !== 'number' || typeof y1 !== 'number' ||
+        typeof x2 !== 'number' || typeof y2 !== 'number') {
+      throw new BasicError(
+        'WINDOW coordinates must be numeric',
+        ERROR_CODES.TYPE_MISMATCH,
+        stmt.line
+      );
+    }
+
+    this.graphicsEngine.setWindow(x1, y1, x2, y2);
   }
 
   /**
    * PALETTE 명령어 실행
    */
-  private async executePalette(_stmt: PaletteStatement): Promise<void> {
-    // PALETTE 구현은 GraphicsEngine 확장 후 추가
-    throw new BasicError(
-      'PALETTE command not yet implemented',
-      ERROR_CODES.RUNTIME_ERROR
-    );
+  private async executePalette(stmt: PaletteStatement): Promise<void> {
+    if (!this.graphicsEngine) {
+      throw new BasicError(
+        'Graphics engine not initialized',
+        ERROR_CODES.RUNTIME_ERROR,
+        stmt.line
+      );
+    }
+
+    const attribute = this.evaluator.evaluate(stmt.attribute);
+    const color = this.evaluator.evaluate(stmt.color);
+
+    if (typeof attribute !== 'number' || typeof color !== 'number') {
+      throw new BasicError(
+        'PALETTE parameters must be numeric',
+        ERROR_CODES.TYPE_MISMATCH,
+        stmt.line
+      );
+    }
+
+    this.graphicsEngine.setPalette(Math.floor(attribute), Math.floor(color));
   }
 
   /**
    * DRAW 명령어 실행
    */
-  private async executeDraw(_stmt: DrawStatement): Promise<void> {
-    // DRAW 구현은 GraphicsEngine 확장 후 추가
-    throw new BasicError(
-      'DRAW command not yet implemented',
-      ERROR_CODES.RUNTIME_ERROR
-    );
+  private async executeDraw(stmt: DrawStatement): Promise<void> {
+    if (!this.graphicsEngine) {
+      throw new BasicError(
+        'Graphics engine not initialized',
+        ERROR_CODES.RUNTIME_ERROR,
+        stmt.line
+      );
+    }
+
+    const commandString = this.evaluator.evaluate(stmt.commandString);
+
+    if (typeof commandString !== 'string') {
+      throw new BasicError(
+        'DRAW parameter must be a string',
+        ERROR_CODES.TYPE_MISMATCH,
+        stmt.line
+      );
+    }
+
+    this.graphicsEngine.draw(commandString);
   }
 
   /**
@@ -1758,44 +1876,161 @@ export class BasicInterpreter extends EventEmitter {
   /**
    * OPEN 명령어 실행
    */
-  private async executeOpen(_stmt: OpenStatement): Promise<void> {
-    // 파일 I/O 시스템 구현 후 추가
-    throw new BasicError(
-      'OPEN command not yet implemented',
-      ERROR_CODES.RUNTIME_ERROR
-    );
+  private async executeOpen(stmt: OpenStatement): Promise<void> {
+    if (!this.fileSystem) {
+      throw new BasicError(
+        'File system not initialized',
+        ERROR_CODES.RUNTIME_ERROR,
+        stmt.line
+      );
+    }
+
+    const mode = stmt.mode; // 'INPUT' | 'OUTPUT' | 'APPEND' | 'RANDOM'
+    const fileNumber = this.evaluator.evaluate(stmt.fileNumber);
+    const filename = this.evaluator.evaluate(stmt.filename);
+
+    if (typeof fileNumber !== 'number') {
+      throw new BasicError(
+        'File number must be numeric',
+        ERROR_CODES.TYPE_MISMATCH,
+        stmt.line
+      );
+    }
+
+    if (typeof filename !== 'string') {
+      throw new BasicError(
+        'Filename must be a string',
+        ERROR_CODES.TYPE_MISMATCH,
+        stmt.line
+      );
+    }
+
+    let recordLength: number | undefined = undefined;
+    if (stmt.recordLength) {
+      const recLen = this.evaluator.evaluate(stmt.recordLength);
+      if (typeof recLen !== 'number') {
+        throw new BasicError(
+          'Record length must be numeric',
+          ERROR_CODES.TYPE_MISMATCH,
+          stmt.line
+        );
+      }
+      recordLength = Math.floor(recLen);
+    }
+
+    this.fileSystem.open(mode, Math.floor(fileNumber), filename, recordLength);
   }
 
   /**
    * CLOSE 명령어 실행
    */
-  private async executeClose(_stmt: CloseStatement): Promise<void> {
-    // 파일 I/O 시스템 구현 후 추가
-    throw new BasicError(
-      'CLOSE command not yet implemented',
-      ERROR_CODES.RUNTIME_ERROR
-    );
+  private async executeClose(stmt: CloseStatement): Promise<void> {
+    if (!this.fileSystem) {
+      throw new BasicError(
+        'File system not initialized',
+        ERROR_CODES.RUNTIME_ERROR,
+        stmt.line
+      );
+    }
+
+    // CLOSE without parameters - close all files
+    if (!stmt.fileNumbers || stmt.fileNumbers.length === 0) {
+      this.fileSystem.close();
+      return;
+    }
+
+    // CLOSE specific file numbers
+    for (const fileNumExpr of stmt.fileNumbers) {
+      const fileNumber = this.evaluator.evaluate(fileNumExpr);
+
+      if (typeof fileNumber !== 'number') {
+        throw new BasicError(
+          'File number must be numeric',
+          ERROR_CODES.TYPE_MISMATCH,
+          stmt.line
+        );
+      }
+
+      this.fileSystem.close(Math.floor(fileNumber));
+    }
   }
 
   /**
    * PRINT# 명령어 실행
    */
-  private async executePrintFile(_stmt: PrintFileStatement): Promise<void> {
-    // 파일 I/O 시스템 구현 후 추가
-    throw new BasicError(
-      'PRINT# command not yet implemented',
-      ERROR_CODES.RUNTIME_ERROR
-    );
+  private async executePrintFile(stmt: PrintFileStatement): Promise<void> {
+    if (!this.fileSystem) {
+      throw new BasicError(
+        'File system not initialized',
+        ERROR_CODES.RUNTIME_ERROR,
+        stmt.line
+      );
+    }
+
+    const fileNumber = this.evaluator.evaluate(stmt.fileNumber);
+
+    if (typeof fileNumber !== 'number') {
+      throw new BasicError(
+        'File number must be numeric',
+        ERROR_CODES.TYPE_MISMATCH,
+        stmt.line
+      );
+    }
+
+    // 표현식 평가하여 문자열로 변환
+    const values: string[] = [];
+    for (const expr of stmt.expressions) {
+      const value = this.evaluator.evaluate(expr);
+      values.push(String(value));
+    }
+
+    const data = values.join(',') + '\n';
+    this.fileSystem.print(Math.floor(fileNumber), data);
   }
 
   /**
    * INPUT# 명령어 실행
    */
-  private async executeInputFile(_stmt: InputFileStatement): Promise<void> {
-    // 파일 I/O 시스템 구현 후 추가
-    throw new BasicError(
-      'INPUT# command not yet implemented',
-      ERROR_CODES.RUNTIME_ERROR
-    );
+  private async executeInputFile(stmt: InputFileStatement): Promise<void> {
+    if (!this.fileSystem) {
+      throw new BasicError(
+        'File system not initialized',
+        ERROR_CODES.RUNTIME_ERROR,
+        stmt.line
+      );
+    }
+
+    const fileNumber = this.evaluator.evaluate(stmt.fileNumber);
+
+    if (typeof fileNumber !== 'number') {
+      throw new BasicError(
+        'File number must be numeric',
+        ERROR_CODES.TYPE_MISMATCH,
+        stmt.line
+      );
+    }
+
+    // 파일에서 한 줄 읽기
+    const line = this.fileSystem.input(Math.floor(fileNumber));
+
+    // 쉼표로 분리된 값 파싱
+    const values = line.split(',').map((v: string) => v.trim());
+
+    // 변수에 할당
+    for (let i = 0; i < stmt.variables.length && i < values.length; i++) {
+      const varIdentifier = stmt.variables[i];
+      const valueStr = values[i];
+
+      if (!varIdentifier || !valueStr) continue;
+
+      // Identifier에서 이름 추출
+      const varName = varIdentifier.name;
+
+      // 숫자 변환 시도
+      const numValue = parseFloat(valueStr);
+      const value = isNaN(numValue) ? valueStr : numValue;
+
+      this.variables.setVariable(varName, value);
+    }
   }
 }

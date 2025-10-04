@@ -13,6 +13,7 @@ import { GraphicsEngine } from '../graphics/graphics-engine.js';
 import { PixelBuffer } from '../graphics/pixel-buffer.js';
 import { ColorManager } from '../graphics/color-manager.js';
 import { AudioEngine } from '../audio/audio-engine.js';
+import { FileSystem } from './file-system.js';
 
 export interface EmulatorConfig {
   cpuFrequency: number;
@@ -52,6 +53,7 @@ export class BasicEmulator extends EventEmitter {
   private pixelBuffer!: PixelBuffer;
   private colorManager!: ColorManager;
   private audioEngine!: AudioEngine;
+  private fileSystem!: FileSystem;
 
   private state: EmulatorState = EmulatorState.STOPPED;
   private config!: EmulatorConfig;
@@ -104,6 +106,12 @@ export class BasicEmulator extends EventEmitter {
 
     // 오디오 시스템 초기화
     this.audioEngine = new AudioEngine();
+
+    // 파일 시스템 초기화
+    this.fileSystem = new FileSystem();
+
+    // 인터프리터에 파일 시스템 연결
+    this.basicInterpreter.setFileSystem(this.fileSystem);
 
     // 터미널 초기화
     this.terminal = new Terminal(this.config.terminal);
