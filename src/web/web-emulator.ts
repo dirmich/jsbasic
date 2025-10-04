@@ -8,6 +8,8 @@ import { Terminal, TerminalState } from '../io/terminal.js';
 import { EventEmitter } from '../utils/events.js';
 import { VirtualKeyboard } from '../mobile/virtual-keyboard.js';
 import { MobilePerformanceMonitor } from '../mobile/performance-metrics.js';
+import { ExampleBrowser } from './components/example-browser.js';
+import { ExampleLoader } from './example-loader.js';
 
 export interface WebEmulatorConfig {
   containerId: string;
@@ -50,6 +52,10 @@ export class WebEmulator extends EventEmitter<WebEmulatorEvents> {
   private virtualKeyboard: VirtualKeyboard | null = null;
   private performanceMonitor: MobilePerformanceMonitor | null = null;
 
+  // 예제 시스템
+  private exampleBrowser: ExampleBrowser | null = null;
+  private exampleLoader: ExampleLoader | null = null;
+
   // 상태 관리
   private isInitialized = false;
   private updateInterval: number | null = null;
@@ -84,6 +90,9 @@ export class WebEmulator extends EventEmitter<WebEmulatorEvents> {
 
       // 모바일 환경 감지 및 초기화
       this.initializeMobile();
+
+      // 예제 브라우저 초기화
+      this.initializeExampleBrowser();
 
       // 이벤트 핸들러 설정
       this.setupEventHandlers();
@@ -605,6 +614,75 @@ export class WebEmulator extends EventEmitter<WebEmulatorEvents> {
       return this.performanceMonitor.getMetrics();
     }
     return null;
+  }
+
+  /**
+   * 예제 브라우저 초기화
+   */
+  private initializeExampleBrowser(): void {
+    const browserContainer = document.getElementById('example-browser');
+    if (!browserContainer) {
+      console.log('⚠️ Example browser container not found - skipping initialization');
+      return;
+    }
+
+    try {
+      this.exampleBrowser = new ExampleBrowser(browserContainer);
+      this.exampleLoader = new ExampleLoader(this, this.exampleBrowser);
+      console.log('📚 Example browser initialized successfully');
+    } catch (error) {
+      console.error('Failed to initialize example browser:', error);
+    }
+  }
+
+  /**
+   * BASIC 프로그램 로드
+   */
+  async loadProgram(code: string): Promise<void> {
+    try {
+      // 현재 프로그램 초기화 (NEW 명령)
+      await this.executeCommand('NEW');
+
+      // 각 라인을 파싱하여 실행
+      const lines = code.split('\n');
+      for (const line of lines) {
+        const trimmedLine = line.trim();
+        if (trimmedLine && !trimmedLine.startsWith('REM') && !trimmedLine.startsWith("'")) {
+          await this.executeCommand(trimmedLine);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load program:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 프로그램 실행
+   */
+  async run(): Promise<void> {
+    await this.executeCommand('RUN');
+  }
+
+  /**
+   * 화면 지우기
+   */
+  clearScreen(): void {
+    this.clearTerminal();
+  }
+
+  /**
+   * 터미널 객체 가져오기
+   */
+  getTerminal(): Terminal {
+    return this.emulator.getTerminal();
+  }
+
+  /**
+   * 예제 로더 가져오기
+   */
+  getExampleLoader(): ExampleLoader | null {
+    return this.exampleLoader;
   }
 
   /**

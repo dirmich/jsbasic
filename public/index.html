@@ -23,6 +23,11 @@
 
         <!-- 메인 컨텐츠 -->
         <main class="main-content">
+            <!-- 예제 브라우저 사이드바 -->
+            <div class="example-sidebar" id="example-browser">
+                <!-- 예제 브라우저가 여기에 렌더링됩니다 -->
+            </div>
+
             <!-- 그래픽 화면 -->
             <div class="graphics-container" id="graphics-container" style="display: none;">
                 <div class="graphics-header">
@@ -110,31 +115,6 @@
                     </div>
                 </div>
 
-                <!-- 예제 프로그램 로더 -->
-                <div class="panel examples-panel">
-                    <h3>예제 프로그램</h3>
-                    <div class="examples-controls">
-                        <select id="example-select" class="example-select">
-                            <option value="">예제 선택...</option>
-                            <option value="hello.bas">Hello World (간단)</option>
-                            <option value="hello-world.bas">Hello World (확장)</option>
-                            <option value="calculator.bas">계산기</option>
-                            <option value="guess-game.bas">숫자 맞추기 게임</option>
-                            <option value="loops-and-arrays.bas">반복문과 배열</option>
-                            <option value="math-demo.bas">수학 데모</option>
-                            <option value="math-functions.bas">수학 함수</option>
-                            <option value="multiplication-table.bas">구구단</option>
-                            <option value="prime-numbers.bas">소수 찾기</option>
-                            <option value="tic-tac-toe.bas">틱택토 게임</option>
-                            <option value="sorting.bas">정렬 알고리즘</option>
-                            <option value="address-book.bas">주소록</option>
-                        </select>
-                        <button class="btn-small" id="load-example-btn">로드</button>
-                    </div>
-                    <div class="example-description" id="example-description">
-                        예제를 선택하면 설명이 표시됩니다.
-                    </div>
-                </div>
             </aside>
         </main>
 
