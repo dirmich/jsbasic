@@ -6,6 +6,8 @@
 export { MobileOptimizer, mobileOptimizer } from './mobile-optimizer.js';
 export { GestureHandler } from './gesture-handler.js';
 export { ResponsiveLayout } from './responsive-layout.js';
+export { VirtualKeyboard } from './virtual-keyboard.js';
+export { MobilePerformanceMonitor } from './performance-metrics.js';
 
 export type {
   MobileConfiguration,
@@ -26,3 +28,16 @@ export type {
   PerformanceMode,
   PerformanceConfig
 } from './types.js';
+
+export type {
+  KeyboardLayout,
+  KeyDefinition,
+  VirtualKeyboardConfig
+} from './virtual-keyboard.js';
+
+export type {
+  MobilePerformanceMetrics,
+  PerformanceStats,
+  PerformanceThresholds,
+  PerformanceWarning
+} from './performance-metrics.js';

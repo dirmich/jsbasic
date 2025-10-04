@@ -6,6 +6,8 @@
 import { BasicEmulator, EmulatorState } from '../system/emulator.js';
 import { Terminal, TerminalState } from '../io/terminal.js';
 import { EventEmitter } from '../utils/events.js';
+import { VirtualKeyboard } from '../mobile/virtual-keyboard.js';
+import { MobilePerformanceMonitor } from '../mobile/performance-metrics.js';
 
 export interface WebEmulatorConfig {
   containerId: string;
@@ -35,7 +37,7 @@ export class WebEmulator extends EventEmitter<WebEmulatorEvents> {
   private container: HTMLElement;
   private config: WebEmulatorConfig;
   private callbacks: WebEmulatorCallbacks;
-  
+
   // DOM 요소들
   private terminalOutput: HTMLElement | null = null;
   private terminalInput: HTMLInputElement | null = null;
@@ -43,6 +45,10 @@ export class WebEmulator extends EventEmitter<WebEmulatorEvents> {
   private graphicsCanvas: HTMLCanvasElement | null = null;
   private graphicsContext: CanvasRenderingContext2D | null = null;
   private graphicsContainer: HTMLElement | null = null;
+
+  // 모바일 컴포넌트
+  private virtualKeyboard: VirtualKeyboard | null = null;
+  private performanceMonitor: MobilePerformanceMonitor | null = null;
 
   // 상태 관리
   private isInitialized = false;
@@ -75,21 +81,24 @@ export class WebEmulator extends EventEmitter<WebEmulatorEvents> {
     try {
       // DOM 요소들 찾기
       this.findDOMElements();
-      
+
+      // 모바일 환경 감지 및 초기화
+      this.initializeMobile();
+
       // 이벤트 핸들러 설정
       this.setupEventHandlers();
-      
+
       // 에뮬레이터 시작
       this.emulator.start();
-      
+
       // 주기적 업데이트 시작
       this.startPeriodicUpdate();
-      
+
       this.isInitialized = true;
       this.emit('initialized');
-      
+
       console.log('🎮 WebEmulator initialized successfully');
-      
+
     } catch (error) {
       console.error('❌ WebEmulator initialization failed:', error);
       this.emit('error', error as Error);
@@ -487,6 +496,118 @@ export class WebEmulator extends EventEmitter<WebEmulatorEvents> {
   }
 
   /**
+   * 모바일 환경 감지 및 초기화
+   */
+  private isMobileDevice(): boolean {
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+           (window.matchMedia && window.matchMedia('(max-width: 768px)').matches);
+  }
+
+  /**
+   * 모바일 컴포넌트 초기화
+   */
+  private initializeMobile(): void {
+    if (!this.isMobileDevice()) {
+      console.log('💻 Desktop mode - mobile features disabled');
+      return;
+    }
+
+    console.log('📱 Mobile mode - initializing mobile features');
+
+    // 가상 키보드 초기화
+    const keyboardContainer = document.getElementById('keyboard-container');
+    if (keyboardContainer) {
+      this.virtualKeyboard = new VirtualKeyboard(keyboardContainer, {
+        layout: 'default',
+        theme: this.config.theme === 'dark' ? 'dark' : 'light',
+        hapticFeedback: true,
+        soundFeedback: false,
+        keyHeight: 44,
+        keySpacing: 4
+      });
+
+      // 가상 키보드 이벤트 처리
+      this.virtualKeyboard.on('keypress', (key: string) => {
+        this.handleVirtualKey(key);
+      });
+
+      // 자동으로 키보드 표시
+      this.virtualKeyboard.show();
+    }
+
+    // 성능 모니터 초기화
+    this.performanceMonitor = new MobilePerformanceMonitor({
+      minFPS: 30,
+      maxMemory: 500,
+      maxTouchLatency: 100,
+      maxRenderTime: 16.67
+    });
+
+    // 성능 경고 처리
+    this.performanceMonitor.on('warning', (warning) => {
+      console.warn(`⚠️ Performance warning: ${warning.message}`);
+    });
+
+    // 성능 모니터링 시작
+    this.performanceMonitor.startMonitoring();
+  }
+
+  /**
+   * 가상 키보드 입력 처리
+   */
+  private handleVirtualKey(key: string): void {
+    if (!this.terminalInput) return;
+
+    const input = this.terminalInput;
+
+    if (key === '\b') {
+      // Backspace
+      input.value = input.value.slice(0, -1);
+    } else if (key === '\n') {
+      // Enter
+      const command = input.value;
+      input.value = '';
+      if (command.trim()) {
+        this.executeCommand(command);
+      }
+    } else {
+      // 일반 문자
+      input.value += key;
+    }
+
+    // 입력 필드에 포커스 유지
+    input.focus();
+  }
+
+  /**
+   * 가상 키보드 표시/숨김
+   */
+  toggleVirtualKeyboard(): void {
+    if (this.virtualKeyboard) {
+      this.virtualKeyboard.toggle();
+    }
+  }
+
+  /**
+   * 가상 키보드 레이아웃 변경
+   */
+  setVirtualKeyboardLayout(layout: 'default' | 'basic' | 'numeric' | 'symbols'): void {
+    if (this.virtualKeyboard) {
+      this.virtualKeyboard.setLayout(layout);
+    }
+  }
+
+  /**
+   * 성능 메트릭 가져오기
+   */
+  getPerformanceMetrics() {
+    if (this.performanceMonitor) {
+      return this.performanceMonitor.getMetrics();
+    }
+    return null;
+  }
+
+  /**
    * 정리
    */
   dispose(): void {
@@ -497,6 +618,17 @@ export class WebEmulator extends EventEmitter<WebEmulatorEvents> {
 
     // requestAnimationFrame 정리
     this.stopGraphicsUpdate();
+
+    // 모바일 컴포넌트 정리
+    if (this.virtualKeyboard) {
+      this.virtualKeyboard.destroy();
+      this.virtualKeyboard = null;
+    }
+
+    if (this.performanceMonitor) {
+      this.performanceMonitor.destroy();
+      this.performanceMonitor = null;
+    }
 
     this.emulator.stop();
     this.removeAllListeners();
