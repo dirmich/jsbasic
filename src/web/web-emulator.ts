@@ -10,6 +10,8 @@ import { VirtualKeyboard } from '../mobile/virtual-keyboard.js';
 import { MobilePerformanceMonitor } from '../mobile/performance-metrics.js';
 import { ExampleBrowser } from './components/example-browser.js';
 import { ExampleLoader } from './example-loader.js';
+import { GraphicsEngine } from '../graphics/graphics-engine.js';
+import { AudioEngine } from '../audio/audio-engine.js';
 
 export interface WebEmulatorConfig {
   containerId: string;
@@ -56,6 +58,10 @@ export class WebEmulator extends EventEmitter<WebEmulatorEvents> {
   private exampleBrowser: ExampleBrowser | null = null;
   private exampleLoader: ExampleLoader | null = null;
 
+  // 그래픽 및 오디오 엔진
+  private graphicsEngine: GraphicsEngine | null = null;
+  private audioEngine: AudioEngine | null = null;
+
   // 상태 관리
   private isInitialized = false;
   private updateInterval: number | null = null;
@@ -87,6 +93,9 @@ export class WebEmulator extends EventEmitter<WebEmulatorEvents> {
     try {
       // DOM 요소들 찾기
       this.findDOMElements();
+
+      // 그래픽 및 오디오 엔진 초기화
+      this.initializeGraphicsAndAudio();
 
       // 모바일 환경 감지 및 초기화
       this.initializeMobile();
@@ -275,30 +284,42 @@ export class WebEmulator extends EventEmitter<WebEmulatorEvents> {
     const stats = this.emulator.getStats();
     const cpu = this.emulator.getCPU();
     const state = this.emulator.getState();
-    
+
     // 시스템 상태
     const cpuElement = this.systemInfoElements.get('cpu-status');
     if (cpuElement) {
       cpuElement.textContent = `CPU: ${state === EmulatorState.RUNNING_BASIC ? '실행중' : '정지'}`;
     }
-    
+
     const memoryElement = this.systemInfoElements.get('memory-status');
     if (memoryElement) {
       memoryElement.textContent = `메모리: ${Math.floor(stats.memoryUsed / 1024)}KB`;
     }
-    
+
     const uptimeElement = this.systemInfoElements.get('uptime');
     if (uptimeElement) {
       const uptimeSeconds = Math.floor(stats.uptime / 1000);
       uptimeElement.textContent = `가동시간: ${uptimeSeconds}s`;
     }
-    
+
+    // 그래픽 모드 체크
+    if (this.graphicsEngine && this.graphicsContainer) {
+      const screenMode = this.graphicsEngine.getScreenMode();
+      const shouldShowGraphics = screenMode !== 0;
+
+      if (shouldShowGraphics !== this.graphicsVisible) {
+        this.graphicsVisible = shouldShowGraphics;
+        this.graphicsContainer.style.display = shouldShowGraphics ? 'flex' : 'none';
+        console.log(`🖼️ Graphics display: ${shouldShowGraphics ? 'ON' : 'OFF'} (mode ${screenMode})`);
+      }
+    }
+
     // CPU 레지스터 (실제 구현에서는 CPU 상태를 가져와야 함)
     const debugInfo = cpu?.getDebugInfo?.() || {
       registers: { A: 0, X: 0, Y: 0, PC: 0, SP: 0xFF, P: 0 },
       flags: { N: false, V: false, B: false, D: false, I: false, Z: false, C: false }
     };
-    
+
     ['A', 'X', 'Y', 'PC', 'SP', 'P'].forEach(reg => {
       const element = this.systemInfoElements.get(`reg-${reg.toLowerCase()}`);
       if (element) {
@@ -614,6 +635,41 @@ export class WebEmulator extends EventEmitter<WebEmulatorEvents> {
       return this.performanceMonitor.getMetrics();
     }
     return null;
+  }
+
+  /**
+   * 그래픽 및 오디오 엔진 초기화
+   */
+  private initializeGraphicsAndAudio(): void {
+    try {
+      // 그래픽 엔진 초기화
+      if (this.graphicsCanvas) {
+        this.graphicsEngine = new GraphicsEngine(
+          this.graphicsCanvas.width,
+          this.graphicsCanvas.height
+        );
+
+        // BasicEmulator의 interpreter에 연결
+        const interpreter = this.emulator.getBasicInterpreter();
+        if (interpreter) {
+          interpreter.setGraphicsEngine(this.graphicsEngine);
+          console.log('🎨 Graphics engine initialized and connected');
+        }
+      } else {
+        console.warn('⚠️ Graphics canvas not found - graphics disabled');
+      }
+
+      // 오디오 엔진 초기화
+      this.audioEngine = new AudioEngine();
+      const interpreter = this.emulator.getBasicInterpreter();
+      if (interpreter) {
+        interpreter.setAudioEngine(this.audioEngine);
+        console.log('🔊 Audio engine initialized and connected');
+      }
+
+    } catch (error) {
+      console.error('Failed to initialize graphics/audio engines:', error);
+    }
   }
 
   /**
