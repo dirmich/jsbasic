@@ -543,8 +543,8 @@ export class BasicInterpreter extends EventEmitter {
         }
       }
       
-      // 세미콜론이 사용되면 개행 억제, 아니면 개행 추가
-      if (stmt.separator !== 'semicolon') {
+      // trailingSeparator가 true면 개행 억제 (세미콜론으로 끝남)
+      if (!stmt.trailingSeparator) {
         output += '\n';
       }
     }
@@ -1749,10 +1749,87 @@ export class BasicInterpreter extends EventEmitter {
       if (statementIndex !== undefined) {
         const statement = this.context.statements[statementIndex];
         if (statement) {
-          // TODO: 각 statement를 BASIC 구문으로 변환하여 출력
-          this.emit('output', `${lineNum} [${statement.type}]\n`);
+          const code = this.statementToBasic(statement);
+          this.emit('output', `${lineNum} ${code}\n`);
         }
       }
+    }
+  }
+
+  /**
+   * Statement를 BASIC 코드로 변환
+   */
+  private statementToBasic(stmt: Statement): string {
+    switch (stmt.type) {
+      case 'PrintStatement': {
+        const printStmt = stmt as PrintStatement;
+        let code = 'PRINT';
+        if (printStmt.expressions.length > 0) {
+          code += ' ';
+          code += printStmt.expressions.map(expr => this.expressionToBasic(expr)).join(
+            printStmt.separator === 'comma' ? ', ' : '; '
+          );
+          // trailingSeparator가 true면 마지막에 세미콜론 추가
+          if (printStmt.trailingSeparator) {
+            code += printStmt.separator === 'comma' ? ',' : ';';
+          }
+        }
+        return code;
+      }
+      case 'ForStatement': {
+        const forStmt = stmt as ForStatement;
+        let code = `FOR ${forStmt.variable.name} = ${this.expressionToBasic(forStmt.start)} TO ${this.expressionToBasic(forStmt.end)}`;
+        if (forStmt.step) {
+          code += ` STEP ${this.expressionToBasic(forStmt.step)}`;
+        }
+        return code;
+      }
+      case 'NextStatement': {
+        const nextStmt = stmt as NextStatement;
+        return nextStmt.variable ? `NEXT ${nextStmt.variable.name}` : 'NEXT';
+      }
+      case 'IfStatement': {
+        const ifStmt = stmt as IfStatement;
+        let code = `IF ${this.expressionToBasic(ifStmt.condition)} THEN`;
+        if (ifStmt.thenStatement.length > 0) {
+          code += ' ' + ifStmt.thenStatement.map(s => this.statementToBasic(s)).join(': ');
+        }
+        return code;
+      }
+      case 'GotoStatement': {
+        const gotoStmt = stmt as GotoStatement;
+        return `GOTO ${gotoStmt.targetLine}`;
+      }
+      case 'LetStatement': {
+        const letStmt = stmt as LetStatement;
+        return `LET ${letStmt.variable.name} = ${this.expressionToBasic(letStmt.value)}`;
+      }
+      case 'RemStatement': {
+        const remStmt = stmt as RemStatement;
+        return `REM ${remStmt.comment}`;
+      }
+      default:
+        return `[${stmt.type}]`;
+    }
+  }
+
+  /**
+   * Expression을 BASIC 코드로 변환
+   */
+  private expressionToBasic(expr: Expression): string {
+    switch (expr.type) {
+      case 'NumberLiteral':
+        return String((expr as NumberLiteral).value);
+      case 'StringLiteral':
+        return `"${(expr as StringLiteral).value}"`;
+      case 'Identifier':
+        return (expr as Identifier).name;
+      case 'BinaryExpression': {
+        const binExpr = expr as BinaryExpression;
+        return `${this.expressionToBasic(binExpr.left)} ${binExpr.operator} ${this.expressionToBasic(binExpr.right)}`;
+      }
+      default:
+        return `[${expr.type}]`;
     }
   }
 

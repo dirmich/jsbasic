@@ -219,6 +219,19 @@ export class DisplayManager implements DisplayManagerInterface {
   }
 
   /**
+   * 픽셀 버퍼 설정 (화면 모드 변경 시 사용)
+   */
+  setPixelBuffer(buffer: PixelBufferInterface): void {
+    this.buffer = buffer;
+    // 전체 화면 다시 그리기 (새 버퍼 크기 사용)
+    const width = buffer.getWidth();
+    const height = buffer.getHeight();
+    this.markDirty(0, 0, width, height);
+    this.render();
+    console.log(`📦 PixelBuffer updated in DisplayManager: ${width}x${height}`);
+  }
+
+  /**
    * Canvas 요소 가져오기
    */
   getCanvas(): HTMLCanvasElement {

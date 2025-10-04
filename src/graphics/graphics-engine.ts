@@ -16,6 +16,7 @@ import { SCREEN_MODES } from '@/types/graphics';
 import type { PixelBufferInterface } from '@/types/graphics';
 import type { ColorManagerInterface } from '@/types/graphics';
 import { BasicError, ERROR_CODES } from '@/utils/errors';
+import { PixelBuffer } from './pixel-buffer.js';
 
 export class GraphicsEngine implements GraphicsEngineInterface {
   private currentMode: ScreenMode;
@@ -41,8 +42,9 @@ export class GraphicsEngine implements GraphicsEngineInterface {
   // PALETTE 확장 기능
   private paletteMap: Map<number, number> = new Map();
 
-  private readonly buffer: PixelBufferInterface;
+  private buffer: PixelBufferInterface;
   private readonly colorManager: ColorManagerInterface;
+  private displayManager: any = null; // DisplayManager 참조
 
   constructor(buffer: PixelBufferInterface, colorManager: ColorManagerInterface) {
     this.buffer = buffer;
@@ -50,6 +52,13 @@ export class GraphicsEngine implements GraphicsEngineInterface {
     this.currentMode = SCREEN_MODES[1]!; // 기본 모드: 320x200
     this.resetViewport();
     this.resetWindow();
+  }
+
+  /**
+   * DisplayManager 설정
+   */
+  setDisplayManager(manager: any): void {
+    this.displayManager = manager;
   }
 
   /**
@@ -67,9 +76,24 @@ export class GraphicsEngine implements GraphicsEngineInterface {
 
     this.currentMode = screenMode;
 
-    // 버퍼 크기가 다르면 클리어
+    // 버퍼 크기가 다르면 새 버퍼 생성
     if (this.buffer.getWidth() !== screenMode.width ||
         this.buffer.getHeight() !== screenMode.height) {
+
+      console.log(`🔄 Resizing PixelBuffer: ${this.buffer.getWidth()}x${this.buffer.getHeight()} → ${screenMode.width}x${screenMode.height}`);
+
+      // 새 PixelBuffer 생성
+      this.buffer = new PixelBuffer(screenMode.width, screenMode.height);
+      this.buffer.clear(this.backgroundColor);
+
+      // DisplayManager에 화면 모드와 버퍼 모두 업데이트
+      if (this.displayManager) {
+        this.displayManager.setScreenMode(screenMode);  // 화면 모드 먼저
+        this.displayManager.setPixelBuffer(this.buffer);  // 버퍼 나중에
+        console.log(`✅ DisplayManager updated: mode and buffer`);
+      }
+    } else {
+      // 크기가 같으면 clear만
       this.buffer.clear(this.backgroundColor);
     }
   }

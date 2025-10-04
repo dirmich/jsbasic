@@ -189,12 +189,13 @@ export class WebEmulator extends EventEmitter<WebEmulatorEvents> {
     // 키보드 이벤트
     if (this.terminalInput) {
       this.terminalInput.addEventListener('keydown', (e) => this.handleKeyDown(e));
-      
+      this.terminalInput.addEventListener('paste', (e) => this.handlePaste(e));
+
       if (this.config.autoFocus !== false) {
         this.terminalInput.focus();
       }
     }
-    
+
     // 터미널 클릭 시 포커스
     if (this.terminalOutput?.parentElement) {
       this.terminalOutput.parentElement.addEventListener('click', () => {
@@ -221,18 +222,69 @@ export class WebEmulator extends EventEmitter<WebEmulatorEvents> {
           await this.executeCommand(command);
         }
         break;
-        
+
       case 'ArrowUp':
       case 'ArrowDown':
         e.preventDefault();
         // 명령어 히스토리 처리 (나중에 구현)
         break;
-        
+
       case 'Tab':
         e.preventDefault();
         // 자동완성 (나중에 구현)
         break;
     }
+  }
+
+  /**
+   * 붙여넣기 이벤트 처리 (멀티라인 지원)
+   */
+  private async handlePaste(e: ClipboardEvent): Promise<void> {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const input = e.target as HTMLInputElement;
+    const pastedText = e.clipboardData?.getData('text');
+
+    console.log('[WebEmulator] Paste event triggered');
+    console.log('[WebEmulator] Pasted text:', JSON.stringify(pastedText));
+
+    if (!pastedText) {
+      console.log('[WebEmulator] No pasted text');
+      return;
+    }
+
+    // 줄바꿈으로 분리 (빈 줄 제거)
+    const lines = pastedText.split(/\r?\n/).filter(line => line.trim());
+
+    console.log(`[WebEmulator] Split into ${lines.length} lines:`, lines);
+
+    if (lines.length === 0) return;
+
+    // 첫 줄은 현재 입력 필드에 추가
+    if (lines.length === 1) {
+      input.value += lines[0];
+      console.log('[WebEmulator] Single line pasted to input field');
+      return;
+    }
+
+    // 여러 줄인 경우 각 줄을 순차적으로 실행
+    console.log(`[WebEmulator] Pasting ${lines.length} lines`);
+
+    for (const line of lines) {
+      const trimmedLine = line.trim();
+      if (trimmedLine) {
+        console.log('[WebEmulator] Executing pasted line:', JSON.stringify(trimmedLine));
+        this.callbacks.onCommand?.(trimmedLine);
+        await this.executeCommand(trimmedLine);
+
+        // 각 명령 사이에 짧은 지연 (화면 업데이트 시간)
+        await new Promise(resolve => setTimeout(resolve, 10));
+      }
+    }
+
+    // 입력 필드 비우기
+    input.value = '';
   }
 
   /**
@@ -267,16 +319,50 @@ export class WebEmulator extends EventEmitter<WebEmulatorEvents> {
       return;
     }
 
-    const lines = text.split('\n');
-    console.log('[WebEmulator] Lines to display:', lines);
+    // 줄바꿈이 없으면 마지막 줄에 추가
+    if (!text.includes('\n')) {
+      const lastLine = this.terminalOutput.lastElementChild as HTMLElement;
+      if (lastLine && lastLine.classList.contains('terminal-line')) {
+        // 마지막 줄에 append
+        lastLine.textContent += text;
+        console.log('[WebEmulator] Text appended to last line:', text);
+      } else {
+        // 첫 출력이거나 마지막이 terminal-line이 아니면 새 줄 생성
+        const div = document.createElement('div');
+        div.className = `terminal-line ${type}`;
+        div.textContent = text;
+        this.terminalOutput.appendChild(div);
+        console.log('[WebEmulator] New line created:', text);
+      }
+    } else {
+      // 줄바꿈이 있으면 split해서 처리
+      const lines = text.split('\n');
+      console.log('[WebEmulator] Lines to display:', lines);
 
-    lines.forEach(line => {
-      const div = document.createElement('div');
-      div.className = `terminal-line ${type}`;
-      div.textContent = line;
-      this.terminalOutput!.appendChild(div);
-      console.log('[WebEmulator] Line added to terminal:', line);
-    });
+      lines.forEach((line, index) => {
+        if (index === 0) {
+          // 첫 줄은 마지막 줄에 append 시도
+          const lastLine = this.terminalOutput!.lastElementChild as HTMLElement;
+          if (lastLine && lastLine.classList.contains('terminal-line')) {
+            lastLine.textContent += line;
+            console.log('[WebEmulator] First line appended to last line:', line);
+          } else {
+            const div = document.createElement('div');
+            div.className = `terminal-line ${type}`;
+            div.textContent = line;
+            this.terminalOutput!.appendChild(div);
+            console.log('[WebEmulator] First line as new div:', line);
+          }
+        } else {
+          // 나머지 줄은 새 div 생성
+          const div = document.createElement('div');
+          div.className = `terminal-line ${type}`;
+          div.textContent = line;
+          this.terminalOutput!.appendChild(div);
+          console.log('[WebEmulator] Line added to terminal:', line);
+        }
+      });
+    }
 
     // 스크롤을 맨 아래로
     this.terminalOutput.scrollTop = this.terminalOutput.scrollHeight;
@@ -347,8 +433,8 @@ export class WebEmulator extends EventEmitter<WebEmulatorEvents> {
       this.updateSystemInfo();
     }, 1000);
 
-    // 그래픽 업데이트 시작 (60 FPS 목표)
-    this.startGraphicsUpdate();
+    // 그래픽 렌더링은 DisplayManager의 startRenderLoop()에서 처리
+    // startGraphicsUpdate()는 canvas 크기를 잘못 조정하므로 제거됨
   }
 
   /**
@@ -682,6 +768,10 @@ export class WebEmulator extends EventEmitter<WebEmulatorEvents> {
           defaultMode
         );
         console.log('🎨 DisplayManager created');
+
+        // GraphicsEngine에 DisplayManager 연결 (화면 모드 변경 시 버퍼 동기화용)
+        this.graphicsEngine.setDisplayManager(this.displayManager);
+        console.log('🔗 DisplayManager connected to GraphicsEngine');
 
         // BasicEmulator의 interpreter에 연결
         const interpreter = this.emulator.getBasicInterpreter();
