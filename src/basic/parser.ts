@@ -47,6 +47,24 @@ import type {
   LoadStatement,
   GetStatement,
   PutStatement,
+  ViewStatement,
+  WindowStatement,
+  PaletteStatement,
+  DrawStatement,
+  SoundStatement,
+  PlayStatement,
+  OpenStatement,
+  CloseStatement,
+  PrintFileStatement,
+  InputFileStatement,
+  ScreenStatement,
+  PsetStatement,
+  PresetStatement,
+  LineStatement,
+  CircleStatement,
+  PaintStatement,
+  ColorStatement,
+  ClsStatement,
   BinaryExpression,
   UnaryExpression,
   FunctionCall,
@@ -212,6 +230,22 @@ export class Parser {
         return this.parseGetStatement();
       case TokenType.PUT:
         return this.parsePutStatement();
+      case TokenType.VIEW:
+        return this.parseViewStatement();
+      case TokenType.WINDOW:
+        return this.parseWindowStatement();
+      case TokenType.PALETTE:
+        return this.parsePaletteStatement();
+      case TokenType.DRAW:
+        return this.parseDrawStatement();
+      case TokenType.SOUND:
+        return this.parseSoundStatement();
+      case TokenType.PLAY:
+        return this.parsePlayStatement();
+      case TokenType.OPEN:
+        return this.parseOpenStatement();
+      case TokenType.CLOSE:
+        return this.parseCloseStatement();
       case TokenType.IDENTIFIER:
         // 암시적 LET
         return this.parseImplicitLetStatement();
@@ -1912,6 +1946,217 @@ export class Parser {
       line,
       column
     };
+  }
+
+  /**
+   * VIEW 문 파싱: VIEW [[SCREEN] (x1, y1)-(x2, y2) [, [fillColor] [, borderColor]]]
+   */
+  private parseViewStatement(): ViewStatement {
+    const line = this.current.line;
+    const column = this.current.column;
+
+    this.consume(TokenType.VIEW);
+
+    // VIEW without parameters = reset viewport
+    if (this.current.type === TokenType.NEWLINE || this.current.type === TokenType.EOF) {
+      return { type: 'ViewStatement', line, column };
+    }
+
+    // Optional SCREEN keyword
+    if (this.currentTokenIs(TokenType.SCREEN)) {
+      this.advance();
+    }
+
+    this.consume(TokenType.LEFT_PAREN);
+    const x1 = this.parseExpression();
+    this.consume(TokenType.COMMA);
+    const y1 = this.parseExpression();
+    this.consume(TokenType.RIGHT_PAREN);
+    this.consume(TokenType.MINUS);
+    this.consume(TokenType.LEFT_PAREN);
+    const x2 = this.parseExpression();
+    this.consume(TokenType.COMMA);
+    const y2 = this.parseExpression();
+    this.consume(TokenType.RIGHT_PAREN);
+
+    let fillColor: Expression | undefined;
+    let borderColor: Expression | undefined;
+
+    if (this.currentTokenIs(TokenType.COMMA)) {
+      this.advance();
+      if (!this.currentTokenIs(TokenType.COMMA) && !this.currentTokenIs(TokenType.NEWLINE)) {
+        fillColor = this.parseExpression();
+      }
+
+      if (this.currentTokenIs(TokenType.COMMA)) {
+        this.advance();
+        if (!this.currentTokenIs(TokenType.NEWLINE)) {
+          borderColor = this.parseExpression();
+        }
+      }
+    }
+
+    return { type: 'ViewStatement', x1, y1, x2, y2, fillColor, borderColor, line, column };
+  }
+
+  /**
+   * WINDOW 문 파싱: WINDOW [[SCREEN] (x1, y1)-(x2, y2)]
+   */
+  private parseWindowStatement(): WindowStatement {
+    const line = this.current.line;
+    const column = this.current.column;
+
+    this.consume(TokenType.WINDOW);
+
+    // WINDOW without parameters = reset coordinate system
+    if (this.current.type === TokenType.NEWLINE || this.current.type === TokenType.EOF) {
+      return { type: 'WindowStatement', line, column };
+    }
+
+    // Optional SCREEN keyword
+    if (this.currentTokenIs(TokenType.SCREEN)) {
+      this.advance();
+    }
+
+    this.consume(TokenType.LEFT_PAREN);
+    const x1 = this.parseExpression();
+    this.consume(TokenType.COMMA);
+    const y1 = this.parseExpression();
+    this.consume(TokenType.RIGHT_PAREN);
+    this.consume(TokenType.MINUS);
+    this.consume(TokenType.LEFT_PAREN);
+    const x2 = this.parseExpression();
+    this.consume(TokenType.COMMA);
+    const y2 = this.parseExpression();
+    this.consume(TokenType.RIGHT_PAREN);
+
+    return { type: 'WindowStatement', x1, y1, x2, y2, line, column };
+  }
+
+  /**
+   * PALETTE 문 파싱: PALETTE attribute, color
+   */
+  private parsePaletteStatement(): PaletteStatement {
+    const line = this.current.line;
+    const column = this.current.column;
+
+    this.consume(TokenType.PALETTE);
+
+    const attribute = this.parseExpression();
+    this.consume(TokenType.COMMA);
+    const color = this.parseExpression();
+
+    return { type: 'PaletteStatement', attribute, color, line, column };
+  }
+
+  /**
+   * DRAW 문 파싱: DRAW commandString
+   */
+  private parseDrawStatement(): DrawStatement {
+    const line = this.current.line;
+    const column = this.current.column;
+
+    this.consume(TokenType.DRAW);
+
+    const commandString = this.parseExpression();
+
+    return { type: 'DrawStatement', commandString, line, column };
+  }
+
+  /**
+   * SOUND 문 파싱: SOUND frequency, duration
+   */
+  private parseSoundStatement(): SoundStatement {
+    const line = this.current.line;
+    const column = this.current.column;
+
+    this.consume(TokenType.SOUND);
+
+    const frequency = this.parseExpression();
+    this.consume(TokenType.COMMA);
+    const duration = this.parseExpression();
+
+    return { type: 'SoundStatement', frequency, duration, line, column };
+  }
+
+  /**
+   * PLAY 문 파싱: PLAY musicString
+   */
+  private parsePlayStatement(): PlayStatement {
+    const line = this.current.line;
+    const column = this.current.column;
+
+    this.consume(TokenType.PLAY);
+
+    const musicString = this.parseExpression();
+
+    return { type: 'PlayStatement', musicString, line, column };
+  }
+
+  /**
+   * OPEN 문 파싱: OPEN mode, #fileNumber, filename [, recordLength]
+   */
+  private parseOpenStatement(): OpenStatement {
+    const line = this.current.line;
+    const column = this.current.column;
+
+    this.consume(TokenType.OPEN);
+
+    const mode = this.parseExpression();
+    this.consume(TokenType.COMMA);
+
+    // #fileNumber
+    if (this.current.type !== TokenType.NUMBER) {
+      this.error('Expected file number after OPEN mode');
+    }
+    const fileNumber = {
+      type: 'NumberLiteral' as const,
+      value: this.current.value as number,
+      line: this.current.line,
+      column: this.current.column
+    };
+    this.advance();
+
+    this.consume(TokenType.COMMA);
+    const filename = this.parseExpression();
+
+    let recordLength: Expression | undefined;
+    if (this.currentTokenIs(TokenType.COMMA)) {
+      this.advance();
+      recordLength = this.parseExpression();
+    }
+
+    return { type: 'OpenStatement', mode, fileNumber, filename, recordLength, line, column };
+  }
+
+  /**
+   * CLOSE 문 파싱: CLOSE [#fileNumber [, #fileNumber ...]]
+   */
+  private parseCloseStatement(): CloseStatement {
+    const line = this.current.line;
+    const column = this.current.column;
+
+    this.consume(TokenType.CLOSE);
+
+    const fileNumbers: Expression[] = [];
+
+    // CLOSE without parameters = close all files
+    if (this.current.type === TokenType.NEWLINE || this.current.type === TokenType.EOF) {
+      return { type: 'CloseStatement', line, column };
+    }
+
+    // Parse file numbers
+    do {
+      if (this.currentTokenIs(TokenType.COMMA)) {
+        this.advance();
+      }
+
+      const fileNumber = this.parseExpression();
+      fileNumbers.push(fileNumber);
+
+    } while (this.currentTokenIs(TokenType.COMMA));
+
+    return { type: 'CloseStatement', fileNumbers, line, column };
   }
 
   private error(message: string): never {

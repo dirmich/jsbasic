@@ -376,6 +376,103 @@ export interface PutStatement extends Statement {
   action?: 'PSET' | 'PRESET' | 'AND' | 'OR' | 'XOR' | undefined;
 }
 
+/**
+ * VIEW 뷰포트 설정
+ */
+export interface ViewStatement extends Statement {
+  type: 'ViewStatement';
+  x1?: Expression | undefined;
+  y1?: Expression | undefined;
+  x2?: Expression | undefined;
+  y2?: Expression | undefined;
+  fillColor?: Expression | undefined;
+  borderColor?: Expression | undefined;
+}
+
+/**
+ * WINDOW 논리 좌표계 설정
+ */
+export interface WindowStatement extends Statement {
+  type: 'WindowStatement';
+  x1?: Expression | undefined;
+  y1?: Expression | undefined;
+  x2?: Expression | undefined;
+  y2?: Expression | undefined;
+}
+
+/**
+ * PALETTE 색상 재정의
+ */
+export interface PaletteStatement extends Statement {
+  type: 'PaletteStatement';
+  attribute: Expression;
+  color: Expression;
+}
+
+/**
+ * DRAW 그래픽 문자열 명령
+ */
+export interface DrawStatement extends Statement {
+  type: 'DrawStatement';
+  commandString: Expression;
+}
+
+/**
+ * SOUND 사운드 생성
+ */
+export interface SoundStatement extends Statement {
+  type: 'SoundStatement';
+  frequency: Expression;
+  duration: Expression;
+}
+
+/**
+ * PLAY MML 음악 재생
+ */
+export interface PlayStatement extends Statement {
+  type: 'PlayStatement';
+  musicString: Expression;
+}
+
+/**
+ * OPEN 파일 열기
+ */
+export interface OpenStatement extends Statement {
+  type: 'OpenStatement';
+  mode: Expression; // "I", "O", "A", "R"
+  fileNumber: Expression;
+  filename: Expression;
+  recordLength?: Expression | undefined;
+}
+
+/**
+ * CLOSE 파일 닫기
+ */
+export interface CloseStatement extends Statement {
+  type: 'CloseStatement';
+  fileNumbers?: Expression[] | undefined; // 비어있으면 모든 파일 닫기
+}
+
+/**
+ * PRINT# 파일 출력
+ */
+export interface PrintFileStatement extends Statement {
+  type: 'PrintFileStatement';
+  fileNumber: Expression;
+  expressions: Expression[];
+  separator?: 'comma' | 'semicolon';
+  trailingSeparator?: boolean;
+}
+
+/**
+ * INPUT# 파일 입력
+ */
+export interface InputFileStatement extends Statement {
+  type: 'InputFileStatement';
+  fileNumber: Expression;
+  variables: Identifier[];
+}
+
 // === 표현식 타입들 ===
 
 /**
@@ -512,6 +609,16 @@ export type ASTNodeTypes =
   | ClsStatement
   | GetStatement
   | PutStatement
+  | ViewStatement
+  | WindowStatement
+  | PaletteStatement
+  | DrawStatement
+  | SoundStatement
+  | PlayStatement
+  | OpenStatement
+  | CloseStatement
+  | PrintFileStatement
+  | InputFileStatement
   | BinaryExpression
   | UnaryExpression
   | FunctionCall
@@ -556,6 +663,16 @@ export interface ASTVisitor<T> {
   visitClsStatement(node: ClsStatement): T;
   visitGetStatement(node: GetStatement): T;
   visitPutStatement(node: PutStatement): T;
+  visitViewStatement(node: ViewStatement): T;
+  visitWindowStatement(node: WindowStatement): T;
+  visitPaletteStatement(node: PaletteStatement): T;
+  visitDrawStatement(node: DrawStatement): T;
+  visitSoundStatement(node: SoundStatement): T;
+  visitPlayStatement(node: PlayStatement): T;
+  visitOpenStatement(node: OpenStatement): T;
+  visitCloseStatement(node: CloseStatement): T;
+  visitPrintFileStatement(node: PrintFileStatement): T;
+  visitInputFileStatement(node: InputFileStatement): T;
   visitBinaryExpression(node: BinaryExpression): T;
   visitUnaryExpression(node: UnaryExpression): T;
   visitFunctionCall(node: FunctionCall): T;

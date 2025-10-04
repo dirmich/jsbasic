@@ -43,7 +43,17 @@ import type {
   ColorStatement,
   ClsStatement,
   GetStatement,
-  PutStatement
+  PutStatement,
+  ViewStatement,
+  WindowStatement,
+  PaletteStatement,
+  DrawStatement,
+  SoundStatement,
+  PlayStatement,
+  OpenStatement,
+  CloseStatement,
+  PrintFileStatement,
+  InputFileStatement
 } from './ast.js';
 
 import { VariableManager } from './variables.js';
@@ -327,6 +337,36 @@ export class BasicInterpreter extends EventEmitter {
           break;
         case 'PutStatement':
           await this.executePut(statement as PutStatement);
+          break;
+        case 'ViewStatement':
+          await this.executeView(statement as ViewStatement);
+          break;
+        case 'WindowStatement':
+          await this.executeWindow(statement as WindowStatement);
+          break;
+        case 'PaletteStatement':
+          await this.executePalette(statement as PaletteStatement);
+          break;
+        case 'DrawStatement':
+          await this.executeDraw(statement as DrawStatement);
+          break;
+        case 'SoundStatement':
+          await this.executeSound(statement as SoundStatement);
+          break;
+        case 'PlayStatement':
+          await this.executePlay(statement as PlayStatement);
+          break;
+        case 'OpenStatement':
+          await this.executeOpen(statement as OpenStatement);
+          break;
+        case 'CloseStatement':
+          await this.executeClose(statement as CloseStatement);
+          break;
+        case 'PrintFileStatement':
+          await this.executePrintFile(statement as PrintFileStatement);
+          break;
+        case 'InputFileStatement':
+          await this.executeInputFile(statement as InputFileStatement);
           break;
         default:
           throw new BasicError(
@@ -1632,5 +1672,130 @@ export class BasicInterpreter extends EventEmitter {
         stmt.line
       );
     }
+  }
+
+  /**
+   * VIEW 명령어 실행
+   */
+  private async executeView(_stmt: ViewStatement): Promise<void> {
+    // VIEW 구현은 GraphicsEngine 확장 후 추가
+    throw new BasicError(
+      'VIEW command not yet implemented',
+      ERROR_CODES.RUNTIME_ERROR
+    );
+  }
+
+  /**
+   * WINDOW 명령어 실행
+   */
+  private async executeWindow(_stmt: WindowStatement): Promise<void> {
+    // WINDOW 구현은 GraphicsEngine 확장 후 추가
+    throw new BasicError(
+      'WINDOW command not yet implemented',
+      ERROR_CODES.RUNTIME_ERROR
+    );
+  }
+
+  /**
+   * PALETTE 명령어 실행
+   */
+  private async executePalette(_stmt: PaletteStatement): Promise<void> {
+    // PALETTE 구현은 GraphicsEngine 확장 후 추가
+    throw new BasicError(
+      'PALETTE command not yet implemented',
+      ERROR_CODES.RUNTIME_ERROR
+    );
+  }
+
+  /**
+   * DRAW 명령어 실행
+   */
+  private async executeDraw(_stmt: DrawStatement): Promise<void> {
+    // DRAW 구현은 GraphicsEngine 확장 후 추가
+    throw new BasicError(
+      'DRAW command not yet implemented',
+      ERROR_CODES.RUNTIME_ERROR
+    );
+  }
+
+  /**
+   * SOUND 명령어 실행: SOUND frequency, duration
+   */
+  private async executeSound(stmt: SoundStatement): Promise<void> {
+    const frequency = this.evaluator.evaluate(stmt.frequency);
+    const duration = this.evaluator.evaluate(stmt.duration);
+
+    if (typeof frequency !== 'number' || typeof duration !== 'number') {
+      throw new BasicError(
+        'SOUND parameters must be numeric',
+        ERROR_CODES.TYPE_MISMATCH,
+        stmt.line
+      );
+    }
+
+    // AudioEngine을 통해 사운드 재생
+    this.emit('sound', frequency, duration);
+  }
+
+  /**
+   * PLAY 명령어 실행: PLAY musicString
+   */
+  private async executePlay(stmt: PlayStatement): Promise<void> {
+    const musicString = this.evaluator.evaluate(stmt.musicString);
+
+    if (typeof musicString !== 'string') {
+      throw new BasicError(
+        'PLAY parameter must be a string',
+        ERROR_CODES.TYPE_MISMATCH,
+        stmt.line
+      );
+    }
+
+    // AudioEngine을 통해 음악 재생
+    this.emit('play', musicString);
+  }
+
+  /**
+   * OPEN 명령어 실행
+   */
+  private async executeOpen(_stmt: OpenStatement): Promise<void> {
+    // 파일 I/O 시스템 구현 후 추가
+    throw new BasicError(
+      'OPEN command not yet implemented',
+      ERROR_CODES.RUNTIME_ERROR
+    );
+  }
+
+  /**
+   * CLOSE 명령어 실행
+   */
+  private async executeClose(_stmt: CloseStatement): Promise<void> {
+    // 파일 I/O 시스템 구현 후 추가
+    throw new BasicError(
+      'CLOSE command not yet implemented',
+      ERROR_CODES.RUNTIME_ERROR
+    );
+  }
+
+  /**
+   * PRINT# 명령어 실행
+   */
+  private async executePrintFile(_stmt: PrintFileStatement): Promise<void> {
+    // 파일 I/O 시스템 구현 후 추가
+    throw new BasicError(
+      'PRINT# command not yet implemented',
+      ERROR_CODES.RUNTIME_ERROR
+    );
+  }
+
+  /**
+   * INPUT# 명령어 실행
+   */
+  private async executeInputFile(_stmt: InputFileStatement): Promise<void> {
+    // 파일 I/O 시스템 구현 후 추가
+    throw new BasicError(
+      'INPUT# command not yet implemented',
+      ERROR_CODES.RUNTIME_ERROR
+    );
   }
 }

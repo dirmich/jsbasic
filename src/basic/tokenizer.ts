@@ -127,6 +127,14 @@ export enum TokenType {
   POINT = 'POINT',
   GET = 'GET',
   PUT = 'PUT',
+  VIEW = 'VIEW',
+  WINDOW = 'WINDOW',
+  PALETTE = 'PALETTE',
+  DRAW = 'DRAW',
+
+  // 오디오 명령어
+  SOUND = 'SOUND',
+  PLAY = 'PLAY',
 
   // 특수 토큰
   NEWLINE = 'NEWLINE',
@@ -237,7 +245,15 @@ export const KEYWORDS: Record<string, TokenType> = {
   'CLS': TokenType.CLS,
   'POINT': TokenType.POINT,
   'GET': TokenType.GET,
-  'PUT': TokenType.PUT
+  'PUT': TokenType.PUT,
+  'VIEW': TokenType.VIEW,
+  'WINDOW': TokenType.WINDOW,
+  'PALETTE': TokenType.PALETTE,
+  'DRAW': TokenType.DRAW,
+
+  // 오디오 명령어
+  'SOUND': TokenType.SOUND,
+  'PLAY': TokenType.PLAY
 };
 
 /**
