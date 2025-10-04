@@ -56,7 +56,8 @@ class MockGainNode {
   gain = {
     value: 1,
     setValueAtTime: mock((value: number, time: number) => {}),
-    linearRampToValueAtTime: mock((value: number, time: number) => {})
+    linearRampToValueAtTime: mock((value: number, time: number) => {}),
+    cancelScheduledValues: mock((time: number) => {})
   };
   private connected = false;
 
@@ -480,6 +481,233 @@ describe('AudioEngine', () => {
       await engine.sound(880, 50);
 
       await promise1;
+      expect(engine.isPlaying()).toBe(false);
+    });
+  });
+
+  describe('고급 MML 기능', () => {
+    describe('볼륨 제어 (V0-V15)', () => {
+      test('V0 (무음)', async () => {
+        await engine.play('V0 C4');
+        expect(engine.isPlaying()).toBe(false);
+      });
+
+      test('V8 (중간 볼륨)', async () => {
+        await engine.play('V8 C4');
+        expect(engine.isPlaying()).toBe(false);
+      });
+
+      test('V15 (최대 볼륨)', async () => {
+        await engine.play('V15 C4');
+        expect(engine.isPlaying()).toBe(false);
+      });
+
+      test('점진적 볼륨 변화', async () => {
+        await engine.play('V4 C4 V8 D4 V12 E4 V15 F4');
+        expect(engine.isPlaying()).toBe(false);
+      });
+
+      test('범위를 벗어난 볼륨은 무시', async () => {
+        await engine.play('V20 C4'); // V20은 무시되고 이전 볼륨 유지
+        expect(engine.isPlaying()).toBe(false);
+      });
+    });
+
+    describe('파형 타입 (W0-W3)', () => {
+      test('W0 (사인파)', async () => {
+        await engine.play('W0 C4');
+        expect(engine.isPlaying()).toBe(false);
+      });
+
+      test('W1 (사각파)', async () => {
+        await engine.play('W1 C4');
+        expect(engine.isPlaying()).toBe(false);
+      });
+
+      test('W2 (톱니파)', async () => {
+        await engine.play('W2 C4');
+        expect(engine.isPlaying()).toBe(false);
+      });
+
+      test('W3 (삼각파)', async () => {
+        await engine.play('W3 C4');
+        expect(engine.isPlaying()).toBe(false);
+      });
+
+      test('파형 타입 변경', async () => {
+        await engine.play('W0 C4 W1 D4 W2 E4 W3 F4');
+        expect(engine.isPlaying()).toBe(false);
+      });
+    });
+
+    describe('아티큘레이션 (ML, MN, MS)', () => {
+      test('ML (레가토)', async () => {
+        await engine.play('ML C4 D4 E4');
+        expect(engine.isPlaying()).toBe(false);
+      });
+
+      test('MN (노멀)', async () => {
+        await engine.play('MN C4 D4 E4');
+        expect(engine.isPlaying()).toBe(false);
+      });
+
+      test('MS (스타카토)', async () => {
+        await engine.play('MS C4 D4 E4');
+        expect(engine.isPlaying()).toBe(false);
+      });
+
+      test('아티큘레이션 변경', async () => {
+        await engine.play('ML C4 D4 MS E4 F4 MN G4');
+        expect(engine.isPlaying()).toBe(false);
+      });
+    });
+
+    describe('반복 ([...]n)', () => {
+      test('기본 반복 (2회)', async () => {
+        await engine.play('[C4 D4]');
+        expect(engine.isPlaying()).toBe(false);
+      });
+
+      test('반복 횟수 지정', async () => {
+        await engine.play('[C4 D4]3');
+        expect(engine.isPlaying()).toBe(false);
+      });
+
+      test('중첩 반복', async () => {
+        await engine.play('[C4 [D4 E4]2 F4]2');
+        expect(engine.isPlaying()).toBe(false);
+      });
+
+      test('반복과 다른 명령어 조합', async () => {
+        await engine.play('O4 [C D E]3 F G A');
+        expect(engine.isPlaying()).toBe(false);
+      });
+    });
+
+    describe('타이 (&)', () => {
+      test('두 음표 타이', async () => {
+        await engine.play('C4&C8');
+        expect(engine.isPlaying()).toBe(false);
+      });
+
+      test('여러 음표 타이', async () => {
+        await engine.play('C4&C8&C16');
+        expect(engine.isPlaying()).toBe(false);
+      });
+
+      test('타이와 일반 음표 조합', async () => {
+        await engine.play('C4&C4 D4 E4&E8');
+        expect(engine.isPlaying()).toBe(false);
+      });
+    });
+
+    describe('복합 MML', () => {
+      test('모든 고급 기능 조합', async () => {
+        await engine.play('V12 W1 ML T120 O4 [C D E F]2 MS V8 G A B O5 C');
+        expect(engine.isPlaying()).toBe(false);
+      });
+
+      test('복잡한 음악 패턴', async () => {
+        await engine.play('T140 L8 V10 W2 ML [O4 C E G O5 C]2 MN V15 W1 [O4 D F A O5 D]2');
+        expect(engine.isPlaying()).toBe(false);
+      });
+    });
+  });
+
+  describe('다중 채널 지원', () => {
+    test('채널 0에서 MML 재생', async () => {
+      await engine.playMMLOnChannel(0, 'C4 D4 E4');
+      // 에러 없이 완료되어야 함
+    });
+
+    test('채널 1에서 MML 재생', async () => {
+      await engine.playMMLOnChannel(1, 'G4 A4 B4');
+      // 에러 없이 완료되어야 함
+    });
+
+    test('채널 2에서 MML 재생', async () => {
+      await engine.playMMLOnChannel(2, 'E4 F4 G4');
+      // 에러 없이 완료되어야 함
+    });
+
+    test('잘못된 채널 번호 (음수)', () => {
+      expect(() => engine.playMMLOnChannel(-1, 'C4')).toThrow(BasicError);
+    });
+
+    test('잘못된 채널 번호 (최대값 초과)', () => {
+      expect(() => engine.playMMLOnChannel(3, 'C4')).toThrow(BasicError);
+    });
+
+    test('특정 채널 중지', () => {
+      engine.stopChannel(0);
+      engine.stopChannel(1);
+      engine.stopChannel(2);
+      // 에러 없이 완료되어야 함
+    });
+
+    test('모든 채널 중지', () => {
+      engine.stopAllChannels();
+      // 에러 없이 완료되어야 함
+    });
+
+    test('채널 중지 - 잘못된 번호', () => {
+      expect(() => engine.stopChannel(-1)).toThrow(BasicError);
+      expect(() => engine.stopChannel(3)).toThrow(BasicError);
+    });
+  });
+
+  describe('화음 재생 (playChord)', () => {
+    test('C 메이저 코드 (C4, E4, G4)', async () => {
+      await engine.playChord(['C4', 'E4', 'G4'], 500);
+      // 에러 없이 완료되어야 함
+    });
+
+    test('D 마이너 코드 (D4, F4, A4)', async () => {
+      await engine.playChord(['D4', 'F4', 'A4'], 500);
+      // 에러 없이 완료되어야 함
+    });
+
+    test('2개 음표 화음', async () => {
+      await engine.playChord(['C4', 'E4'], 300);
+      // 에러 없이 완료되어야 함
+    });
+
+    test('최대 3개 음표', async () => {
+      await engine.playChord(['C4', 'E4', 'G4'], 500);
+      // 에러 없이 완료되어야 함
+    });
+
+    test('4개 이상 음표는 에러', () => {
+      expect(() => engine.playChord(['C4', 'E4', 'G4', 'B4'], 500)).toThrow(BasicError);
+    });
+
+    test('다양한 옥타브', async () => {
+      await engine.playChord(['C3', 'E4', 'G5'], 500);
+      // 에러 없이 완료되어야 함
+    });
+  });
+
+  describe('오디오 이펙트', () => {
+    test('페이드 인 (500ms)', () => {
+      engine.fadeIn(500);
+      // 에러 없이 완료되어야 함
+    });
+
+    test('페이드 아웃 (500ms)', () => {
+      engine.fadeOut(500);
+      // 에러 없이 완료되어야 함
+    });
+
+    test('페이드 인/아웃 조합', () => {
+      engine.fadeIn(300);
+      engine.fadeOut(300);
+      // 에러 없이 완료되어야 함
+    });
+
+    test('페이드와 사운드 재생 조합', async () => {
+      engine.fadeIn(200);
+      await engine.sound(440, 50);
+      engine.fadeOut(200);
       expect(engine.isPlaying()).toBe(false);
     });
   });
