@@ -1074,6 +1074,15 @@ export class BasicInterpreter extends EventEmitter {
   }
 
   /**
+   * DisplayManager 설정 (화면 모드 업데이트용)
+   */
+  private displayManager: any = null;
+
+  public setDisplayManager(manager: any): void {
+    this.displayManager = manager;
+  }
+
+  /**
    * 파일 시스템 설정
    */
   public setFileSystem(fileSystem: any): void {
@@ -1234,7 +1243,19 @@ export class BasicInterpreter extends EventEmitter {
       );
     }
 
-    this.graphicsEngine.setScreenMode(Math.floor(mode));
+    const modeNum = Math.floor(mode);
+
+    // GraphicsEngine 화면 모드 설정
+    this.graphicsEngine.setScreenMode(modeNum);
+
+    // DisplayManager도 화면 모드 업데이트
+    if (this.displayManager) {
+      const screenMode = this.graphicsEngine.getScreenMode();
+      this.displayManager.setScreenMode(screenMode);
+      console.log(`🖼️ SCREEN ${modeNum}: ${screenMode.width}x${screenMode.height} updated`);
+    } else {
+      console.log(`🖼️ SCREEN ${modeNum} executed (no DisplayManager)`);
+    }
   }
 
   /**
@@ -1274,6 +1295,7 @@ export class BasicInterpreter extends EventEmitter {
     }
 
     this.graphicsEngine.pset(x, y, color);
+    console.log(`🎨 PSET (${x}, ${y})${color !== undefined ? `, ${color}` : ''}`);
   }
 
   /**

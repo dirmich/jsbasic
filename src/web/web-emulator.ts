@@ -687,7 +687,8 @@ export class WebEmulator extends EventEmitter<WebEmulatorEvents> {
         const interpreter = this.emulator.getBasicInterpreter();
         if (interpreter) {
           interpreter.setGraphicsEngine(this.graphicsEngine);
-          console.log('🎨 Graphics engine connected to interpreter');
+          interpreter.setDisplayManager(this.displayManager);
+          console.log('🎨 Graphics engine and DisplayManager connected to interpreter');
         } else {
           console.warn('⚠️ Interpreter not found - graphics engine not connected');
         }
@@ -858,6 +859,13 @@ export class WebEmulator extends EventEmitter<WebEmulatorEvents> {
   /**
    * Public API: BasicEmulator 메서드들을 노출
    */
+
+  /**
+   * DisplayManager 가져오기 (화면 모드 업데이트용)
+   */
+  getDisplayManager() {
+    return this.displayManager;
+  }
 
   /**
    * 통계 정보 가져오기
