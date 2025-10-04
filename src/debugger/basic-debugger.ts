@@ -16,6 +16,7 @@ import type {
   ProfilingInfo,
   DebuggerEvents
 } from './types';
+import { ProfilingAnalyzer, type PerformanceReport } from './profiling-analyzer.js';
 
 /**
  * BasicDebugger 클래스
@@ -34,6 +35,7 @@ export class BasicDebugger extends EventEmitter<DebuggerEvents> {
   private currentLine: number = 0;
 
   private readonly config: DebuggerConfig;
+  private readonly analyzer: ProfilingAnalyzer;
 
   constructor(config?: Partial<DebuggerConfig>) {
     super();
@@ -46,6 +48,8 @@ export class BasicDebugger extends EventEmitter<DebuggerEvents> {
       enableProfiling: false,
       ...config
     };
+
+    this.analyzer = new ProfilingAnalyzer();
   }
 
   // ===================================================================
@@ -472,5 +476,32 @@ export class BasicDebugger extends EventEmitter<DebuggerEvents> {
       callStackDepth: this.callStack.length,
       traceSize: this.executionTrace.length
     };
+  }
+
+  // ===================================================================
+  // 성능 분석
+  // ===================================================================
+
+  /**
+   * 성능 보고서 생성
+   */
+  generatePerformanceReport(): PerformanceReport {
+    const profilingData = this.getProfilingData();
+    return this.analyzer.generateReport(profilingData);
+  }
+
+  /**
+   * 성능 보고서를 텍스트로 출력
+   */
+  getPerformanceReportText(): string {
+    const report = this.generatePerformanceReport();
+    return this.analyzer.reportToText(report);
+  }
+
+  /**
+   * ProfilingAnalyzer 접근
+   */
+  getAnalyzer(): ProfilingAnalyzer {
+    return this.analyzer;
   }
 }
