@@ -56,6 +56,7 @@ declare global {
     MobileOptimizer: typeof MobileOptimizer;
     GestureHandler: typeof GestureHandler;
     ResponsiveLayout: typeof ResponsiveLayout;
+    WebEmulator: typeof WebEmulator;
     mobileOptimizer: MobileOptimizer;
   }
 }
@@ -70,8 +71,10 @@ if (typeof window !== 'undefined') {
   window.MobileOptimizer = MobileOptimizer;
   window.GestureHandler = GestureHandler;
   window.ResponsiveLayout = ResponsiveLayout;
+  window.WebEmulator = WebEmulator;
   window.mobileOptimizer = mobileOptimizer;
 
   console.log('6502 BASIC Emulator modules loaded on window object');
   console.log('Mobile optimization modules loaded');
+  console.log('WebEmulator available for initialization');
 }
