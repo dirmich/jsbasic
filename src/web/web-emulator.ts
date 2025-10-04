@@ -12,6 +12,10 @@ import { ExampleBrowser } from './components/example-browser.js';
 import { ExampleLoader } from './example-loader.js';
 import { GraphicsEngine } from '../graphics/graphics-engine.js';
 import { AudioEngine } from '../audio/audio-engine.js';
+import { PixelBuffer } from '../graphics/pixel-buffer.js';
+import { ColorManager } from '../graphics/color-manager.js';
+import { DisplayManager } from '../graphics/display-manager.js';
+import { SCREEN_MODES } from '@/types/graphics.js';
 
 export interface WebEmulatorConfig {
   containerId: string;
@@ -61,6 +65,7 @@ export class WebEmulator extends EventEmitter<WebEmulatorEvents> {
   // 그래픽 및 오디오 엔진
   private graphicsEngine: GraphicsEngine | null = null;
   private audioEngine: AudioEngine | null = null;
+  private displayManager: DisplayManager | null = null;
 
   // 상태 관리
   private isInitialized = false;
@@ -644,9 +649,28 @@ export class WebEmulator extends EventEmitter<WebEmulatorEvents> {
     try {
       // 그래픽 엔진 초기화
       if (this.graphicsCanvas) {
-        this.graphicsEngine = new GraphicsEngine(
-          this.graphicsCanvas.width,
-          this.graphicsCanvas.height
+        // 기본 화면 모드 (320x200, 16색)
+        const defaultMode = SCREEN_MODES[1];
+        if (!defaultMode) {
+          throw new Error('Default screen mode not found');
+        }
+
+        // PixelBuffer와 ColorManager 생성
+        const pixelBuffer = new PixelBuffer(
+          defaultMode.width,
+          defaultMode.height
+        );
+        const colorManager = new ColorManager();
+
+        // GraphicsEngine 생성 (올바른 인자 전달)
+        this.graphicsEngine = new GraphicsEngine(pixelBuffer, colorManager);
+
+        // DisplayManager 생성 (Canvas에 렌더링)
+        this.displayManager = new DisplayManager(
+          this.graphicsCanvas,
+          pixelBuffer,
+          colorManager,
+          defaultMode
         );
 
         // BasicEmulator의 interpreter에 연결
@@ -655,6 +679,9 @@ export class WebEmulator extends EventEmitter<WebEmulatorEvents> {
           interpreter.setGraphicsEngine(this.graphicsEngine);
           console.log('🎨 Graphics engine initialized and connected');
         }
+
+        // 렌더링 루프 시작
+        this.startRenderLoop();
       } else {
         console.warn('⚠️ Graphics canvas not found - graphics disabled');
       }
@@ -669,6 +696,37 @@ export class WebEmulator extends EventEmitter<WebEmulatorEvents> {
 
     } catch (error) {
       console.error('Failed to initialize graphics/audio engines:', error);
+    }
+  }
+
+  /**
+   * 그래픽 렌더링 루프 시작
+   */
+  private startRenderLoop(): void {
+    const render = () => {
+      // DisplayManager가 있으면 전체 화면 렌더링
+      // TODO: 최적화 - markDirty() 기반 부분 렌더링으로 전환
+      if (this.displayManager && this.graphicsVisible) {
+        this.displayManager.render();
+      }
+
+      // 다음 프레임 예약
+      this.animationFrameId = requestAnimationFrame(render);
+    };
+
+    // 렌더링 루프 시작
+    render();
+    console.log('🎬 Render loop started');
+  }
+
+  /**
+   * 그래픽 렌더링 루프 중지
+   */
+  private stopRenderLoop(): void {
+    if (this.animationFrameId !== null) {
+      cancelAnimationFrame(this.animationFrameId);
+      this.animationFrameId = null;
+      console.log('🛑 Render loop stopped');
     }
   }
 
