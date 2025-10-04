@@ -94,7 +94,7 @@ export class WebEmulator extends EventEmitter<WebEmulatorEvents> {
   /**
    * 웹 에뮬레이터 초기화
    */
-  private async initialize(): Promise<void> {
+  private initialize(): void {
     try {
       // DOM 요소들 찾기
       this.findDOMElements();
@@ -647,23 +647,32 @@ export class WebEmulator extends EventEmitter<WebEmulatorEvents> {
    */
   private initializeGraphicsAndAudio(): void {
     try {
+      console.log('🎨 Initializing graphics and audio engines...');
+
       // 그래픽 엔진 초기화
       if (this.graphicsCanvas) {
+        console.log('📐 Canvas found:', this.graphicsCanvas.width, 'x', this.graphicsCanvas.height);
+
         // 기본 화면 모드 (320x200, 16색)
         const defaultMode = SCREEN_MODES[1];
         if (!defaultMode) {
-          throw new Error('Default screen mode not found');
+          throw new Error('Default screen mode not found in SCREEN_MODES[1]');
         }
+        console.log('📺 Screen mode:', defaultMode.width, 'x', defaultMode.height, defaultMode.colors, 'colors');
 
         // PixelBuffer와 ColorManager 생성
         const pixelBuffer = new PixelBuffer(
           defaultMode.width,
           defaultMode.height
         );
+        console.log('🎨 PixelBuffer created');
+
         const colorManager = new ColorManager();
+        console.log('🎨 ColorManager created');
 
         // GraphicsEngine 생성 (올바른 인자 전달)
         this.graphicsEngine = new GraphicsEngine(pixelBuffer, colorManager);
+        console.log('🎨 GraphicsEngine created');
 
         // DisplayManager 생성 (Canvas에 렌더링)
         this.displayManager = new DisplayManager(
@@ -672,12 +681,15 @@ export class WebEmulator extends EventEmitter<WebEmulatorEvents> {
           colorManager,
           defaultMode
         );
+        console.log('🎨 DisplayManager created');
 
         // BasicEmulator의 interpreter에 연결
         const interpreter = this.emulator.getBasicInterpreter();
         if (interpreter) {
           interpreter.setGraphicsEngine(this.graphicsEngine);
-          console.log('🎨 Graphics engine initialized and connected');
+          console.log('🎨 Graphics engine connected to interpreter');
+        } else {
+          console.warn('⚠️ Interpreter not found - graphics engine not connected');
         }
 
         // 렌더링 루프 시작
@@ -687,15 +699,24 @@ export class WebEmulator extends EventEmitter<WebEmulatorEvents> {
       }
 
       // 오디오 엔진 초기화
+      console.log('🔊 Initializing audio engine...');
       this.audioEngine = new AudioEngine();
+      console.log('🔊 AudioEngine created');
+
       const interpreter = this.emulator.getBasicInterpreter();
       if (interpreter) {
         interpreter.setAudioEngine(this.audioEngine);
-        console.log('🔊 Audio engine initialized and connected');
+        console.log('🔊 Audio engine connected to interpreter');
+      } else {
+        console.warn('⚠️ Interpreter not found - audio engine not connected');
       }
 
+      console.log('✅ Graphics and audio engines initialized successfully');
+
     } catch (error) {
-      console.error('Failed to initialize graphics/audio engines:', error);
+      console.error('❌ Failed to initialize graphics/audio engines:', error);
+      console.error('Stack trace:', error instanceof Error ? error.stack : 'No stack trace');
+      throw error;
     }
   }
 
