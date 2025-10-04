@@ -21,8 +21,31 @@ async function initializeApp() {
         // 모듈 로드
         console.log('에뮬레이터 모듈 로딩 중...');
 
-        // System6502 또는 BasicEmulator 사용
-        if (window.System6502) {
+        // WebEmulator 사용 (예제 브라우저 포함)
+        if (window.WebEmulator) {
+            console.log('WebEmulator를 사용합니다');
+            const webEmulator = new window.WebEmulator();
+            await webEmulator.initialize();
+            isRunning = true;
+
+            // WebEmulator를 글로벌 emulator로 설정
+            emulator = webEmulator;
+
+            // 터미널 출력 이벤트 리스너 설정
+            const terminal = webEmulator.getTerminal();
+            if (terminal) {
+                terminal.on('output', (data) => {
+                    if (data && data.text) {
+                        // WebEmulator가 이미 DOM 업데이트를 처리하므로
+                        // 여기서는 추가 처리가 필요 없음
+                    }
+                });
+            }
+
+            console.log('WebEmulator 초기화 완료 (예제 브라우저 포함)');
+        }
+        // System6502 또는 BasicEmulator 사용 (fallback)
+        else if (window.System6502) {
             console.log('System6502를 사용합니다');
             const system = new window.System6502();
             await system.initialize();

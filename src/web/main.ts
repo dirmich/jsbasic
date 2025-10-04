@@ -20,6 +20,9 @@ import { MobileOptimizer, mobileOptimizer } from '../mobile/mobile-optimizer.js'
 import { GestureHandler } from '../mobile/gesture-handler.js';
 import { ResponsiveLayout } from '../mobile/responsive-layout.js';
 
+// 웹 에뮬레이터
+import { WebEmulator } from './web-emulator.js';
+
 // 유틸리티
 import { EventEmitter } from '../utils/events.js';
 import { BasicError } from '../utils/errors.js';
@@ -38,6 +41,7 @@ export { BasicError };
 export { MobileOptimizer, mobileOptimizer };
 export { GestureHandler };
 export { ResponsiveLayout };
+export { WebEmulator };
 
 /**
  * 전역 객체에 에뮬레이터 바인딩
