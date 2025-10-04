@@ -310,12 +310,12 @@ export class WebEmulator extends EventEmitter<WebEmulatorEvents> {
     // 그래픽 모드 체크
     if (this.graphicsEngine && this.graphicsContainer) {
       const screenMode = this.graphicsEngine.getScreenMode();
-      const shouldShowGraphics = screenMode !== 0;
+      const shouldShowGraphics = screenMode.mode !== 0; // mode 속성 비교
 
       if (shouldShowGraphics !== this.graphicsVisible) {
         this.graphicsVisible = shouldShowGraphics;
         this.graphicsContainer.style.display = shouldShowGraphics ? 'flex' : 'none';
-        console.log(`🖼️ Graphics display: ${shouldShowGraphics ? 'ON' : 'OFF'} (mode ${screenMode})`);
+        console.log(`🖼️ Graphics display: ${shouldShowGraphics ? 'ON' : 'OFF'} (mode ${screenMode.mode})`);
       }
     }
 
@@ -653,12 +653,12 @@ export class WebEmulator extends EventEmitter<WebEmulatorEvents> {
       if (this.graphicsCanvas) {
         console.log('📐 Canvas found:', this.graphicsCanvas.width, 'x', this.graphicsCanvas.height);
 
-        // 기본 화면 모드 (320x200, 16색)
-        const defaultMode = SCREEN_MODES[1];
+        // 기본 화면 모드 (640x400 텍스트 모드 - mode 0)
+        const defaultMode = SCREEN_MODES[0];
         if (!defaultMode) {
-          throw new Error('Default screen mode not found in SCREEN_MODES[1]');
+          throw new Error('Default screen mode not found in SCREEN_MODES[0]');
         }
-        console.log('📺 Screen mode:', defaultMode.width, 'x', defaultMode.height, defaultMode.colors, 'colors');
+        console.log('📺 Default screen mode:', defaultMode.width, 'x', defaultMode.height, defaultMode.colors, 'colors');
 
         // PixelBuffer와 ColorManager 생성
         const pixelBuffer = new PixelBuffer(
@@ -725,9 +725,8 @@ export class WebEmulator extends EventEmitter<WebEmulatorEvents> {
    */
   private startRenderLoop(): void {
     const render = () => {
-      // DisplayManager가 있으면 전체 화면 렌더링
-      // TODO: 최적화 - markDirty() 기반 부분 렌더링으로 전환
-      if (this.displayManager && this.graphicsVisible) {
+      // DisplayManager가 있으면 항상 렌더링 (화면 표시는 CSS로 제어)
+      if (this.displayManager) {
         this.displayManager.render();
       }
 
