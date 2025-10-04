@@ -12,6 +12,7 @@ import { EventEmitter } from '../utils/events.js';
 import { GraphicsEngine } from '../graphics/graphics-engine.js';
 import { PixelBuffer } from '../graphics/pixel-buffer.js';
 import { ColorManager } from '../graphics/color-manager.js';
+import { AudioEngine } from '../audio/audio-engine.js';
 
 export interface EmulatorConfig {
   cpuFrequency: number;
@@ -50,6 +51,7 @@ export class BasicEmulator extends EventEmitter {
   private graphicsEngine!: GraphicsEngine;
   private pixelBuffer!: PixelBuffer;
   private colorManager!: ColorManager;
+  private audioEngine!: AudioEngine;
 
   private state: EmulatorState = EmulatorState.STOPPED;
   private config!: EmulatorConfig;
@@ -100,6 +102,9 @@ export class BasicEmulator extends EventEmitter {
     // 인터프리터에 그래픽 엔진 연결
     this.basicInterpreter.setGraphicsEngine(this.graphicsEngine);
 
+    // 오디오 시스템 초기화
+    this.audioEngine = new AudioEngine();
+
     // 터미널 초기화
     this.terminal = new Terminal(this.config.terminal);
 
@@ -138,7 +143,17 @@ export class BasicEmulator extends EventEmitter {
     this.basicInterpreter.on('stateChange', (newState) => {
       this.updateEmulatorState();
     });
-    
+
+    // BASIC 인터프리터 사운드 이벤트 처리
+    this.basicInterpreter.on('sound', async (frequency: number, duration: number) => {
+      await this.audioEngine.sound(frequency, duration);
+    });
+
+    // BASIC 인터프리터 음악 재생 이벤트 처리
+    this.basicInterpreter.on('play', async (musicString: string) => {
+      await this.audioEngine.play(musicString);
+    });
+
     // CPU 이벤트 처리
     this.cpu.on('error', (error) => {
       this.handleError(`CPU Error: ${error.message}`);
@@ -605,6 +620,13 @@ export class BasicEmulator extends EventEmitter {
    */
   getColorManager(): ColorManager {
     return this.colorManager;
+  }
+
+  /**
+   * AudioEngine 반환
+   */
+  getAudioEngine(): AudioEngine {
+    return this.audioEngine;
   }
 
   /**
