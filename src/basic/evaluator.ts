@@ -134,6 +134,13 @@ export class ExpressionEvaluator {
   }
 
   /**
+   * AudioEngine 설정
+   */
+  setAudioEngine(engine: any): void {
+    this.audioEngine = engine;
+  }
+
+  /**
    * 표현식 평가
    */
   public evaluate(expression: Expression): VariableValue {

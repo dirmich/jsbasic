@@ -1066,6 +1066,14 @@ export class BasicInterpreter extends EventEmitter {
   }
 
   /**
+   * AudioEngine 설정
+   */
+  public setAudioEngine(engine: any): void {
+    this.audioEngine = engine;
+    this.evaluator.setAudioEngine(engine);
+  }
+
+  /**
    * 파일 시스템 설정
    */
   public setFileSystem(fileSystem: any): void {
