@@ -643,11 +643,20 @@ export class WebEmulator extends EventEmitter<WebEmulatorEvents> {
       // 현재 프로그램 초기화 (NEW 명령)
       await this.executeCommand('NEW');
 
-      // 각 라인을 파싱하여 실행
+      // 각 라인을 파싱하여 프로그램에 추가
       const lines = code.split('\n');
       for (const line of lines) {
         const trimmedLine = line.trim();
-        if (trimmedLine && !trimmedLine.startsWith('REM') && !trimmedLine.startsWith("'")) {
+        if (!trimmedLine) continue; // 빈 라인 스킵
+
+        // 라인 번호가 있는지 확인
+        const hasLineNumber = /^\d+/.test(trimmedLine);
+
+        if (hasLineNumber) {
+          // 라인 번호가 있으면 프로그램에 추가 (REM 포함)
+          await this.executeCommand(trimmedLine);
+        } else if (!trimmedLine.startsWith('REM') && !trimmedLine.startsWith("'")) {
+          // 라인 번호 없이 REM이 아닌 경우만 즉시 실행
           await this.executeCommand(trimmedLine);
         }
       }
