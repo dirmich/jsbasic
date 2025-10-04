@@ -15,6 +15,11 @@ import { BasicInterpreter } from '../basic/interpreter.js';
 import { Parser } from '../basic/parser.js';
 import { VariableManager } from '../basic/variables.js';
 
+// 모바일 최적화 모듈
+import { MobileOptimizer, mobileOptimizer } from '../mobile/mobile-optimizer.js';
+import { GestureHandler } from '../mobile/gesture-handler.js';
+import { ResponsiveLayout } from '../mobile/responsive-layout.js';
+
 // 유틸리티
 import { EventEmitter } from '../utils/events.js';
 import { BasicError } from '../utils/errors.js';
@@ -30,6 +35,9 @@ export { Parser };
 export { VariableManager };
 export { EventEmitter };
 export { BasicError };
+export { MobileOptimizer, mobileOptimizer };
+export { GestureHandler };
+export { ResponsiveLayout };
 
 /**
  * 전역 객체에 에뮬레이터 바인딩
@@ -41,6 +49,10 @@ declare global {
     CPU6502: typeof CPU6502;
     MemoryManager: typeof MemoryManager;
     Terminal: typeof Terminal;
+    MobileOptimizer: typeof MobileOptimizer;
+    GestureHandler: typeof GestureHandler;
+    ResponsiveLayout: typeof ResponsiveLayout;
+    mobileOptimizer: MobileOptimizer;
   }
 }
 
@@ -51,6 +63,11 @@ if (typeof window !== 'undefined') {
   window.CPU6502 = CPU6502;
   window.MemoryManager = MemoryManager;
   window.Terminal = Terminal;
+  window.MobileOptimizer = MobileOptimizer;
+  window.GestureHandler = GestureHandler;
+  window.ResponsiveLayout = ResponsiveLayout;
+  window.mobileOptimizer = mobileOptimizer;
 
   console.log('6502 BASIC Emulator modules loaded on window object');
+  console.log('Mobile optimization modules loaded');
 }

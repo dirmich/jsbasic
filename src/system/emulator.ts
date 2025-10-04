@@ -14,6 +14,9 @@ import { PixelBuffer } from '../graphics/pixel-buffer.js';
 import { ColorManager } from '../graphics/color-manager.js';
 import { AudioEngine } from '../audio/audio-engine.js';
 import { FileSystem } from './file-system.js';
+import { MobileOptimizer } from '../mobile/mobile-optimizer.js';
+import { GestureHandler } from '../mobile/gesture-handler.js';
+import { ResponsiveLayout } from '../mobile/responsive-layout.js';
 
 export interface EmulatorConfig {
   cpuFrequency: number;
@@ -54,6 +57,9 @@ export class BasicEmulator extends EventEmitter {
   private colorManager!: ColorManager;
   private audioEngine!: AudioEngine;
   private fileSystem!: FileSystem;
+  private mobileOptimizer: MobileOptimizer | null = null;
+  private gestureHandler: GestureHandler | null = null;
+  private responsiveLayout: ResponsiveLayout | null = null;
 
   private state: EmulatorState = EmulatorState.STOPPED;
   private config!: EmulatorConfig;
@@ -638,6 +644,130 @@ export class BasicEmulator extends EventEmitter {
   }
 
   /**
+   * 모바일 최적화 초기화
+   */
+  initializeMobileOptimization(containerElement?: HTMLElement): void {
+    if (typeof window === 'undefined') {
+      console.warn('Mobile optimization requires browser environment');
+      return;
+    }
+
+    // MobileOptimizer 초기화
+    this.mobileOptimizer = new MobileOptimizer({
+      enableTouchInput: true,
+      optimizeForBattery: true,
+      reduceAnimations: false,
+      compactLayout: false,
+      adaptiveFontSize: true,
+      enableVibration: false,
+      networkOptimization: true
+    });
+
+    // 모바일 최적화 적용
+    this.mobileOptimizer.optimize();
+
+    // GestureHandler 초기화 (컨테이너 요소가 제공된 경우)
+    if (containerElement) {
+      this.gestureHandler = new GestureHandler(containerElement);
+
+      // 제스처 이벤트 처리
+      this.gestureHandler.on('tap', (event) => {
+        this.emit('mobile:tap', event);
+      });
+
+      this.gestureHandler.on('swipe', (event) => {
+        this.emit('mobile:swipe', event);
+      });
+
+      this.gestureHandler.on('longpress', (event) => {
+        this.emit('mobile:longpress', event);
+      });
+
+      this.gestureHandler.on('pinch', (event) => {
+        this.emit('mobile:pinch', event);
+      });
+    }
+
+    // ResponsiveLayout 초기화
+    this.responsiveLayout = new ResponsiveLayout({
+      breakpoints: {
+        mobile: 480,
+        tablet: 768,
+        desktop: 1024
+      },
+      autoAdjust: true,
+      preserveAspectRatio: true,
+      virtualKeyboardPadding: 20
+    });
+
+    // 레이아웃 이벤트 처리
+    this.responsiveLayout.on('layoutModeChange', (mode) => {
+      this.emit('mobile:layoutChange', mode);
+      console.log(`📱 Layout mode changed to: ${mode}`);
+    });
+
+    this.responsiveLayout.on('orientationChange', (orientation) => {
+      this.emit('mobile:orientationChange', orientation);
+      console.log(`📱 Orientation changed to: ${orientation}`);
+    });
+
+    // CSS 변수 설정
+    this.responsiveLayout.setCSSVariables();
+
+    console.log('📱 Mobile optimization initialized');
+  }
+
+  /**
+   * 모바일 최적화 해제
+   */
+  disableMobileOptimization(): void {
+    if (this.mobileOptimizer) {
+      this.mobileOptimizer.disable();
+      this.mobileOptimizer = null;
+    }
+
+    if (this.gestureHandler) {
+      this.gestureHandler.destroy();
+      this.gestureHandler = null;
+    }
+
+    if (this.responsiveLayout) {
+      this.responsiveLayout.destroy();
+      this.responsiveLayout = null;
+    }
+
+    console.log('📱 Mobile optimization disabled');
+  }
+
+  /**
+   * 모바일 최적화 상태 확인
+   */
+  isMobileOptimized(): boolean {
+    return this.mobileOptimizer?.isOptimizationEnabled() ?? false;
+  }
+
+  /**
+   * MobileOptimizer 반환
+   */
+  getMobileOptimizer(): MobileOptimizer | null {
+    return this.mobileOptimizer;
+  }
+
+  /**
+   * GestureHandler 반환
+   */
+  getGestureHandler(): GestureHandler | null {
+    return this.gestureHandler;
+  }
+
+  /**
+   * ResponsiveLayout 반환
+   */
+  getResponsiveLayout(): ResponsiveLayout | null {
+    return this.responsiveLayout;
+  }
+
+  /**
    * 디버깅 정보 반환
    */
   getDebugInfo() {
@@ -649,7 +779,13 @@ export class BasicEmulator extends EventEmitter {
         basic: this.basicInterpreter.getDebugInfo(),
         memory: this.memoryManager.getMemoryStats(),
         terminal: this.terminal.getDebugInfo()
-      }
+      },
+      mobile: this.mobileOptimizer ? {
+        optimized: this.mobileOptimizer.isOptimizationEnabled(),
+        capabilities: this.mobileOptimizer.getCapabilities(),
+        metrics: this.mobileOptimizer.getMetrics(),
+        layout: this.responsiveLayout?.getMetrics()
+      } : null
     };
   }
 }
