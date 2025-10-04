@@ -857,6 +857,52 @@ export class WebEmulator extends EventEmitter<WebEmulatorEvents> {
   }
 
   /**
+   * Public API: BasicEmulator 메서드들을 노출
+   */
+
+  /**
+   * 통계 정보 가져오기
+   */
+  getStats() {
+    return this.emulator.getStats();
+  }
+
+  /**
+   * CPU 가져오기
+   */
+  getCPU() {
+    return this.emulator.getCPU();
+  }
+
+  /**
+   * 상태 가져오기
+   */
+  getState() {
+    return this.emulator.getState();
+  }
+
+  /**
+   * 메모리 매니저 가져오기
+   */
+  getMemory() {
+    return this.emulator.getMemory();
+  }
+
+  /**
+   * 터미널 가져오기
+   */
+  getTerminal() {
+    return this.emulator.getTerminal();
+  }
+
+  /**
+   * BASIC 인터프리터 가져오기
+   */
+  getBasicInterpreter() {
+    return this.emulator.getBasicInterpreter();
+  }
+
+  /**
    * 디버깅 정보
    */
   getDebugInfo() {
