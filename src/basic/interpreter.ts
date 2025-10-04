@@ -61,6 +61,8 @@ import { ExpressionEvaluator, type UserDefinedFunction } from './evaluator.js';
 import { BasicError, ERROR_CODES } from '../utils/errors.js';
 import { EventEmitter } from '../utils/events.js';
 import { fileStorage } from '../utils/file-storage.js';
+import { BasicDebugger } from '../debugger/basic-debugger.js';
+import type { CallStackFrame } from '../debugger/types.js';
 
 /**
  * 프로그램 실행 상태
@@ -110,6 +112,7 @@ export class BasicInterpreter extends EventEmitter {
   private pendingInput: string[] | null = null;
   private graphicsEngine: any | null = null; // GraphicsEngineInterface
   private fileSystem: any | null = null; // FileSystem
+  private debugger: BasicDebugger;
 
   constructor() {
     super();
@@ -133,6 +136,30 @@ export class BasicInterpreter extends EventEmitter {
     this.state = ExecutionState.READY;
     this.outputBuffer = [];
     this.inputQueue = [];
+
+    // 디버거 초기화
+    this.debugger = new BasicDebugger({
+      maxTraceSize: 1000,
+      pauseOnError: true,
+      showVariables: true,
+      showCallStack: true,
+      enableProfiling: false
+    });
+
+    // 디버거 이벤트 리스너 설정
+    this.debugger.on('breakpoint-hit', (lineNumber, variables) => {
+      this.state = ExecutionState.PAUSED;
+      this.emit('stateChanged', this.state);
+      this.emit('breakpoint', lineNumber, variables);
+    });
+
+    this.debugger.on('watch-changed', (watch) => {
+      this.emit('watchChanged', watch);
+    });
+
+    this.debugger.on('state-changed', (state) => {
+      this.emit('debuggerStateChanged', state);
+    });
   }
 
   /**
@@ -144,22 +171,54 @@ export class BasicInterpreter extends EventEmitter {
       this.state = ExecutionState.RUNNING;
       this.emit('stateChanged', this.state);
 
-      while (this.state === ExecutionState.RUNNING && 
+      // 디버거 시작
+      this.debugger.start();
+
+      while (this.state === ExecutionState.RUNNING &&
              this.context.programCounter < this.context.statements.length) {
-        
+
         const stmt = this.context.statements[this.context.programCounter];
         if (!stmt) {
           throw new BasicError('Statement not found', ERROR_CODES.RUNTIME_ERROR);
         }
+
+        // 브레이크포인트 체크
+        if (stmt.lineNumber !== undefined) {
+          this.debugger.setCurrentLine(stmt.lineNumber);
+
+          const variables = this.getVariablesSnapshot();
+          if (this.debugger.checkBreakpoint(stmt.lineNumber, variables)) {
+            // 브레이크포인트에 걸림 - 일시정지 상태로 전환
+            this.debugger.pause();
+            this.state = ExecutionState.PAUSED;
+            await this.waitForResume();
+          }
+
+          // 변수 워치 업데이트
+          this.debugger.updateWatches(variables);
+
+          // 실행 추적 기록
+          this.debugger.recordTrace(stmt.lineNumber, variables);
+        }
+
+        // 명령문 실행 시작 시간 기록
+        const startTime = performance.now();
+
         await this.executeStatement(stmt);
-        
+
+        // 명령문 실행 시간 기록
+        if (stmt.lineNumber !== undefined) {
+          const executionTime = performance.now() - startTime;
+          this.debugger.recordProfiling(stmt.lineNumber, executionTime);
+        }
+
         // 중단 요청 확인
         if (this.state !== ExecutionState.RUNNING) {
           break;
         }
-        
+
         this.context.programCounter++;
-        
+
         // 무한루프 방지를 위한 yield
         if (this.context.programCounter % 1000 === 0) {
           await new Promise(resolve => setTimeout(resolve, 0));
@@ -171,12 +230,58 @@ export class BasicInterpreter extends EventEmitter {
         this.emit('stateChanged', this.state);
       }
 
+      // 디버거 중지
+      this.debugger.stop();
+
     } catch (error) {
       this.state = ExecutionState.ERROR;
       this.emit('stateChanged', this.state);
       this.emit('error', error);
+
+      // 디버거에 에러 전달
+      if (error instanceof Error && this.debugger.getCurrentLine() > 0) {
+        this.debugger.emit('error', error, this.debugger.getCurrentLine());
+      }
+
       throw error;
     }
+  }
+
+  /**
+   * 일시정지 상태에서 재개 대기
+   */
+  private async waitForResume(): Promise<void> {
+    return new Promise<void>((resolve) => {
+      const checkResume = () => {
+        if (this.state === ExecutionState.RUNNING) {
+          resolve();
+        } else {
+          setTimeout(checkResume, 100);
+        }
+      };
+      checkResume();
+    });
+  }
+
+  /**
+   * 현재 변수들의 스냅샷 가져오기
+   */
+  private getVariablesSnapshot(): Record<string, string | number> {
+    const snapshot: Record<string, string | number> = {};
+
+    // 모든 변수 정보 가져오기
+    const allVars = this.variables.getAllVariables();
+    for (const varInfo of allVars) {
+      // 배열이 아닌 변수만 포함, Uint8Array 제외
+      if (!varInfo.isArray && varInfo.value !== undefined) {
+        const value = varInfo.value;
+        if (typeof value === 'string' || typeof value === 'number') {
+          snapshot[varInfo.name] = value;
+        }
+      }
+    }
+
+    return snapshot;
   }
 
   /**
@@ -524,6 +629,16 @@ export class BasicInterpreter extends EventEmitter {
     };
     this.context.forLoopStack.push(loopInfo);
 
+    // 디버거 콜스택에 추가
+    if (stmt.line !== undefined) {
+      const frame: CallStackFrame = {
+        lineNumber: stmt.line,
+        type: 'FOR',
+        variables: this.getVariablesSnapshot()
+      };
+      this.debugger.pushCallStack(frame);
+    }
+
     // 현재 위치부터 NEXT를 찾기
     const forStartIndex = this.context.programCounter;
     let nextIndex = -1;
@@ -610,6 +725,10 @@ export class BasicInterpreter extends EventEmitter {
     } else {
       // 루프 종료 - 스택에서 제거
       this.context.forLoopStack.pop();
+
+      // 디버거 콜스택에서 제거
+      this.debugger.popCallStack();
+
       // 다음 명령으로 계속 (programCounter는 자동 증가됨)
     }
   }
@@ -708,7 +827,7 @@ export class BasicInterpreter extends EventEmitter {
     }
     const lineNumber = stmt.targetLine.value;
     const targetIndex = this.context.lineNumberMap.get(lineNumber);
-    
+
     if (targetIndex === undefined) {
       throw new BasicError(
         `Line number ${lineNumber} not found`,
@@ -716,7 +835,18 @@ export class BasicInterpreter extends EventEmitter {
         stmt.line
       );
     }
-    
+
+    // 디버거 콜스택에 추가
+    if (stmt.line !== undefined) {
+      const frame: CallStackFrame = {
+        lineNumber: stmt.line,
+        type: 'GOSUB',
+        returnLine: this.context.programCounter + 1,
+        variables: this.getVariablesSnapshot()
+      };
+      this.debugger.pushCallStack(frame);
+    }
+
     // 현재 위치를 스택에 저장
     this.context.gosubStack.push(this.context.programCounter);
     this.context.programCounter = targetIndex - 1; // -1 because it will be incremented
@@ -730,7 +860,10 @@ export class BasicInterpreter extends EventEmitter {
         stmt.line
       );
     }
-    
+
+    // 디버거 콜스택에서 제거
+    this.debugger.popCallStack();
+
     this.context.programCounter = this.context.gosubStack.pop()!;
   }
 
@@ -893,6 +1026,7 @@ export class BasicInterpreter extends EventEmitter {
   public pause(): void {
     if (this.state === ExecutionState.RUNNING) {
       this.state = ExecutionState.PAUSED;
+      this.debugger.pause();
       this.emit('stateChanged', this.state);
     }
   }
@@ -903,6 +1037,7 @@ export class BasicInterpreter extends EventEmitter {
   public resume(): void {
     if (this.state === ExecutionState.PAUSED) {
       this.state = ExecutionState.RUNNING;
+      this.debugger.resume();
       this.emit('stateChanged', this.state);
     }
   }
@@ -2032,5 +2167,16 @@ export class BasicInterpreter extends EventEmitter {
 
       this.variables.setVariable(varName, value);
     }
+  }
+
+  // ===================================================================
+  // 디버거 Public API
+  // ===================================================================
+
+  /**
+   * 디버거 가져오기
+   */
+  public getDebugger(): BasicDebugger {
+    return this.debugger;
   }
 }
